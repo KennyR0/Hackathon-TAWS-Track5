@@ -7,6 +7,9 @@ from os import getenv
 from pathlib import Path
 
 
+APP_ROOT = Path(__file__).resolve().parent
+BACKEND_ROOT = APP_ROOT.parent
+REPO_ROOT = BACKEND_ROOT.parent
 DEFAULT_OPENAI_MODEL = "gpt-5.4"
 DEFAULT_OPENAI_REASONING_EFFORT = "medium"
 DEFAULT_LLM_PROVIDER = "fixture"
@@ -69,8 +72,10 @@ def get_runtime_config() -> RuntimeConfig:
         getenv("FIXTURE_BUNDLE_PATH", DEFAULT_FIXTURE_BUNDLE_PATH).strip()
         or DEFAULT_FIXTURE_BUNDLE_PATH
     )
+    if not fixture_bundle_path.is_absolute():
+        fixture_bundle_path = REPO_ROOT / fixture_bundle_path
 
     return RuntimeConfig(
         llm_provider=llm_provider,
-        fixture_bundle_path=fixture_bundle_path,
+        fixture_bundle_path=fixture_bundle_path.resolve(),
     )

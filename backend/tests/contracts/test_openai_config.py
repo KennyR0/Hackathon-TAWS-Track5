@@ -6,6 +6,7 @@ from app.config import (
     DEFAULT_LLM_PROVIDER,
     DEFAULT_OPENAI_MODEL,
     DEFAULT_OPENAI_REASONING_EFFORT,
+    REPO_ROOT,
     get_openai_config,
     get_runtime_config,
 )
@@ -47,4 +48,6 @@ def test_runtime_config_uses_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     config = get_runtime_config()
 
     assert config.llm_provider == DEFAULT_LLM_PROVIDER
-    assert config.fixture_bundle_path.as_posix().endswith("data/fixtures/v1/phase0_bundle.json")
+    assert config.fixture_bundle_path == (
+        REPO_ROOT / "data/fixtures/v1/phase0_bundle.json"
+    ).resolve()

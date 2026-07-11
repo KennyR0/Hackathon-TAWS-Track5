@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 from app.contracts.api import AgentRunStep
-from app.contracts.entities import Event, Signal
+from app.contracts.entities import Article, Event, MarketSnapshot, Signal, Source
 
 
 class MarketAnalysisState(TypedDict, total=False):
@@ -15,6 +15,9 @@ class MarketAnalysisState(TypedDict, total=False):
     fixture_clock: str
     current_node: str
     event: Event
+    event_articles: tuple[Article, ...]
+    event_sources: tuple[Source, ...]
+    market_snapshots: tuple[MarketSnapshot, ...]
     matched_signals: tuple[Signal, ...]
     warnings: list[str]
     steps: list[AgentRunStep]

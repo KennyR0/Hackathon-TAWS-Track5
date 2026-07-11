@@ -353,6 +353,18 @@ class FixtureRepository(BackendRepository):
             if snapshot.asset_id in relation_asset_ids
         )
 
+    def get_event_asset_relations(self, event_id: str) -> tuple[dict[str, str], ...]:
+        event = self._events[event_id]
+        return tuple(
+            {
+                "assetId": relation.asset_id,
+                "symbol": relation.symbol,
+                "relationship": relation.relationship,
+                "reason": relation.reason,
+            }
+            for relation in event.related_assets
+        )
+
     def calculate_signal_price_reaction(self, signal: Signal) -> Any | None:
         event = self._events[signal.event_id]
         primary_asset = self._assets_by_symbol[signal.asset.symbol]
