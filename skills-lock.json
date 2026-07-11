@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "skills": {
+    "fastapi-python": {
+      "source": "https://github.com/Mindrally/skills/tree/05a71308897983093248d719a2ffa1bca61d0768/fastapi-python",
+      "sourceType": "github",
+      "computedHash": "4521c6090735152b7b8df670cefe5c1c6d1dcaa115de67bb96e74ebf802d4f24",
+      "upstreamCommit": "05a71308897983093248d719a2ffa1bca61d0768",
+      "skillFileSha256": "29c6ca5e2bbfb51d40f0fb0afd998b13e23234e1f88c790b6e6a435c7eac55de",
+      "license": "Apache-2.0",
+      "licenseSha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "installScope": "project",
+      "installMethod": "copy"
+    }
+  }
+}

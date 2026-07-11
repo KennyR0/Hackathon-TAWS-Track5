@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ejecutar fase de NexoMercado"
+  short_description: "Implementa y valida una fase con gates"
+  default_prompt: "Usa $run-nexomercado-phase para implementar y validar la fase actual del plan de NexoMercado."
