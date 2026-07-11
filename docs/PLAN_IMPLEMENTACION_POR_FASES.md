@@ -29,7 +29,7 @@ Decisiones confirmadas:
 - Usuario fijo `Analista Demo` durante el MVP.
 - Frontend React + Vite + TypeScript.
 - Backend Python 3.12 + FastAPI + Pydantic.
-- Orquestación LangGraph con exactamente dos agentes.
+- Orquestación LangGraph con dos agentes principales y nodos especializados de control.
 - Supabase PostgreSQL como persistencia.
 - Vercel para frontend y Render para backend.
 - Sin trading, recomendaciones personalizadas ni promesas de rendimiento.
@@ -94,8 +94,8 @@ Reglas:
 
 - FastAPI es la única puerta de entrada a la lógica y proveedores financieros.
 - El frontend no almacena secretos ni consume proveedores directamente.
-- Los proveedores, cálculos y validaciones son servicios determinísticos, no agentes adicionales.
-- Los dos agentes permitidos son `Analista de Coyuntura de Mercados IA` y `Asesor Financiero e Inversiones IA`.
+- Los proveedores, cálculos y validaciones son servicios determinísticos o nodos especializados, no agentes financieros autónomos adicionales.
+- Los dos agentes principales son `Analista de Coyuntura de Mercados IA` y `Asesor Financiero e Inversiones IA`.
 - El Asesor solo recibe señales que superaron el validador de evidencia.
 - El LLM no calcula precios, retornos, porcentajes, volatilidad, confianza ni estados.
 

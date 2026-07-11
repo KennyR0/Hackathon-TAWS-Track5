@@ -18,6 +18,8 @@ La solución utiliza dos agentes especializados:
 1. **Analista de Coyuntura de Mercados IA:** recopila, verifica, agrupa y analiza eventos de mercado.
 2. **Asesor Financiero e Inversiones IA:** prioriza las señales verificadas, genera briefings y propone acciones de investigación.
 
+Para reducir fallos, estos dos agentes principales se apoyan en nodos especializados de verificación, cálculo, riesgo, briefing y auditoría. Los nodos especializados no reemplazan a los agentes del Track 5; funcionan como controles internos con responsabilidades pequeñas, verificables y trazables.
+
 La arquitectura separa completamente la interfaz, la API, la lógica agéntica, los cálculos financieros y los proveedores externos. Esto evita construir un prototipo frágil y permite cambiar un proveedor o modelo de IA sin reescribir todo el sistema.
 
 ---
@@ -76,9 +78,21 @@ claim_id → evidence_id → source_id → URL/documento → fecha → snapshot
 
 El modelo de lenguaje no calcula precios, retornos, porcentajes, volatilidad ni confianza. Estas operaciones son realizadas por funciones Python verificables.
 
-### 4.3 Dos agentes, no teatro multiagente
+### 4.3 Dos agentes principales con controles especializados
 
-Solo existen los dos agentes exigidos por el Track 5. La búsqueda, cálculo, validación y almacenamiento se implementan como herramientas y servicios.
+El sistema mantiene dos agentes principales alineados con el Track 5: el Analista de Coyuntura de Mercados IA y el Asesor Financiero e Inversiones IA.
+
+Para disminuir la probabilidad de fallos, la orquestación se divide en nodos especializados:
+
+- Verificación de fuentes y fechas.
+- Vinculación noticia-activo.
+- Cálculo cuantitativo determinístico.
+- Validación de evidencia y contradicciones.
+- Control de riesgo, lenguaje y abstención.
+- Construcción de briefing.
+- Auditoría del recorrido completo.
+
+Estos nodos pueden implementarse como herramientas, servicios o subroles supervisados por LangGraph. No toman decisiones financieras autónomas ni sustituyen la revisión humana.
 
 ### 4.4 Revisión humana obligatoria
 
@@ -108,6 +122,12 @@ flowchart TB
     API --> AUTH[Supabase Auth]
     API --> WF[Workflow LangGraph]
     API --> DB[(Supabase PostgreSQL)]
+
+    WF --> NODES[Nodos especializados de control]
+    NODES --> SRC[Verificación de fuentes]
+    NODES --> LINK[Vinculación noticia-activo]
+    NODES --> RISK[Control de riesgo y lenguaje]
+    NODES --> AUDIT[Auditoría y trazabilidad]
 
     WF --> A1[Analista de Coyuntura de Mercados IA]
     A1 --> TOOLS[Herramientas determinísticas]
@@ -325,6 +345,8 @@ backend/
 
 ## 9. Workflow agéntico
 
+El workflow se diseña como una orquestación supervisada. Los dos agentes principales concentran el razonamiento de mercado y la generación de briefing, mientras los nodos especializados controlan pasos que deben ser verificables.
+
 ```mermaid
 stateDiagram-v2
     [*] --> RECEIVED
@@ -371,6 +393,35 @@ class MarketAnalysisState(TypedDict):
 ```
 
 Cada nodo guarda un checkpoint. Si una API falla o el proceso se interrumpe, el workflow puede reanudarse desde el último punto confirmado.
+
+### 9.2 Nodos especializados de control
+
+| Nodo | Responsabilidad | Tipo de salida |
+|---|---|---|
+| `normalize_news` | Normalizar noticia, fuente, fecha, URL y publisher | Artículos canónicos |
+| `verify_sources` | Confirmar fuente, independencia editorial, fecha y modo de datos | Evidencia de fuente |
+| `link_assets` | Relacionar eventos con activos, sectores o instrumentos | Relaciones noticia-activo |
+| `calculate_reactions` | Calcular retornos, benchmark, volumen relativo y métricas | Resultados cuantitativos |
+| `validate_evidence` | Comprobar que cada claim tenga evidencia o contraevidencia | Resultado de validación |
+| `abstention_guard` | Forzar `uncertain` o `insufficient_evidence` si falta soporte | Estado seguro |
+| `risk_language_guard` | Bloquear lenguaje de compra, venta o promesa de rendimiento | Texto permitido |
+| `briefing_builder` | Armar briefing con señales elegibles | Briefing draft/shareable |
+| `audit_writer` | Registrar pasos, snapshots, hashes, modelo y advertencias | Trazabilidad |
+
+Estos nodos reducen la superficie de error porque cada parte del análisis tiene una entrada, una salida y una regla de aceptación explícita.
+
+### 9.3 Roles internos supervisados
+
+Cuando se explique la arquitectura, puede describirse que los agentes principales coordinan roles internos especializados:
+
+- **Verificador de fuentes:** revisa publisher, fecha, URL, independencia y duplicados.
+- **Analista cuantitativo:** interpreta resultados generados por funciones Python, sin inventar cifras.
+- **Validador de evidencia:** exige trazabilidad `claim -> evidence -> source/snapshot`.
+- **Control de riesgo y cumplimiento:** evita asesoría personalizada, promesas de rendimiento y lenguaje operativo.
+- **Redactor de briefing:** convierte señales validadas en un resumen claro para revisión.
+- **Auditor:** registra pasos, modo de datos, proveedor, hashes y advertencias.
+
+Estos roles no ejecutan operaciones ni aprueban señales por sí solos. La decisión final permanece en la revisión humana.
 
 ---
 
@@ -463,7 +514,7 @@ márgenes con competidores antes de extraer una conclusión."
 ```text
 "Compra esta acción."
 "Vende todos tus activos."
-"Esta inversión te hará ganar un 20 %."
+"Esta inversión rendirá un 20 %."
 "El precio definitivamente subirá mañana."
 ```
 
