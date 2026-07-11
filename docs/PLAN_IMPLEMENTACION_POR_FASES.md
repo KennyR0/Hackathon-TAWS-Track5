@@ -1,8 +1,8 @@
 ---
-plan_version: 4
-current_phase: 0
-phase_S0: aceptada
-phase_0: lista_para_revision
+plan_version: 2
+current_phase: S0
+phase_S0: lista_para_revision
+phase_0: pendiente
 phase_1: pendiente
 phase_2: pendiente
 phase_3: pendiente
@@ -75,8 +75,8 @@ Reglas:
 
 | Fase | Estado | Propósito |
 |---|---|---|
-| S0 | aceptada | Plan persistente y skills |
-| 0 | lista_para_revision | Contratos y fixtures |
+| S0 | lista_para_revision | Plan persistente y skills |
+| 0 | pendiente | Contratos y fixtures |
 | 1 | pendiente | Walking skeleton |
 | 2 | pendiente | Radar |
 | 3 | pendiente | Señal explicable |
@@ -274,27 +274,6 @@ Entregables:
 
 Gate: contratos y fixtures validan sin que ningún consumidor invente campos.
 
-Evidencia de cierre:
-
-- Rama de trabajo: `codex/fase-0-contratos-fixtures`.
-- Contratos Pydantic v2 estrictos para los 7 enums y las 11 entidades aprobadas; aliases JSON en `camelCase`, campos extra prohibidos y nombres heredados rechazados.
-- OpenAPI 3.1 determinista con 14 paths y 49 schemas; los POST de análisis, revisión y briefing exigen `Idempotency-Key`; SSE documenta reconexión con `Last-Event-ID`.
-- Snapshot OpenAPI validado con `openapi-spec-validator`; SHA-256 `b2db53a500e344fc66fd4cd79c85c92c6c666df7e4b81301706040031b70ff54`.
-- Manifiesto de campos para Radar, Detalle, Briefing y Auditoría; SHA-256 `c0558ac3351c4238e1f8996dbe58e9ea07215e04e2cd616560c1cddb21ec6dd0`.
-- Bundle reproducible con 2 publishers sintéticos originales e independientes, 6 artículos, 3 eventos, 4 activos, 4 snapshots de mercado, 9 claims, 12 evidencias, 3 señales, 1 revisión, 1 briefing y 1 run.
-- Fixtures cubren AAPL con benchmark SPY y volumen de 20 sesiones, BTC con ventana de 24 horas/baseline de 30 días y WTI como contexto de 30 días sin inferir causalidad.
-- Métricas reproducidas: AAPL `-4 %`, SPY `-0.6 %`, retorno anormal `-3.4 %`, volumen relativo `2.0x`, BTC `+2 %` y WTI `+7 %`.
-- Hash lógico del manifiesto: `sha256:9cf3cbc2e9832cf440bbdab29dc44d9916fcda151bf22ef32d1f15ea2a27377a`; SHA-256 del archivo versionado `2382966d43cb1864b730bf4e0b363ae2feb82457886dfffec374e0844ae158cd`.
-- Gate ejecutado con Python `3.12.10`:
-  - `python -m pytest -q backend/tests --disable-socket`: `93 passed`.
-  - `python -m ruff check backend/app backend/scripts backend/tests`: aprobado.
-  - `python backend/scripts/export_openapi.py --check`: snapshot vigente.
-  - `python backend/scripts/generate_fixtures.py --check`: bundle byte a byte vigente.
-  - `python backend/scripts/validate_fixtures.py`: grafo completo aprobado offline.
-- Limitaciones intencionales: noticias sintéticas con dominios reservados `.test`, modo exclusivamente `fixture` y ningún runtime HTTP, cliente TypeScript, proveedor live o secreto; esos consumidores comienzan en fases posteriores.
-- No se hizo commit, push, despliegue ni cambio cloud.
-- Resultado del gate: aprobado; Fase 0 queda `lista_para_revision` y espera decisión del usuario.
-
 ### Fase 1 — Walking skeleton
 
 Prerrequisito: Fase 0 `aceptada`.
@@ -472,11 +451,6 @@ Producto:
 | 2026-07-11 | S0 | Registrar Apache-2.0 como licencia efectiva | La auditoría del árbol fijado corrigió la suposición inicial de licencia |
 | 2026-07-11 | S0 | Mantener la copia del repositorio como canónica | El espejo global se puede reconstruir y validar por manifiesto SHA-256 |
 | 2026-07-11 | S0 | Solicitar revisión | Todos los gates de S0 terminaron verdes; solo el usuario puede aceptarla |
-| 2026-07-11 | S0 | Aceptar | El usuario confirmó el cierre de S0 y autorizó comenzar la Fase 0 |
-| 2026-07-11 | 0 | Iniciar | Implementación de contratos, OpenAPI, fixtures y matriz de aceptación autorizada por el usuario |
-| 2026-07-11 | 0 | Restaurar ramas `codex/fase-*` | Git no admite refs iniciadas con `/` y el usuario confirmó la corrección para mantener compatible el validador |
-| 2026-07-11 | 0 | Fijar publishers sintéticos `.test` | Cumplir el feed de prueba sin atribuir noticias ficticias a medios reales |
-| 2026-07-11 | 0 | Solicitar revisión | Los contratos, OpenAPI, fixtures, trazabilidad y 93 pruebas terminaron verdes en Python 3.12.10 |
 
 ## 12. Registro de cambios
 
@@ -484,5 +458,3 @@ Producto:
 |---|---:|---|
 | 2026-07-11 | 1 | Plan inicial persistido; Fase S0 en curso |
 | 2026-07-11 | 2 | Skills auditadas y sincronizadas; forward-tests aprobados; S0 lista para revisión |
-| 2026-07-11 | 3 | S0 aceptada por el usuario; Fase 0 iniciada en `codex/fase-0-contratos-fixtures` |
-| 2026-07-11 | 4 | Contratos y fixtures reproducibles aprobados; Fase 0 lista para revisión |
