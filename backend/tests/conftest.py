@@ -4,7 +4,10 @@ import json
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
+from app.api import dependencies
+from app.main import create_app
 from app.contracts.api import build_openapi_document
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -21,3 +24,23 @@ def openapi_document() -> dict[str, object]:
 @pytest.fixture(scope="session")
 def consumer_manifest() -> dict[str, object]:
     return json.loads(CONSUMER_FIELDS.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(autouse=True)
+def reset_backend_singletons(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "fixture")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    dependencies.get_fixture_provider.cache_clear()
+    dependencies.get_repository.cache_clear()
+    dependencies.get_llm_adapter.cache_clear()
+    dependencies.get_event_service.cache_clear()
+    dependencies.get_signal_service.cache_clear()
+    dependencies.get_review_service.cache_clear()
+    dependencies.get_briefing_service.cache_clear()
+    dependencies.get_analysis_service.cache_clear()
+
+
+@pytest.fixture
+def api_client() -> TestClient:
+    with TestClient(create_app()) as client:
+        yield client

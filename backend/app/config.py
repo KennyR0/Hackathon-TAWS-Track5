@@ -1,0 +1,76 @@
+"""Runtime configuration helpers for the NexoMercado backend."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from os import getenv
+from pathlib import Path
+
+
+DEFAULT_OPENAI_MODEL = "gpt-5.4"
+DEFAULT_OPENAI_REASONING_EFFORT = "medium"
+DEFAULT_LLM_PROVIDER = "fixture"
+DEFAULT_FIXTURE_BUNDLE_PATH = "data/fixtures/v1/phase0_bundle.json"
+VALID_REASONING_EFFORTS = {"minimal", "low", "medium", "high", "xhigh"}
+VALID_LLM_PROVIDERS = {"fixture", "openai"}
+
+
+@dataclass(frozen=True)
+class RuntimeConfig:
+    llm_provider: str = DEFAULT_LLM_PROVIDER
+    fixture_bundle_path: Path = Path(DEFAULT_FIXTURE_BUNDLE_PATH)
+
+
+@dataclass(frozen=True)
+class OpenAIConfig:
+    api_key: str
+    model: str = DEFAULT_OPENAI_MODEL
+    reasoning_effort: str = DEFAULT_OPENAI_REASONING_EFFORT
+
+
+def get_openai_config() -> OpenAIConfig:
+    """Load the OpenAI runtime config from environment variables."""
+
+    api_key = getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is required to use OpenAI-backed agents")
+
+    model = getenv("OPENAI_MODEL", DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL
+    reasoning_effort = (
+        getenv("OPENAI_REASONING_EFFORT", DEFAULT_OPENAI_REASONING_EFFORT).strip().lower()
+        or DEFAULT_OPENAI_REASONING_EFFORT
+    )
+    if reasoning_effort not in VALID_REASONING_EFFORTS:
+        valid_values = ", ".join(sorted(VALID_REASONING_EFFORTS))
+        raise RuntimeError(
+            "OPENAI_REASONING_EFFORT must be one of: "
+            f"{valid_values}. Received: {reasoning_effort}"
+        )
+
+    return OpenAIConfig(
+        api_key=api_key,
+        model=model,
+        reasoning_effort=reasoning_effort,
+    )
+
+
+def get_runtime_config() -> RuntimeConfig:
+    """Load non-secret runtime config for the backend."""
+
+    llm_provider = getenv("LLM_PROVIDER", DEFAULT_LLM_PROVIDER).strip().lower()
+    if llm_provider not in VALID_LLM_PROVIDERS:
+        valid_values = ", ".join(sorted(VALID_LLM_PROVIDERS))
+        raise RuntimeError(
+            "LLM_PROVIDER must be one of: "
+            f"{valid_values}. Received: {llm_provider}"
+        )
+
+    fixture_bundle_path = Path(
+        getenv("FIXTURE_BUNDLE_PATH", DEFAULT_FIXTURE_BUNDLE_PATH).strip()
+        or DEFAULT_FIXTURE_BUNDLE_PATH
+    )
+
+    return RuntimeConfig(
+        llm_provider=llm_provider,
+        fixture_bundle_path=fixture_bundle_path,
+    )
