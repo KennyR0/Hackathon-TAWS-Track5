@@ -1,0 +1,1814 @@
+{
+  "manifest": {
+    "fixtureId": "fixture_phase0_v1",
+    "schemaVersion": "1.0.0",
+    "fixtureClock": "2026-07-11T13:00:00Z",
+    "generatorVersion": "1.0.0",
+    "fixtureHash": "sha256:9cf3cbc2e9832cf440bbdab29dc44d9916fcda151bf22ef32d1f15ea2a27377a"
+  },
+  "sources": [
+    {
+      "id": "src_fixture_finwire",
+      "name": "Nexo Fixture Financial Wire",
+      "domain": "finwire-fixture.test",
+      "tier": "B",
+      "publisherGroupId": "grp_fixture_finwire",
+      "isOriginalPublisher": true,
+      "isAggregator": false,
+      "fixtureOnly": true,
+      "homepageUrl": "https://finwire-fixture.test/",
+      "countryCode": "US",
+      "language": "es"
+    },
+    {
+      "id": "src_fixture_businessdaily",
+      "name": "Nexo Fixture Business Daily",
+      "domain": "businessdaily-fixture.test",
+      "tier": "C",
+      "publisherGroupId": "grp_fixture_businessdaily",
+      "isOriginalPublisher": true,
+      "isAggregator": false,
+      "fixtureOnly": true,
+      "homepageUrl": "https://businessdaily-fixture.test/",
+      "countryCode": "GB",
+      "language": "es"
+    }
+  ],
+  "articles": [
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-09T20:35:00Z",
+      "dataAsOf": "2026-07-09T20:15:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "art_aapl_finwire_20260709",
+      "sourceId": "src_fixture_finwire",
+      "providerArticleId": "fixture-aapl-fw-20260709",
+      "headline": "Apple reduce su previsión trimestral en el escenario de demostración",
+      "summary": "El publisher informa una reducción de la previsión tras el cierre del mercado.",
+      "publishedAt": "2026-07-09T20:15:00Z",
+      "url": "https://finwire-fixture.test/news/aapl-outlook-20260709",
+      "language": "es",
+      "sourceSnapshotId": "raw_news_aapl_finwire",
+      "contentHash": "sha256:39b2278f35f6fa6785a7aedc438b0c4793dc0b1c3e34d31de945e24f47a084ac",
+      "isSynthetic": true
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-09T20:40:00Z",
+      "dataAsOf": "2026-07-09T20:25:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "art_aapl_businessdaily_20260709",
+      "sourceId": "src_fixture_businessdaily",
+      "providerArticleId": "fixture-aapl-bd-20260709",
+      "headline": "Segundo publisher confirma el ajuste de previsión de Apple",
+      "summary": "Una cobertura independiente confirma el mismo ajuste trimestral sintético.",
+      "publishedAt": "2026-07-09T20:25:00Z",
+      "url": "https://businessdaily-fixture.test/news/aapl-outlook-confirmation-20260709",
+      "language": "es",
+      "sourceSnapshotId": "raw_news_aapl_businessdaily",
+      "contentHash": "sha256:c4fb9cf4c7f241fb4856e32213adf57cc2d088d63acb54cfc7c8cfa12384be17",
+      "isSynthetic": true
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-10T12:35:00Z",
+      "dataAsOf": "2026-07-10T12:10:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "art_btc_finwire_20260710",
+      "sourceId": "src_fixture_finwire",
+      "providerArticleId": "fixture-btc-fw-20260710",
+      "headline": "Un reporte describe como definitiva una medida regulatoria sobre Bitcoin",
+      "summary": "El primer publisher presenta la medida sintética como una aprobación final.",
+      "publishedAt": "2026-07-10T12:10:00Z",
+      "url": "https://finwire-fixture.test/news/btc-policy-approval-20260710",
+      "language": "es",
+      "sourceSnapshotId": "raw_news_btc_finwire",
+      "contentHash": "sha256:5dfbf8773e6014371e79775fb54eeb5e7ed1ca58e54b516fd4e6f59d0f5892cd",
+      "isSynthetic": true
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-10T12:40:00Z",
+      "dataAsOf": "2026-07-10T12:25:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "art_btc_businessdaily_20260710",
+      "sourceId": "src_fixture_businessdaily",
+      "providerArticleId": "fixture-btc-bd-20260710",
+      "headline": "Otra cobertura señala que la medida sobre Bitcoin sigue en consulta",
+      "summary": "El segundo publisher contradice materialmente el carácter definitivo del anuncio.",
+      "publishedAt": "2026-07-10T12:25:00Z",
+      "url": "https://businessdaily-fixture.test/news/btc-policy-consultation-20260710",
+      "language": "es",
+      "sourceSnapshotId": "raw_news_btc_businessdaily",
+      "contentHash": "sha256:9b1dbdc9447dd154950470cda78a1ecb3304f5a9537fa3cbf1e560b6552f95fd",
+      "isSynthetic": true
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-10T15:10:00Z",
+      "dataAsOf": "2026-07-10T14:40:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "art_wti_finwire_20260710",
+      "sourceId": "src_fixture_finwire",
+      "providerArticleId": "fixture-wti-fw-20260710",
+      "headline": "Productores extienden recortes temporales de oferta de crudo",
+      "summary": "El publisher reporta una extensión sintética de recortes de oferta.",
+      "publishedAt": "2026-07-10T14:40:00Z",
+      "url": "https://finwire-fixture.test/news/wti-supply-cuts-20260710",
+      "language": "es",
+      "sourceSnapshotId": "raw_news_wti_finwire",
+      "contentHash": "sha256:313f8b95e5d312d4d9d3a339d17cb60bc3cabcc075e77a2fcc8277db0942bef3",
+      "isSynthetic": true
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-10T15:15:00Z",
+      "dataAsOf": "2026-07-10T14:55:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "art_wti_businessdaily_20260710",
+      "sourceId": "src_fixture_businessdaily",
+      "providerArticleId": "fixture-wti-bd-20260710",
+      "headline": "Fuente independiente confirma la extensión de recortes de crudo",
+      "summary": "La segunda cobertura corrobora el evento, sin afirmar causalidad de precio.",
+      "publishedAt": "2026-07-10T14:55:00Z",
+      "url": "https://businessdaily-fixture.test/news/wti-supply-cuts-confirmation-20260710",
+      "language": "es",
+      "sourceSnapshotId": "raw_news_wti_businessdaily",
+      "contentHash": "sha256:46ce633e2cb0ba73a639ccbb3d4dd4422fb7aeba6117b13552f507827ceaca96",
+      "isSynthetic": true
+    }
+  ],
+  "events": [
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-09T20:45:00Z",
+      "dataAsOf": "2026-07-09T20:25:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "evt_aapl_outlook_20260709",
+      "title": "Ajuste de previsión trimestral de Apple",
+      "summary": "Dos publishers sintéticos independientes corroboran el evento.",
+      "eventAt": "2026-07-09T20:05:00Z",
+      "articleIds": [
+        "art_aapl_finwire_20260709",
+        "art_aapl_businessdaily_20260709"
+      ],
+      "relatedAssets": [
+        {
+          "assetId": "ast_aapl",
+          "symbol": "AAPL",
+          "relationship": "direct",
+          "reason": "El evento sintético corresponde a la compañía emisora.",
+          "entityMatchScore": 1.0
+        },
+        {
+          "assetId": "ast_spy",
+          "symbol": "SPY",
+          "relationship": "sector",
+          "reason": "SPY es el benchmark aprobado para aislar el movimiento relativo.",
+          "entityMatchScore": 0.9
+        }
+      ],
+      "createdAt": "2026-07-09T20:45:00Z",
+      "updatedAt": "2026-07-09T20:45:00Z"
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-10T12:45:00Z",
+      "dataAsOf": "2026-07-10T12:25:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "evt_btc_policy_20260710",
+      "title": "Cobertura contradictoria de una medida regulatoria sobre Bitcoin",
+      "summary": "Dos publishers discrepan sobre si la medida sintética es definitiva.",
+      "eventAt": "2026-07-10T12:00:00Z",
+      "articleIds": [
+        "art_btc_finwire_20260710",
+        "art_btc_businessdaily_20260710"
+      ],
+      "relatedAssets": [
+        {
+          "assetId": "ast_btc_usd",
+          "symbol": "BTC-USD",
+          "relationship": "direct",
+          "reason": "La medida regulatoria sintética menciona directamente Bitcoin.",
+          "entityMatchScore": 1.0
+        }
+      ],
+      "createdAt": "2026-07-10T12:45:00Z",
+      "updatedAt": "2026-07-10T12:45:00Z"
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "fixture_news_feed",
+      "retrievedAt": "2026-07-10T15:20:00Z",
+      "dataAsOf": "2026-07-10T14:55:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME",
+        "SYNTHETIC_NEWS"
+      ],
+      "id": "evt_wti_supply_20260710",
+      "title": "Extensión temporal de recortes de oferta de crudo",
+      "summary": "Dos publishers corroboran el evento; el precio se conserva como contexto.",
+      "eventAt": "2026-07-10T14:30:00Z",
+      "articleIds": [
+        "art_wti_finwire_20260710",
+        "art_wti_businessdaily_20260710"
+      ],
+      "relatedAssets": [
+        {
+          "assetId": "ast_wti",
+          "symbol": "WTI",
+          "relationship": "commodity",
+          "reason": "El evento de oferta se relaciona directamente con el crudo WTI.",
+          "entityMatchScore": 0.98
+        }
+      ],
+      "createdAt": "2026-07-10T15:20:00Z",
+      "updatedAt": "2026-07-10T15:20:00Z"
+    }
+  ],
+  "assets": [
+    {
+      "id": "ast_aapl",
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "instrumentType": "equity",
+      "currency": "USD",
+      "exchange": "NASDAQ",
+      "benchmarkAssetId": "ast_spy",
+      "seriesId": null
+    },
+    {
+      "id": "ast_spy",
+      "symbol": "SPY",
+      "name": "SPDR S&P 500 ETF Trust",
+      "instrumentType": "etf",
+      "currency": "USD",
+      "exchange": "NYSE Arca",
+      "benchmarkAssetId": null,
+      "seriesId": null
+    },
+    {
+      "id": "ast_btc_usd",
+      "symbol": "BTC-USD",
+      "name": "Bitcoin",
+      "instrumentType": "crypto",
+      "currency": "USD",
+      "exchange": "Global",
+      "benchmarkAssetId": null,
+      "seriesId": null
+    },
+    {
+      "id": "ast_wti",
+      "symbol": "WTI",
+      "name": "West Texas Intermediate Crude Oil",
+      "instrumentType": "commodity",
+      "currency": "USD",
+      "exchange": null,
+      "benchmarkAssetId": null,
+      "seriesId": "DCOILWTICO"
+    }
+  ],
+  "marketSnapshots": [
+    {
+      "dataMode": "fixture",
+      "provider": "twelve_data",
+      "retrievedAt": "2026-07-10T20:15:00Z",
+      "dataAsOf": "2026-07-10T20:00:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 86400,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME"
+      ],
+      "id": "mkt_aapl_1d_20260710",
+      "assetId": "ast_aapl",
+      "benchmarkAssetId": "ast_spy",
+      "seriesId": null,
+      "interval": "1d",
+      "currency": "USD",
+      "timezone": "UTC",
+      "startAt": "2026-06-12T20:00:00Z",
+      "endAt": "2026-07-10T20:00:00Z",
+      "sourceUrl": "https://fixtures.nexomercado.test/market/twelve-data/aapl.json",
+      "observations": [
+        {
+          "timestamp": "2026-06-12T20:00:00Z",
+          "close": 200.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-15T20:00:00Z",
+          "close": 200.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-16T20:00:00Z",
+          "close": 201.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-17T20:00:00Z",
+          "close": 201.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-18T20:00:00Z",
+          "close": 202.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-19T20:00:00Z",
+          "close": 202.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-22T20:00:00Z",
+          "close": 203.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-23T20:00:00Z",
+          "close": 203.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-24T20:00:00Z",
+          "close": 204.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-25T20:00:00Z",
+          "close": 204.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-26T20:00:00Z",
+          "close": 205.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-29T20:00:00Z",
+          "close": 205.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-30T20:00:00Z",
+          "close": 206.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-01T20:00:00Z",
+          "close": 206.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-02T20:00:00Z",
+          "close": 207.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-03T20:00:00Z",
+          "close": 207.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-06T20:00:00Z",
+          "close": 208.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-07T20:00:00Z",
+          "close": 208.5,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-08T20:00:00Z",
+          "close": 209.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-09T20:00:00Z",
+          "close": 210.0,
+          "volume": 50000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-10T20:00:00Z",
+          "close": 201.6,
+          "volume": 100000000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        }
+      ],
+      "missingValuePolicy": "none",
+      "contentHash": "sha256:ad1efca813eedf9fb5b319b8e2c839d345d1204395687881772dd36df0fd10d3"
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "twelve_data",
+      "retrievedAt": "2026-07-10T20:15:00Z",
+      "dataAsOf": "2026-07-10T20:00:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 86400,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME"
+      ],
+      "id": "mkt_spy_1d_20260710",
+      "assetId": "ast_spy",
+      "benchmarkAssetId": null,
+      "seriesId": null,
+      "interval": "1d",
+      "currency": "USD",
+      "timezone": "UTC",
+      "startAt": "2026-07-09T20:00:00Z",
+      "endAt": "2026-07-10T20:00:00Z",
+      "sourceUrl": "https://fixtures.nexomercado.test/market/twelve-data/spy.json",
+      "observations": [
+        {
+          "timestamp": "2026-07-09T20:00:00Z",
+          "close": 620.0,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-10T20:00:00Z",
+          "close": 616.28,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        }
+      ],
+      "missingValuePolicy": "none",
+      "contentHash": "sha256:58ab1c81d007fe405475bf975e043fd815fee5dd6ce2f0a3631ffc6544d9b524"
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "coingecko",
+      "retrievedAt": "2026-07-11T12:05:00Z",
+      "dataAsOf": "2026-07-11T12:00:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 3600,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME"
+      ],
+      "id": "mkt_btc_1d_20260711",
+      "assetId": "ast_btc_usd",
+      "benchmarkAssetId": null,
+      "seriesId": null,
+      "interval": "1d",
+      "currency": "USD",
+      "timezone": "UTC",
+      "startAt": "2026-06-11T12:00:00Z",
+      "endAt": "2026-07-11T12:00:00Z",
+      "sourceUrl": "https://fixtures.nexomercado.test/market/coingecko/btc-usd.json",
+      "observations": [
+        {
+          "timestamp": "2026-06-11T12:00:00Z",
+          "close": 98000.0,
+          "volume": 42000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-12T12:00:00Z",
+          "close": 98200.0,
+          "volume": 42100.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-13T12:00:00Z",
+          "close": 98400.0,
+          "volume": 42200.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-14T12:00:00Z",
+          "close": 98600.0,
+          "volume": 42300.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-15T12:00:00Z",
+          "close": 98800.0,
+          "volume": 42400.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-16T12:00:00Z",
+          "close": 99000.0,
+          "volume": 42500.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-17T12:00:00Z",
+          "close": 99200.0,
+          "volume": 42600.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-18T12:00:00Z",
+          "close": 99400.0,
+          "volume": 42700.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-19T12:00:00Z",
+          "close": 99600.0,
+          "volume": 42800.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-20T12:00:00Z",
+          "close": 99800.0,
+          "volume": 42900.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-21T12:00:00Z",
+          "close": 100000.0,
+          "volume": 43000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-22T12:00:00Z",
+          "close": 100200.0,
+          "volume": 43100.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-23T12:00:00Z",
+          "close": 100400.0,
+          "volume": 43200.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-24T12:00:00Z",
+          "close": 100600.0,
+          "volume": 43300.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-25T12:00:00Z",
+          "close": 100800.0,
+          "volume": 43400.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-26T12:00:00Z",
+          "close": 101000.0,
+          "volume": 43500.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-27T12:00:00Z",
+          "close": 101200.0,
+          "volume": 43600.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-28T12:00:00Z",
+          "close": 101400.0,
+          "volume": 43700.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-29T12:00:00Z",
+          "close": 101600.0,
+          "volume": 43800.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-30T12:00:00Z",
+          "close": 101800.0,
+          "volume": 43900.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-01T12:00:00Z",
+          "close": 102000.0,
+          "volume": 44000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-02T12:00:00Z",
+          "close": 102200.0,
+          "volume": 44100.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-03T12:00:00Z",
+          "close": 102400.0,
+          "volume": 44200.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-04T12:00:00Z",
+          "close": 102600.0,
+          "volume": 44300.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-05T12:00:00Z",
+          "close": 102800.0,
+          "volume": 44400.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-06T12:00:00Z",
+          "close": 103000.0,
+          "volume": 44500.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-07T12:00:00Z",
+          "close": 103200.0,
+          "volume": 44600.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-08T12:00:00Z",
+          "close": 103400.0,
+          "volume": 44700.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-09T12:00:00Z",
+          "close": 103600.0,
+          "volume": 44800.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-10T12:00:00Z",
+          "close": 105000.0,
+          "volume": 44900.0,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-11T12:00:00Z",
+          "close": 107100.0,
+          "volume": 45000.0,
+          "open": null,
+          "high": null,
+          "low": null
+        }
+      ],
+      "missingValuePolicy": "none",
+      "contentHash": "sha256:2ed4be7e86e86bee5d4bc928c3ada96b453eb27241df47e357071cef86b628c5"
+    },
+    {
+      "dataMode": "fixture",
+      "provider": "fred",
+      "retrievedAt": "2026-07-11T01:00:00Z",
+      "dataAsOf": "2026-07-10T00:00:00Z",
+      "freshness": {
+        "evaluatedAt": "2026-07-11T13:00:00Z",
+        "staleAfterSeconds": 172800,
+        "isStale": false
+      },
+      "warnings": [
+        "FIXTURE_DATA",
+        "NOT_REAL_TIME"
+      ],
+      "id": "mkt_wti_1d_20260710",
+      "assetId": "ast_wti",
+      "benchmarkAssetId": null,
+      "seriesId": "DCOILWTICO",
+      "interval": "1d",
+      "currency": "USD",
+      "timezone": "UTC",
+      "startAt": "2026-06-10T00:00:00Z",
+      "endAt": "2026-07-10T00:00:00Z",
+      "sourceUrl": "https://fixtures.nexomercado.test/market/fred/dcoilwtico.json",
+      "observations": [
+        {
+          "timestamp": "2026-06-10T00:00:00Z",
+          "close": 68.0,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-11T00:00:00Z",
+          "close": 68.2164,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-12T00:00:00Z",
+          "close": 68.4327,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-15T00:00:00Z",
+          "close": 68.6491,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-16T00:00:00Z",
+          "close": 68.8655,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-17T00:00:00Z",
+          "close": 69.0818,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-18T00:00:00Z",
+          "close": 69.2982,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-19T00:00:00Z",
+          "close": 69.5145,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-22T00:00:00Z",
+          "close": 69.7309,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-23T00:00:00Z",
+          "close": 69.9473,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-24T00:00:00Z",
+          "close": 70.1636,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-25T00:00:00Z",
+          "close": 70.38,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-26T00:00:00Z",
+          "close": 70.5964,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-29T00:00:00Z",
+          "close": 70.8127,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-06-30T00:00:00Z",
+          "close": 71.0291,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-01T00:00:00Z",
+          "close": 71.2455,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-02T00:00:00Z",
+          "close": 71.4618,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-03T00:00:00Z",
+          "close": 71.6782,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-06T00:00:00Z",
+          "close": 71.8945,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-07T00:00:00Z",
+          "close": 72.1109,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-08T00:00:00Z",
+          "close": 72.3273,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-09T00:00:00Z",
+          "close": 72.5436,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        },
+        {
+          "timestamp": "2026-07-10T00:00:00Z",
+          "close": 72.76,
+          "volume": null,
+          "open": null,
+          "high": null,
+          "low": null
+        }
+      ],
+      "missingValuePolicy": "skip_non_trading_days",
+      "contentHash": "sha256:79c9155853bc0eddf94e699f19b8e8607d0dd3c07a70d4b5738679fa01ef5efd"
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_aapl_event",
+      "eventId": "evt_aapl_outlook_20260709",
+      "signalId": "sig_aapl_negative",
+      "claim": "Dos publishers independientes informan una reducción de la previsión trimestral de Apple.",
+      "claimType": "narrative",
+      "numericValue": null,
+      "unit": null,
+      "evidenceIds": [
+        "evd_aapl_finwire",
+        "evd_aapl_businessdaily"
+      ],
+      "counterEvidenceIds": [],
+      "createdAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "clm_aapl_asset_return",
+      "eventId": "evt_aapl_outlook_20260709",
+      "signalId": "sig_aapl_negative",
+      "claim": "AAPL cayó 4 % entre el cierre anterior y el primer cierre posterior.",
+      "claimType": "metric",
+      "numericValue": -0.04,
+      "unit": "decimal_return",
+      "evidenceIds": [
+        "evd_aapl_asset_return"
+      ],
+      "counterEvidenceIds": [],
+      "createdAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "clm_aapl_benchmark_return",
+      "eventId": "evt_aapl_outlook_20260709",
+      "signalId": "sig_aapl_negative",
+      "claim": "SPY cayó 0,6 % en la misma ventana de cierres.",
+      "claimType": "metric",
+      "numericValue": -0.006,
+      "unit": "decimal_return",
+      "evidenceIds": [
+        "evd_aapl_benchmark_return"
+      ],
+      "counterEvidenceIds": [],
+      "createdAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "clm_aapl_abnormal_return",
+      "eventId": "evt_aapl_outlook_20260709",
+      "signalId": "sig_aapl_negative",
+      "claim": "El retorno anormal simplificado de AAPL frente a SPY fue -3,4 %.",
+      "claimType": "metric",
+      "numericValue": -0.034,
+      "unit": "decimal_return",
+      "evidenceIds": [
+        "evd_aapl_abnormal_return"
+      ],
+      "counterEvidenceIds": [],
+      "createdAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "clm_aapl_relative_volume",
+      "eventId": "evt_aapl_outlook_20260709",
+      "signalId": "sig_aapl_negative",
+      "claim": "El volumen de AAPL fue 2 veces la media de las 20 sesiones previas.",
+      "claimType": "metric",
+      "numericValue": 2.0,
+      "unit": "ratio",
+      "evidenceIds": [
+        "evd_aapl_relative_volume"
+      ],
+      "counterEvidenceIds": [],
+      "createdAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "clm_btc_policy_status",
+      "eventId": "evt_btc_policy_20260710",
+      "signalId": "sig_btc_uncertain",
+      "claim": "La medida regulatoria sobre Bitcoin quedó aprobada de forma definitiva.",
+      "claimType": "narrative",
+      "numericValue": null,
+      "unit": null,
+      "evidenceIds": [
+        "evd_btc_finwire_support"
+      ],
+      "counterEvidenceIds": [
+        "evd_btc_businessdaily_counter"
+      ],
+      "createdAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "clm_btc_24h_return",
+      "eventId": "evt_btc_policy_20260710",
+      "signalId": "sig_btc_uncertain",
+      "claim": "BTC-USD subió 2 % durante las 24 horas posteriores al evento.",
+      "claimType": "metric",
+      "numericValue": 0.02,
+      "unit": "decimal_return",
+      "evidenceIds": [
+        "evd_btc_market"
+      ],
+      "counterEvidenceIds": [],
+      "createdAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "clm_wti_supply_event",
+      "eventId": "evt_wti_supply_20260710",
+      "signalId": "sig_wti_context",
+      "claim": "Dos publishers independientes informan una extensión temporal de recortes de oferta de crudo.",
+      "claimType": "narrative",
+      "numericValue": null,
+      "unit": null,
+      "evidenceIds": [
+        "evd_wti_finwire",
+        "evd_wti_businessdaily"
+      ],
+      "counterEvidenceIds": [],
+      "createdAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "clm_wti_30d_change",
+      "eventId": "evt_wti_supply_20260710",
+      "signalId": "sig_wti_context",
+      "claim": "WTI subió 7 % en la ventana de 30 días usada como contexto.",
+      "claimType": "metric",
+      "numericValue": 0.07,
+      "unit": "decimal_return",
+      "evidenceIds": [
+        "evd_wti_market"
+      ],
+      "counterEvidenceIds": [],
+      "createdAt": "2026-07-11T12:00:00Z"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evd_aapl_finwire",
+      "signalId": "sig_aapl_negative",
+      "claimId": "clm_aapl_event",
+      "evidenceType": "source",
+      "supportsSignal": true,
+      "articleId": "art_aapl_finwire_20260709",
+      "sourceId": "src_fixture_finwire",
+      "marketSnapshotIds": [],
+      "sourceSnapshotId": "raw_news_aapl_finwire",
+      "claim": "Dos publishers independientes informan una reducción de la previsión trimestral de Apple.",
+      "excerpt": "El escenario reduce la previsión trimestral después del cierre.",
+      "sourceUrl": "https://finwire-fixture.test/news/aapl-outlook-20260709",
+      "publishedAt": "2026-07-09T20:15:00Z",
+      "retrievedAt": "2026-07-09T20:35:00Z",
+      "dataAsOf": "2026-07-09T20:15:00Z",
+      "contentHash": "sha256:39b2278f35f6fa6785a7aedc438b0c4793dc0b1c3e34d31de945e24f47a084ac"
+    },
+    {
+      "id": "evd_aapl_businessdaily",
+      "signalId": "sig_aapl_negative",
+      "claimId": "clm_aapl_event",
+      "evidenceType": "source",
+      "supportsSignal": true,
+      "articleId": "art_aapl_businessdaily_20260709",
+      "sourceId": "src_fixture_businessdaily",
+      "marketSnapshotIds": [],
+      "sourceSnapshotId": "raw_news_aapl_businessdaily",
+      "claim": "Dos publishers independientes informan una reducción de la previsión trimestral de Apple.",
+      "excerpt": "La cobertura independiente confirma el mismo ajuste sintético.",
+      "sourceUrl": "https://businessdaily-fixture.test/news/aapl-outlook-confirmation-20260709",
+      "publishedAt": "2026-07-09T20:25:00Z",
+      "retrievedAt": "2026-07-09T20:40:00Z",
+      "dataAsOf": "2026-07-09T20:25:00Z",
+      "contentHash": "sha256:c4fb9cf4c7f241fb4856e32213adf57cc2d088d63acb54cfc7c8cfa12384be17"
+    },
+    {
+      "id": "evd_aapl_asset_return",
+      "signalId": "sig_aapl_negative",
+      "claimId": "clm_aapl_asset_return",
+      "evidenceType": "calculation",
+      "supportsSignal": true,
+      "articleId": null,
+      "sourceId": null,
+      "marketSnapshotIds": [
+        "mkt_aapl_1d_20260710"
+      ],
+      "sourceSnapshotId": null,
+      "claim": "AAPL cayó 4 % entre el cierre anterior y el primer cierre posterior.",
+      "excerpt": null,
+      "sourceUrl": "https://fixtures.nexomercado.test/methodology/event-metrics",
+      "publishedAt": null,
+      "retrievedAt": "2026-07-11T12:00:00Z",
+      "dataAsOf": "2026-07-10T20:00:00Z",
+      "contentHash": "sha256:42497693f8d208ab8bf29273ff752353278b575cbbeb4b9e2b60c3fadecc3ed8"
+    },
+    {
+      "id": "evd_aapl_benchmark_return",
+      "signalId": "sig_aapl_negative",
+      "claimId": "clm_aapl_benchmark_return",
+      "evidenceType": "calculation",
+      "supportsSignal": true,
+      "articleId": null,
+      "sourceId": null,
+      "marketSnapshotIds": [
+        "mkt_spy_1d_20260710"
+      ],
+      "sourceSnapshotId": null,
+      "claim": "SPY cayó 0,6 % en la misma ventana de cierres.",
+      "excerpt": null,
+      "sourceUrl": "https://fixtures.nexomercado.test/methodology/event-metrics",
+      "publishedAt": null,
+      "retrievedAt": "2026-07-11T12:00:00Z",
+      "dataAsOf": "2026-07-10T20:00:00Z",
+      "contentHash": "sha256:f70a972fd6d20d99bf619a0bc13f0d3f0c2e01989f102d6283d77b4fe9bc5ce0"
+    },
+    {
+      "id": "evd_aapl_abnormal_return",
+      "signalId": "sig_aapl_negative",
+      "claimId": "clm_aapl_abnormal_return",
+      "evidenceType": "calculation",
+      "supportsSignal": true,
+      "articleId": null,
+      "sourceId": null,
+      "marketSnapshotIds": [
+        "mkt_aapl_1d_20260710",
+        "mkt_spy_1d_20260710"
+      ],
+      "sourceSnapshotId": null,
+      "claim": "El retorno anormal simplificado de AAPL frente a SPY fue -3,4 %.",
+      "excerpt": null,
+      "sourceUrl": "https://fixtures.nexomercado.test/methodology/event-metrics",
+      "publishedAt": null,
+      "retrievedAt": "2026-07-11T12:00:00Z",
+      "dataAsOf": "2026-07-10T20:00:00Z",
+      "contentHash": "sha256:1c48db3c83fc798bd4973d129420df0cdfd9574a5e6b83a4367dc49052c9d15d"
+    },
+    {
+      "id": "evd_aapl_relative_volume",
+      "signalId": "sig_aapl_negative",
+      "claimId": "clm_aapl_relative_volume",
+      "evidenceType": "calculation",
+      "supportsSignal": true,
+      "articleId": null,
+      "sourceId": null,
+      "marketSnapshotIds": [
+        "mkt_aapl_1d_20260710"
+      ],
+      "sourceSnapshotId": null,
+      "claim": "El volumen de AAPL fue 2 veces la media de las 20 sesiones previas.",
+      "excerpt": null,
+      "sourceUrl": "https://fixtures.nexomercado.test/methodology/event-metrics",
+      "publishedAt": null,
+      "retrievedAt": "2026-07-11T12:00:00Z",
+      "dataAsOf": "2026-07-10T20:00:00Z",
+      "contentHash": "sha256:25f737f297b0d0c5d7ced64bbf59d9162cf4a4464354a909221cd0d91c095118"
+    },
+    {
+      "id": "evd_btc_finwire_support",
+      "signalId": "sig_btc_uncertain",
+      "claimId": "clm_btc_policy_status",
+      "evidenceType": "source",
+      "supportsSignal": true,
+      "articleId": "art_btc_finwire_20260710",
+      "sourceId": "src_fixture_finwire",
+      "marketSnapshotIds": [],
+      "sourceSnapshotId": "raw_news_btc_finwire",
+      "claim": "La medida regulatoria sobre Bitcoin quedó aprobada de forma definitiva.",
+      "excerpt": "El primer publisher describe la medida como una aprobación final.",
+      "sourceUrl": "https://finwire-fixture.test/news/btc-policy-approval-20260710",
+      "publishedAt": "2026-07-10T12:10:00Z",
+      "retrievedAt": "2026-07-10T12:35:00Z",
+      "dataAsOf": "2026-07-10T12:10:00Z",
+      "contentHash": "sha256:5dfbf8773e6014371e79775fb54eeb5e7ed1ca58e54b516fd4e6f59d0f5892cd"
+    },
+    {
+      "id": "evd_btc_businessdaily_counter",
+      "signalId": "sig_btc_uncertain",
+      "claimId": "clm_btc_policy_status",
+      "evidenceType": "source",
+      "supportsSignal": false,
+      "articleId": "art_btc_businessdaily_20260710",
+      "sourceId": "src_fixture_businessdaily",
+      "marketSnapshotIds": [],
+      "sourceSnapshotId": "raw_news_btc_businessdaily",
+      "claim": "La medida regulatoria sobre Bitcoin quedó aprobada de forma definitiva.",
+      "excerpt": "El segundo publisher afirma que la medida sigue en consulta.",
+      "sourceUrl": "https://businessdaily-fixture.test/news/btc-policy-consultation-20260710",
+      "publishedAt": "2026-07-10T12:25:00Z",
+      "retrievedAt": "2026-07-10T12:40:00Z",
+      "dataAsOf": "2026-07-10T12:25:00Z",
+      "contentHash": "sha256:9b1dbdc9447dd154950470cda78a1ecb3304f5a9537fa3cbf1e560b6552f95fd"
+    },
+    {
+      "id": "evd_btc_market",
+      "signalId": "sig_btc_uncertain",
+      "claimId": "clm_btc_24h_return",
+      "evidenceType": "market_data",
+      "supportsSignal": true,
+      "articleId": null,
+      "sourceId": null,
+      "marketSnapshotIds": [
+        "mkt_btc_1d_20260711"
+      ],
+      "sourceSnapshotId": null,
+      "claim": "BTC-USD subió 2 % durante las 24 horas posteriores al evento.",
+      "excerpt": null,
+      "sourceUrl": "https://fixtures.nexomercado.test/market/coingecko/btc-usd.json",
+      "publishedAt": null,
+      "retrievedAt": "2026-07-11T12:05:00Z",
+      "dataAsOf": "2026-07-11T12:00:00Z",
+      "contentHash": "sha256:2ed4be7e86e86bee5d4bc928c3ada96b453eb27241df47e357071cef86b628c5"
+    },
+    {
+      "id": "evd_wti_finwire",
+      "signalId": "sig_wti_context",
+      "claimId": "clm_wti_supply_event",
+      "evidenceType": "source",
+      "supportsSignal": true,
+      "articleId": "art_wti_finwire_20260710",
+      "sourceId": "src_fixture_finwire",
+      "marketSnapshotIds": [],
+      "sourceSnapshotId": "raw_news_wti_finwire",
+      "claim": "Dos publishers independientes informan una extensión temporal de recortes de oferta de crudo.",
+      "excerpt": "La cobertura reporta una extensión temporal de recortes de oferta.",
+      "sourceUrl": "https://finwire-fixture.test/news/wti-supply-cuts-20260710",
+      "publishedAt": "2026-07-10T14:40:00Z",
+      "retrievedAt": "2026-07-10T15:10:00Z",
+      "dataAsOf": "2026-07-10T14:40:00Z",
+      "contentHash": "sha256:313f8b95e5d312d4d9d3a339d17cb60bc3cabcc075e77a2fcc8277db0942bef3"
+    },
+    {
+      "id": "evd_wti_businessdaily",
+      "signalId": "sig_wti_context",
+      "claimId": "clm_wti_supply_event",
+      "evidenceType": "source",
+      "supportsSignal": true,
+      "articleId": "art_wti_businessdaily_20260710",
+      "sourceId": "src_fixture_businessdaily",
+      "marketSnapshotIds": [],
+      "sourceSnapshotId": "raw_news_wti_businessdaily",
+      "claim": "Dos publishers independientes informan una extensión temporal de recortes de oferta de crudo.",
+      "excerpt": "La fuente independiente corrobora el evento sin atribuir causalidad.",
+      "sourceUrl": "https://businessdaily-fixture.test/news/wti-supply-cuts-confirmation-20260710",
+      "publishedAt": "2026-07-10T14:55:00Z",
+      "retrievedAt": "2026-07-10T15:15:00Z",
+      "dataAsOf": "2026-07-10T14:55:00Z",
+      "contentHash": "sha256:46ce633e2cb0ba73a639ccbb3d4dd4422fb7aeba6117b13552f507827ceaca96"
+    },
+    {
+      "id": "evd_wti_market",
+      "signalId": "sig_wti_context",
+      "claimId": "clm_wti_30d_change",
+      "evidenceType": "context",
+      "supportsSignal": true,
+      "articleId": null,
+      "sourceId": null,
+      "marketSnapshotIds": [
+        "mkt_wti_1d_20260710"
+      ],
+      "sourceSnapshotId": null,
+      "claim": "WTI subió 7 % en la ventana de 30 días usada como contexto.",
+      "excerpt": null,
+      "sourceUrl": "https://fixtures.nexomercado.test/market/fred/dcoilwtico.json",
+      "publishedAt": null,
+      "retrievedAt": "2026-07-11T01:00:00Z",
+      "dataAsOf": "2026-07-10T00:00:00Z",
+      "contentHash": "sha256:79c9155853bc0eddf94e699f19b8e8607d0dd3c07a70d4b5738679fa01ef5efd"
+    }
+  ],
+  "signals": [
+    {
+      "id": "sig_aapl_negative",
+      "eventId": "evt_aapl_outlook_20260709",
+      "asset": {
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "instrumentType": "equity"
+      },
+      "impact": "negative",
+      "timeHorizon": "short_term",
+      "confidence": 0.81,
+      "analysisStatus": "completed",
+      "requiresHumanReview": true,
+      "thesis": "El ajuste corroborado coincide con una reacción negativa de AAPL superior a la de SPY; la relación no demuestra causalidad por sí sola.",
+      "priceReaction": {
+        "assetReturn": -0.04,
+        "benchmarkReturn": -0.006,
+        "abnormalReturn": -0.034,
+        "relativeVolume": 2.0
+      },
+      "evidenceIds": [
+        "evd_aapl_finwire",
+        "evd_aapl_businessdaily",
+        "evd_aapl_asset_return",
+        "evd_aapl_benchmark_return",
+        "evd_aapl_abnormal_return",
+        "evd_aapl_relative_volume"
+      ],
+      "counterEvidenceIds": [],
+      "assumptions": [
+        "El primer cierre posterior es una ventana válida para el evento."
+      ],
+      "invalidationConditions": [
+        "El ajuste se revierte o se demuestra que el movimiento precedió al evento."
+      ],
+      "suggestedResearchActions": [
+        "Contrastar el ajuste con el documento corporativo oficial."
+      ],
+      "disclaimer": "Esta señal es informativa, no constituye asesoría financiera personalizada ni garantiza resultados.",
+      "review": {
+        "status": "reviewed",
+        "justification": "La evidencia y los cálculos reproducibles fueron verificados.",
+        "reviewedBy": {
+          "id": "usr_analista_demo",
+          "name": "Analista Demo"
+        },
+        "reviewedAt": "2026-07-11T12:30:00Z"
+      },
+      "createdAt": "2026-07-11T12:00:00Z",
+      "updatedAt": "2026-07-11T12:31:00Z"
+    },
+    {
+      "id": "sig_btc_uncertain",
+      "eventId": "evt_btc_policy_20260710",
+      "asset": {
+        "symbol": "BTC-USD",
+        "name": "Bitcoin",
+        "instrumentType": "crypto"
+      },
+      "impact": "uncertain",
+      "timeHorizon": "immediate",
+      "confidence": 0.4,
+      "analysisStatus": "insufficient_evidence",
+      "requiresHumanReview": true,
+      "thesis": "La reacción de 24 horas es observable, pero la contradicción material impide clasificar el impacto del anuncio.",
+      "priceReaction": {
+        "assetReturn": 0.02,
+        "benchmarkReturn": null,
+        "abnormalReturn": null,
+        "relativeVolume": null
+      },
+      "evidenceIds": [
+        "evd_btc_finwire_support",
+        "evd_btc_market"
+      ],
+      "counterEvidenceIds": [
+        "evd_btc_businessdaily_counter"
+      ],
+      "assumptions": [
+        "La ventana de 24 horas está completa."
+      ],
+      "invalidationConditions": [
+        "Una fuente primaria aclara el estado regulatorio."
+      ],
+      "suggestedResearchActions": [
+        "Localizar la resolución regulatoria primaria antes de reclasificar."
+      ],
+      "disclaimer": "Esta señal es informativa, no constituye asesoría financiera personalizada ni garantiza resultados.",
+      "review": {
+        "status": "pending_review",
+        "justification": null,
+        "reviewedBy": null,
+        "reviewedAt": null
+      },
+      "createdAt": "2026-07-11T12:00:00Z",
+      "updatedAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "id": "sig_wti_context",
+      "eventId": "evt_wti_supply_20260710",
+      "asset": {
+        "symbol": "WTI",
+        "name": "West Texas Intermediate Crude Oil",
+        "instrumentType": "commodity"
+      },
+      "impact": "positive",
+      "timeHorizon": "short_term",
+      "confidence": 0.72,
+      "analysisStatus": "completed",
+      "requiresHumanReview": true,
+      "thesis": "La extensión corroborada coincide con un avance de 7 % del WTI en 30 días, usado únicamente como contexto y no como prueba causal.",
+      "priceReaction": {
+        "assetReturn": 0.07,
+        "benchmarkReturn": null,
+        "abnormalReturn": null,
+        "relativeVolume": null
+      },
+      "evidenceIds": [
+        "evd_wti_finwire",
+        "evd_wti_businessdaily",
+        "evd_wti_market"
+      ],
+      "counterEvidenceIds": [],
+      "assumptions": [
+        "La serie diaria omite días sin publicación."
+      ],
+      "invalidationConditions": [
+        "Datos posteriores muestran que el cambio antecedió completamente al evento."
+      ],
+      "suggestedResearchActions": [
+        "Comparar el evento con inventarios y demanda antes de atribuir causalidad."
+      ],
+      "disclaimer": "Esta señal es informativa, no constituye asesoría financiera personalizada ni garantiza resultados.",
+      "review": {
+        "status": "pending_review",
+        "justification": null,
+        "reviewedBy": null,
+        "reviewedAt": null
+      },
+      "createdAt": "2026-07-11T12:00:00Z",
+      "updatedAt": "2026-07-11T12:00:00Z"
+    }
+  ],
+  "signalReviews": [
+    {
+      "id": "rev_aapl_001",
+      "signalId": "sig_aapl_negative",
+      "previousStatus": "pending_review",
+      "status": "reviewed",
+      "justification": "La evidencia y los cálculos reproducibles fueron verificados.",
+      "reviewedBy": {
+        "id": "usr_analista_demo",
+        "name": "Analista Demo"
+      },
+      "reviewedAt": "2026-07-11T12:30:00Z",
+      "createdAt": "2026-07-11T12:31:00Z"
+    }
+  ],
+  "briefings": [
+    {
+      "briefingId": "brf_demo_global_20260711",
+      "status": "draft",
+      "watchlist": {
+        "id": "watchlist_demo_global",
+        "name": "Demo Global"
+      },
+      "executiveSummary": "El corpus contiene una señal revisada, una abstención por contradicción y una señal contextual pendiente.",
+      "prioritizedSignals": [
+        {
+          "signalId": "sig_aapl_negative",
+          "priority": "high",
+          "reason": "Movimiento anormal y volumen relativo elevados.",
+          "suggestedResearchActions": [
+            "Contrastar el ajuste con el documento corporativo oficial."
+          ],
+          "review": {
+            "status": "reviewed",
+            "justification": "La evidencia y los cálculos reproducibles fueron verificados.",
+            "reviewedBy": {
+              "id": "usr_analista_demo",
+              "name": "Analista Demo"
+            },
+            "reviewedAt": "2026-07-11T12:30:00Z"
+          }
+        },
+        {
+          "signalId": "sig_btc_uncertain",
+          "priority": "high",
+          "reason": "Contradicción material que requiere resolución humana.",
+          "suggestedResearchActions": [
+            "Localizar la resolución regulatoria primaria antes de reclasificar."
+          ],
+          "review": {
+            "status": "pending_review",
+            "justification": null,
+            "reviewedBy": null,
+            "reviewedAt": null
+          }
+        },
+        {
+          "signalId": "sig_wti_context",
+          "priority": "medium",
+          "reason": "Evento corroborado con cambio de 30 días solo contextual.",
+          "suggestedResearchActions": [
+            "Comparar el evento con inventarios y demanda antes de atribuir causalidad."
+          ],
+          "review": {
+            "status": "pending_review",
+            "justification": null,
+            "reviewedBy": null,
+            "reviewedAt": null
+          }
+        }
+      ],
+      "humanReviewSummary": {
+        "totalSignals": 3,
+        "pendingReview": 2,
+        "reviewed": 1,
+        "escalated": 0,
+        "discarded": 0
+      },
+      "requiresHumanReview": true,
+      "disclaimer": "Esta señal es informativa, no constituye asesoría financiera personalizada ni garantiza resultados.",
+      "createdAt": "2026-07-11T12:45:00Z",
+      "updatedAt": "2026-07-11T12:45:00Z"
+    }
+  ],
+  "agentRuns": [
+    {
+      "id": "run_phase0_fixture_001",
+      "organizationId": "org_demo",
+      "conversationId": null,
+      "currentNode": "pending_review",
+      "status": "completed",
+      "modelName": "fixture-deterministic",
+      "promptVersion": "phase0-v1",
+      "inputHash": "sha256:c7dd23beb199a3ba127e5f92719032edc104a86c264eb631e7ba3d096053cf5c",
+      "sourceSnapshotIds": [
+        "raw_news_aapl_finwire",
+        "raw_news_aapl_businessdaily",
+        "raw_news_btc_finwire",
+        "raw_news_btc_businessdaily",
+        "raw_news_wti_finwire",
+        "raw_news_wti_businessdaily",
+        "mkt_aapl_1d_20260710",
+        "mkt_spy_1d_20260710",
+        "mkt_btc_1d_20260711",
+        "mkt_wti_1d_20260710"
+      ],
+      "startedAt": "2026-07-11T10:00:00Z",
+      "finishedAt": "2026-07-11T12:00:00Z",
+      "errorCode": null,
+      "retryCount": 0
+    }
+  ],
+  "rawSourceSnapshots": [
+    {
+      "id": "raw_news_aapl_finwire",
+      "sourceId": "src_fixture_finwire",
+      "provider": "fixture_news_feed",
+      "providerArticleId": "fixture-aapl-fw-20260709",
+      "capturedAt": "2026-07-09T20:35:00Z",
+      "payload": {
+        "canonicalUrl": "https://finwire-fixture.test/news/aapl-outlook-20260709",
+        "headline": "Apple reduce su previsión trimestral en el escenario de demostración",
+        "isSynthetic": true,
+        "originalPublisher": "Nexo Fixture Financial Wire",
+        "providerArticleId": "fixture-aapl-fw-20260709",
+        "publishedAt": "2026-07-09T20:15:00Z",
+        "summary": "El publisher informa una reducción de la previsión tras el cierre del mercado."
+      },
+      "contentHash": "sha256:39b2278f35f6fa6785a7aedc438b0c4793dc0b1c3e34d31de945e24f47a084ac"
+    },
+    {
+      "id": "raw_news_aapl_businessdaily",
+      "sourceId": "src_fixture_businessdaily",
+      "provider": "fixture_news_feed",
+      "providerArticleId": "fixture-aapl-bd-20260709",
+      "capturedAt": "2026-07-09T20:40:00Z",
+      "payload": {
+        "canonicalUrl": "https://businessdaily-fixture.test/news/aapl-outlook-confirmation-20260709",
+        "headline": "Segundo publisher confirma el ajuste de previsión de Apple",
+        "isSynthetic": true,
+        "originalPublisher": "Nexo Fixture Business Daily",
+        "providerArticleId": "fixture-aapl-bd-20260709",
+        "publishedAt": "2026-07-09T20:25:00Z",
+        "summary": "Una cobertura independiente confirma el mismo ajuste trimestral sintético."
+      },
+      "contentHash": "sha256:c4fb9cf4c7f241fb4856e32213adf57cc2d088d63acb54cfc7c8cfa12384be17"
+    },
+    {
+      "id": "raw_news_btc_finwire",
+      "sourceId": "src_fixture_finwire",
+      "provider": "fixture_news_feed",
+      "providerArticleId": "fixture-btc-fw-20260710",
+      "capturedAt": "2026-07-10T12:35:00Z",
+      "payload": {
+        "canonicalUrl": "https://finwire-fixture.test/news/btc-policy-approval-20260710",
+        "headline": "Un reporte describe como definitiva una medida regulatoria sobre Bitcoin",
+        "isSynthetic": true,
+        "originalPublisher": "Nexo Fixture Financial Wire",
+        "providerArticleId": "fixture-btc-fw-20260710",
+        "publishedAt": "2026-07-10T12:10:00Z",
+        "summary": "El primer publisher presenta la medida sintética como una aprobación final."
+      },
+      "contentHash": "sha256:5dfbf8773e6014371e79775fb54eeb5e7ed1ca58e54b516fd4e6f59d0f5892cd"
+    },
+    {
+      "id": "raw_news_btc_businessdaily",
+      "sourceId": "src_fixture_businessdaily",
+      "provider": "fixture_news_feed",
+      "providerArticleId": "fixture-btc-bd-20260710",
+      "capturedAt": "2026-07-10T12:40:00Z",
+      "payload": {
+        "canonicalUrl": "https://businessdaily-fixture.test/news/btc-policy-consultation-20260710",
+        "headline": "Otra cobertura señala que la medida sobre Bitcoin sigue en consulta",
+        "isSynthetic": true,
+        "originalPublisher": "Nexo Fixture Business Daily",
+        "providerArticleId": "fixture-btc-bd-20260710",
+        "publishedAt": "2026-07-10T12:25:00Z",
+        "summary": "El segundo publisher contradice materialmente el carácter definitivo del anuncio."
+      },
+      "contentHash": "sha256:9b1dbdc9447dd154950470cda78a1ecb3304f5a9537fa3cbf1e560b6552f95fd"
+    },
+    {
+      "id": "raw_news_wti_finwire",
+      "sourceId": "src_fixture_finwire",
+      "provider": "fixture_news_feed",
+      "providerArticleId": "fixture-wti-fw-20260710",
+      "capturedAt": "2026-07-10T15:10:00Z",
+      "payload": {
+        "canonicalUrl": "https://finwire-fixture.test/news/wti-supply-cuts-20260710",
+        "headline": "Productores extienden recortes temporales de oferta de crudo",
+        "isSynthetic": true,
+        "originalPublisher": "Nexo Fixture Financial Wire",
+        "providerArticleId": "fixture-wti-fw-20260710",
+        "publishedAt": "2026-07-10T14:40:00Z",
+        "summary": "El publisher reporta una extensión sintética de recortes de oferta."
+      },
+      "contentHash": "sha256:313f8b95e5d312d4d9d3a339d17cb60bc3cabcc075e77a2fcc8277db0942bef3"
+    },
+    {
+      "id": "raw_news_wti_businessdaily",
+      "sourceId": "src_fixture_businessdaily",
+      "provider": "fixture_news_feed",
+      "providerArticleId": "fixture-wti-bd-20260710",
+      "capturedAt": "2026-07-10T15:15:00Z",
+      "payload": {
+        "canonicalUrl": "https://businessdaily-fixture.test/news/wti-supply-cuts-confirmation-20260710",
+        "headline": "Fuente independiente confirma la extensión de recortes de crudo",
+        "isSynthetic": true,
+        "originalPublisher": "Nexo Fixture Business Daily",
+        "providerArticleId": "fixture-wti-bd-20260710",
+        "publishedAt": "2026-07-10T14:55:00Z",
+        "summary": "La segunda cobertura corrobora el evento, sin afirmar causalidad de precio."
+      },
+      "contentHash": "sha256:46ce633e2cb0ba73a639ccbb3d4dd4422fb7aeba6117b13552f507827ceaca96"
+    }
+  ]
+}

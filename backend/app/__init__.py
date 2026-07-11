@@ -1,0 +1,2 @@
+"""NexoMercado AI backend package."""
+

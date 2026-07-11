@@ -1,0 +1,249 @@
+{
+  "manifestVersion": 1,
+  "sourceOfTruth": "Pydantic -> OpenAPI",
+  "wireConvention": "camelCase",
+  "pathSyntax": "Schema.field; [] denotes each array item",
+  "semantics": {
+    "requiredPaths": "Every path must exist in the referenced OpenAPI schema and be projectable from at least one valid fixture.",
+    "nullablePaths": "These paths remain part of the contract but their runtime value may be null."
+  },
+  "canonicalNames": {
+    "Article.url": "Canonical URL of the article",
+    "Article.dataMode": "Effective data mode",
+    "Article.provider": "Ingestion provider",
+    "Article.dataAsOf": "Date or instant represented by the data",
+    "Article.warnings": "Freshness or provenance warnings",
+    "Event.eventAt": "Canonical event timestamp",
+    "Signal.evidenceIds": "Supporting evidence identifiers",
+    "Signal.counterEvidenceIds": "Contradictory evidence identifiers",
+    "Signal.suggestedResearchActions": "Suggested research actions",
+    "ReviewRequest.status": "Requested review status"
+  },
+  "forbiddenAliases": [
+    {
+      "schema": "Signal",
+      "alias": "supportingEvidenceIds",
+      "use": "evidenceIds"
+    },
+    {
+      "schema": "Signal",
+      "alias": "researchActions",
+      "use": "suggestedResearchActions"
+    },
+    {
+      "schema": "ReviewRequest",
+      "alias": "newStatus",
+      "use": "status"
+    },
+    {
+      "schema": "Event",
+      "alias": "occurredAt",
+      "use": "eventAt"
+    },
+    {
+      "schema": "Article",
+      "alias": "sourceUrl",
+      "use": "url"
+    },
+    {
+      "schema": "Article",
+      "alias": "mode",
+      "use": "dataMode"
+    },
+    {
+      "schema": "Article",
+      "alias": "freshnessWarnings",
+      "use": "warnings"
+    }
+  ],
+  "consumers": {
+    "radar": {
+      "description": "Recent events with source, asset, impact, movement, provenance and review state.",
+      "requiredPaths": [
+        "Event.id",
+        "Event.eventAt",
+        "Event.articleIds[]",
+        "Article.id",
+        "Article.sourceId",
+        "Article.headline",
+        "Article.publishedAt",
+        "Article.retrievedAt",
+        "Article.url",
+        "Article.dataMode",
+        "Article.provider",
+        "Article.dataAsOf",
+        "Article.warnings[]",
+        "Source.id",
+        "Source.name",
+        "Source.domain",
+        "Source.tier",
+        "Source.isOriginalPublisher",
+        "Source.isAggregator",
+        "Source.fixtureOnly",
+        "Signal.id",
+        "Signal.eventId",
+        "Signal.asset.symbol",
+        "Signal.asset.name",
+        "Signal.asset.instrumentType",
+        "Signal.impact",
+        "Signal.confidence",
+        "Signal.analysisStatus",
+        "Signal.priceReaction",
+        "Signal.priceReaction.assetReturn",
+        "Signal.review.status"
+      ],
+      "nullablePaths": [
+        "Signal.priceReaction",
+        "Signal.priceReaction.assetReturn"
+      ]
+    },
+    "signalDetail": {
+      "description": "Explainable signal with price comparison, evidence, assumptions, invalidation, research actions and human review.",
+      "requiredPaths": [
+        "Event.id",
+        "Event.eventAt",
+        "Article.id",
+        "Article.sourceId",
+        "Article.headline",
+        "Article.publishedAt",
+        "Article.retrievedAt",
+        "Article.url",
+        "Article.dataMode",
+        "Article.provider",
+        "Article.dataAsOf",
+        "Article.warnings[]",
+        "Source.id",
+        "Source.name",
+        "Source.domain",
+        "Source.tier",
+        "Signal.id",
+        "Signal.eventId",
+        "Signal.asset.symbol",
+        "Signal.asset.name",
+        "Signal.asset.instrumentType",
+        "Signal.impact",
+        "Signal.timeHorizon",
+        "Signal.confidence",
+        "Signal.analysisStatus",
+        "Signal.requiresHumanReview",
+        "Signal.thesis",
+        "Signal.priceReaction",
+        "Signal.priceReaction.assetReturn",
+        "Signal.priceReaction.benchmarkReturn",
+        "Signal.priceReaction.abnormalReturn",
+        "Signal.priceReaction.relativeVolume",
+        "Signal.evidenceIds[]",
+        "Signal.counterEvidenceIds[]",
+        "Signal.assumptions[]",
+        "Signal.invalidationConditions[]",
+        "Signal.suggestedResearchActions[]",
+        "Signal.review.status",
+        "Signal.review.justification",
+        "Signal.review.reviewedBy",
+        "Signal.review.reviewedAt",
+        "Signal.disclaimer",
+        "Signal.createdAt",
+        "Signal.updatedAt",
+        "Evidence.id",
+        "Evidence.signalId",
+        "Evidence.articleId",
+        "Evidence.sourceId",
+        "Evidence.claim",
+        "Evidence.excerpt",
+        "Evidence.evidenceType",
+        "Evidence.supportsSignal",
+        "Evidence.sourceUrl",
+        "Evidence.publishedAt",
+        "Evidence.retrievedAt",
+        "Evidence.contentHash"
+      ],
+      "nullablePaths": [
+        "Signal.priceReaction",
+        "Signal.priceReaction.assetReturn",
+        "Signal.priceReaction.benchmarkReturn",
+        "Signal.priceReaction.abnormalReturn",
+        "Signal.priceReaction.relativeVolume",
+        "Signal.thesis",
+        "Signal.review.justification",
+        "Signal.review.reviewedBy",
+        "Signal.review.reviewedAt",
+        "Evidence.articleId",
+        "Evidence.sourceId",
+        "Evidence.excerpt",
+        "Evidence.publishedAt"
+      ]
+    },
+    "briefing": {
+      "description": "Watchlist or instrument summary with related news, movement, research actions and review counts.",
+      "requiredPaths": [
+        "Briefing.briefingId",
+        "Briefing.status",
+        "Briefing.watchlist.id",
+        "Briefing.watchlist.name",
+        "Briefing.executiveSummary",
+        "Briefing.prioritizedSignals[].signalId",
+        "Briefing.prioritizedSignals[].priority",
+        "Briefing.prioritizedSignals[].reason",
+        "Briefing.prioritizedSignals[].suggestedResearchActions[]",
+        "Briefing.prioritizedSignals[].review.status",
+        "Briefing.prioritizedSignals[].review.justification",
+        "Briefing.humanReviewSummary.totalSignals",
+        "Briefing.humanReviewSummary.pendingReview",
+        "Briefing.humanReviewSummary.reviewed",
+        "Briefing.humanReviewSummary.escalated",
+        "Briefing.humanReviewSummary.discarded",
+        "Briefing.requiresHumanReview",
+        "Briefing.disclaimer",
+        "Signal.id",
+        "Signal.eventId",
+        "Signal.asset.symbol",
+        "Signal.asset.name",
+        "Signal.asset.instrumentType",
+        "Signal.impact",
+        "Signal.confidence",
+        "Signal.analysisStatus",
+        "Signal.priceReaction",
+        "Signal.priceReaction.assetReturn",
+        "Signal.review.status",
+        "Event.id",
+        "Event.eventAt",
+        "Event.articleIds[]",
+        "Article.id",
+        "Article.sourceId",
+        "Article.headline",
+        "Article.publishedAt",
+        "Article.url",
+        "Source.id",
+        "Source.name",
+        "Source.domain"
+      ],
+      "nullablePaths": [
+        "Briefing.prioritizedSignals[].review.justification",
+        "Signal.priceReaction",
+        "Signal.priceReaction.assetReturn"
+      ]
+    },
+    "audit": {
+      "description": "Run-level audit metadata available in Phase 0 without inventing step-level fields.",
+      "requiredPaths": [
+        "AgentRun.id",
+        "AgentRun.currentNode",
+        "AgentRun.status",
+        "AgentRun.modelName",
+        "AgentRun.promptVersion",
+        "AgentRun.inputHash",
+        "AgentRun.sourceSnapshotIds[]",
+        "AgentRun.startedAt",
+        "AgentRun.finishedAt",
+        "AgentRun.errorCode",
+        "AgentRun.retryCount"
+      ],
+      "nullablePaths": [
+        "AgentRun.modelName",
+        "AgentRun.promptVersion",
+        "AgentRun.finishedAt",
+        "AgentRun.errorCode"
+      ]
+    }
+  }
+}
