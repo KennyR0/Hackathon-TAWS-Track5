@@ -155,63 +155,23 @@ class SupabaseRepository(FixtureRepository):
         audit_id: str,
         entity_type: str,
         entity_id: str,
-        event_type: str,
-        payload: dict[str, Any],
+        action: str,
+        metadata: dict[str, Any],
         created_at: datetime,
+        actor_user_id: str | None = None,
     ) -> None:
-        primary_payload = {
-            "id": audit_id,
-            "organization_id": "org_demo",
-            "entity_type": entity_type,
-            "entity_id": entity_id,
-            "event_type": event_type,
-            "payload": payload,
-            "created_at": created_at.isoformat(),
-        }
-        try:
-            self._supabase.table("audit_events").upsert(primary_payload).execute()
-            return
-        except Exception as exc:
-            message = str(exc)
-            if "event_type" not in message and "payload" not in message:
-                raise
-
-        actor_user_id = self._resolve_legacy_audit_actor_id()
-        legacy_payload = {
-            "id": audit_id,
-            "organization_id": "org_demo",
-            "entity_type": self._map_legacy_entity_type(entity_type),
-            "entity_id": entity_id,
-            "action": event_type,
-            "metadata": payload,
-            "created_at": created_at.isoformat(),
-        }
-        if actor_user_id is not None:
-            legacy_payload["actor_user_id"] = actor_user_id
-        self._supabase.table("audit_events").upsert(legacy_payload).execute()
-
-    def _resolve_legacy_audit_actor_id(self) -> str | None:
-        rows = (
-            self._supabase.table("app_users")
-            .select("id")
-            .eq("organization_id", "org_demo")
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
-        if not rows:
-            return None
-        return rows[0]["id"]
-
-    @staticmethod
-    def _map_legacy_entity_type(entity_type: str) -> str:
-        legacy_aliases = {
-            "signal_review": "signal",
-            "agent_run_step": "analysis_step",
-            "agent_run": "analysis_run",
-        }
-        return legacy_aliases.get(entity_type, entity_type)
+        self._supabase.table("audit_events").upsert(
+            {
+                "id": audit_id,
+                "organization_id": "org_demo",
+                "actor_user_id": actor_user_id,
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "action": action,
+                "metadata": metadata,
+                "created_at": created_at.isoformat(),
+            }
+        ).execute()
 
     def _get_idempotency(
         self,
@@ -285,14 +245,15 @@ class SupabaseRepository(FixtureRepository):
                 audit_id=f"audit_review_{created.id}",
                 entity_type="signal_review",
                 entity_id=signal_id,
-                event_type=f"review_{created.status.value}",
-                payload={
+                action=f"review_{created.status.value}",
+                metadata={
                     "reviewId": created.id,
                     "previousStatus": created.previous_status.value,
                     "status": created.status.value,
                     "justification": created.justification,
                 },
                 created_at=created.created_at,
+                actor_user_id=created.reviewed_by.id,
             )
         return reviews
 
@@ -357,8 +318,8 @@ class SupabaseRepository(FixtureRepository):
             audit_id=f"audit_briefing_{briefing.briefing_id}",
             entity_type="briefing",
             entity_id=briefing.briefing_id,
-            event_type=f"briefing_{briefing.status.value}",
-            payload={
+            action=f"briefing_{briefing.status.value}",
+            metadata={
                 "signalIds": [item.signal_id for item in briefing.prioritized_signals],
                 "reviewTaskCount": len(briefing.review_tasks),
                 "status": briefing.status.value,
@@ -428,8 +389,8 @@ class SupabaseRepository(FixtureRepository):
                 audit_id=f"audit_run_{run.id}_scheduled",
                 entity_type="agent_run",
                 entity_id=run.id,
-                event_type="analysis_scheduled",
-                payload={
+                action="analysis_scheduled",
+                metadata={
                     "eventId": request.event_id,
                     "assetIds": list(request.asset_ids),
                     "sourceSnapshotIds": list(run.source_snapshot_ids),
@@ -479,8 +440,8 @@ class SupabaseRepository(FixtureRepository):
             audit_id=f"audit_step_{step.id}",
             entity_type="agent_run_step",
             entity_id=run_id,
-            event_type=f"node_{step.node}",
-            payload={
+            action=f"node_{step.node}",
+            metadata={
                 "node": step.node,
                 "status": step.status,
                 "payload": step.payload,
@@ -507,8 +468,8 @@ class SupabaseRepository(FixtureRepository):
                 audit_id=f"audit_run_{run.id}_completed",
                 entity_type="agent_run",
                 entity_id=run.id,
-                event_type=f"analysis_{run.status.value}",
-                payload={
+                action=f"analysis_{run.status.value}",
+                metadata={
                     "currentNode": run.current_node,
                     "status": run.status.value,
                     "errorCode": run.error_code,
@@ -535,8 +496,8 @@ class SupabaseRepository(FixtureRepository):
                 audit_id=f"audit_run_{run.id}_failed",
                 entity_type="agent_run",
                 entity_id=run.id,
-                event_type="analysis_failed",
-                payload={
+                action="analysis_failed",
+                metadata={
                     "currentNode": run.current_node,
                     "status": run.status.value,
                     "errorCode": run.error_code,

@@ -20,6 +20,7 @@ from app.providers.base import (
     ProviderCacheStore,
     ProviderProbeResult,
 )
+from app.services.provider_runtime_service import ProviderRuntimeBundle, store_probe_cache
 
 FIXTURE_WARNINGS: tuple[str, ...] = ("FIXTURE_DATA", "NOT_REAL_TIME")
 DEFAULT_REQUEST_BUDGET = 8
@@ -251,6 +252,7 @@ class MarketDataRuntimeService:
         request_budget: int = DEFAULT_REQUEST_BUDGET,
         retry_limit: int = DEFAULT_RETRY_LIMIT,
         circuit_breaker_failure_threshold: int = DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+        provider_runtime: ProviderRuntimeBundle | None = None,
     ) -> None:
         self._config = config
         self._fixture_provider = fixture_provider
@@ -258,6 +260,7 @@ class MarketDataRuntimeService:
         self._request_budget = max(0, request_budget)
         self._retry_limit = max(0, retry_limit)
         self._circuit_breaker_failure_threshold = max(1, circuit_breaker_failure_threshold)
+        self._provider_runtime = provider_runtime
         self._failed_provider_counts: dict[str, int] = {}
         self._requests_used = 0
         self._news_provider = news_provider or GDELTNewsProvider(
@@ -413,13 +416,36 @@ class MarketDataRuntimeService:
                 payload={"mode": DataMode.FIXTURE.value},
                 warning="FIXTURE_MODE_FORCES_OFFLINE_DATA",
             )
-        if self._is_circuit_open(provider):
+        runtime_cache_key = f"probe:{provider}"
+        if self._provider_runtime is not None:
+            cached = self._provider_runtime.cache.get_valid(provider, runtime_cache_key)
+            if cached is not None:
+                return ProviderProbeResult(
+                    provider=provider,
+                    data_mode=cached.data_mode,
+                    ok=cached.status_code < 400,
+                    warnings=(),
+                    payload=cached.response_json,
+                )
+            if self._provider_runtime.health.is_circuit_open(provider):
+                return _fallback_result(
+                    provider,
+                    payload={"circuitOpen": True},
+                    warning=f"{provider.upper()}_CIRCUIT_OPEN",
+                )
+            if not self._provider_runtime.budget.try_consume(provider):
+                return _fallback_result(
+                    provider,
+                    payload={"requestBudget": self._request_budget},
+                    warning=f"{provider.upper()}_BUDGET_EXHAUSTED",
+                )
+        elif self._is_circuit_open(provider):
             return _fallback_result(
                 provider,
                 payload={"circuitOpen": True},
                 warning=f"{provider.upper()}_CIRCUIT_OPEN",
             )
-        if self._request_budget <= 0:
+        elif self._request_budget <= 0:
             return _fallback_result(
                 provider,
                 payload={"requestBudget": self._request_budget, "requestsUsed": self._requests_used},
@@ -428,7 +454,7 @@ class MarketDataRuntimeService:
 
         last_exc: Exception | None = None
         for attempt in range(1, self._retry_limit + 2):
-            if self._requests_used >= self._request_budget:
+            if self._provider_runtime is None and self._requests_used >= self._request_budget:
                 return _fallback_result(
                     provider,
                     payload={
@@ -438,7 +464,8 @@ class MarketDataRuntimeService:
                     },
                     warning=f"{provider.upper()}_BUDGET_EXHAUSTED",
                 )
-            self._requests_used += 1
+            if self._provider_runtime is None:
+                self._requests_used += 1
             try:
                 result = probe()
             except Exception as exc:
@@ -447,22 +474,40 @@ class MarketDataRuntimeService:
                     continue
                 break
             if result.ok:
-                self._failed_provider_counts.pop(provider, None)
-                if (
-                    cache_key is not None
-                    and resource_type is not None
-                    and cache_ttl_seconds is not None
-                ):
-                    self._cache_probe_result(
-                        cache_key=cache_key,
+                if self._provider_runtime is not None:
+                    self._provider_runtime.health.record_success(provider)
+                    store_probe_cache(
+                        self._provider_runtime,
                         provider=provider,
-                        resource_type=resource_type,
-                        result=result,
-                        cache_ttl_seconds=cache_ttl_seconds,
+                        cache_key=runtime_cache_key,
+                        params={"provider": provider},
+                        response_json=result.payload,
+                        status_code=200,
+                        data_mode=result.data_mode,
                     )
+                else:
+                    self._failed_provider_counts.pop(provider, None)
+                    if (
+                        cache_key is not None
+                        and resource_type is not None
+                        and cache_ttl_seconds is not None
+                    ):
+                        self._cache_probe_result(
+                            cache_key=cache_key,
+                            provider=provider,
+                            resource_type=resource_type,
+                            result=result,
+                            cache_ttl_seconds=cache_ttl_seconds,
+                        )
             return result
 
-        self._record_provider_failure(provider)
+        if self._provider_runtime is not None:
+            self._provider_runtime.health.record_failure(
+                provider,
+                error_code=type(last_exc).__name__ if last_exc is not None else "UnknownError",
+            )
+        else:
+            self._record_provider_failure(provider)
         return self._fallback_from_exception(
             provider,
             last_exc,
