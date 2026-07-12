@@ -6,12 +6,18 @@ from pathlib import Path
 import httpx
 import pytest
 
-from app.config import DEFAULT_MARKET_DATA_MODE, MarketProviderConfig, get_market_provider_config, get_runtime_config
+from app.config import (
+    DEFAULT_MARKET_DATA_MODE,
+    MarketProviderConfig,
+    get_market_provider_config,
+    get_runtime_config,
+)
 from app.contracts.entities import DataMode
 from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import GDELTNewsProvider, MarketDataRuntimeService, _live_result
 from app.providers.provider_cache import InMemoryProviderCacheStore
 from app.repositories.fixture_repository import FixtureRepository
+from app.services.provider_runtime_service import build_in_memory_provider_runtime
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -130,6 +136,29 @@ def test_collect_demo_snapshot_reports_live_when_all_providers_succeed() -> None
     assert snapshot.requests_used == 5
     assert snapshot.checks["news"].ok is True
     assert snapshot.checks["btc"].data_mode == DataMode.LIVE
+
+
+def test_collect_demo_snapshot_marks_durable_cache_hits_without_new_requests() -> None:
+    runtime = build_in_memory_provider_runtime(request_budget=8)
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        news_provider=_NewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        metadata_provider=_PriceProvider(),
+        provider_runtime=runtime,
+    )
+
+    first = service.collect_demo_snapshot()
+    second = service.collect_demo_snapshot()
+
+    assert first.requests_used == 5
+    assert second.requests_used == 0
+    assert second.checks["aapl"].payload["servedFromCache"] is True
+    assert second.checks["aapl"].payload["cacheFetchedAt"]
+    assert second.checks["aapl"].warnings == ("TWELVE_DATA_CACHE_HIT",)
 
 
 def test_collect_demo_snapshot_falls_back_in_hybrid_without_keys() -> None:

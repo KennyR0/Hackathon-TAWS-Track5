@@ -13,6 +13,7 @@ import type {
   ApiEvidence,
   ApiMarketSnapshot,
   ApiMeta,
+  ApiProviderRuntimeStatus,
   ApiReviewRequest,
   ApiSignal,
   ApiSignalReview,
@@ -119,6 +120,9 @@ export const apiClient = {
     if (filters?.interval) params.set('interval', filters.interval)
     const query = params.toString() ? `?${params.toString()}` : ''
     return request<Envelope<ApiMarketSnapshot[]>>(`/market-snapshots${query}`)
+  },
+  getProviderRuntimeStatus() {
+    return request<Envelope<ApiProviderRuntimeStatus>>('/runtime/providers')
   },
   getSignal(signalId: string) {
     return request<Envelope<ApiSignal>>(`/signals/${signalId}`)

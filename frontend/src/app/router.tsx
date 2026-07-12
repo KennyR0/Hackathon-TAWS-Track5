@@ -13,6 +13,7 @@ const BriefingDetailPage = lazy(() => import('../features/briefings/BriefingDeta
 const ReviewsPage = lazy(() => import('../features/reviews/ReviewsPage').then(module => ({ default: module.ReviewsPage })))
 const AuditPage = lazy(() => import('../features/audit/AuditPage').then(module => ({ default: module.AuditPage })))
 const AuditDetailPage = lazy(() => import('../features/audit/AuditDetailPage').then(module => ({ default: module.AuditDetailPage })))
+const AssistantPage = lazy(() => import('../features/assistant/AssistantPage').then(module => ({ default: module.AssistantPage })))
 
 function RouteFallback() {
   return <LoadingSkeleton rows={10} />
@@ -90,7 +91,11 @@ export function AppRouter() {
           />
           <Route
             path="assistant"
-            element={<Navigate replace to="/summary" />}
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <AssistantPage />
+              </Suspense>
+            }
           />
           <Route
             path="audit"

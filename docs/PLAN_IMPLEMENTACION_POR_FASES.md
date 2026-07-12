@@ -540,10 +540,27 @@ Evidencia de cierre local:
 - Eventos históricos similares.
 - Snapshots ecuatorianos trazables.
 - Continuidad conversacional y mayor cobertura de instrumentos.
+- Ajuste de cierre: demostrativo local real y auditable con proveedores live/fallback,
+  flujo HTTP, persistencia Supabase, agentes OpenAI y verificación visual.
+
+Decisión de ajuste:
+
+- Se reabre únicamente la Fase 10 en `codex/fase-10-demo-real`; las fases aceptadas no cambian.
+- Se autoriza consumo facturable de OpenAI y registros demo en el Supabase existente.
+- No se autoriza cambio de esquema, despliegue, commit ni push.
+- El modo será híbrido auditable: cada proveedor conserva su estado `live` o `fallback`
+  y ningún dato fixture se presentará como live.
 
 Evidencia de cierre local:
 
 - Fase 10 ejecutada en rama `codex/fase-10-diferenciadores`.
+- Ajuste de demostración real ejecutado en `codex/fase-10-demo-real`.
+- `GET /api/v1/runtime/providers` expone comprobaciones sanitizadas, modo efectivo,
+  frescura, caché, presupuesto y warnings por proveedor sin serializar secretos.
+- `/assistant` vuelve a ser una ruta real y accesible desde **Demo IA**; la consulta
+  live solo se ejecuta por acción del usuario.
+- Compatibilidad Supabase corregida: con `AUTH_ENABLED=false` no se aplican filtros
+  organizacionales sobre el esquema previo; con auth habilitado el aislamiento sigue obligatorio.
 - Contratos y API agregan:
   - `GET /api/v1/events/{eventId}/similar` con similitud deterministica por activos, grupos editoriales y tokens.
   - `GET /api/v1/ecuador-snapshots` con snapshots institucionales EC, hash `sha256`, proveedor, frescura y warnings fixture.
@@ -559,8 +576,17 @@ Evidencia de cierre local:
   - `corepack pnpm build`: aprobado; mantiene warning no bloqueante de chunk mayor a 500 kB.
   - `.venv312\Scripts\python.exe backend\scripts\check_market_data_pipeline.py --env-file .env`: aprobado en `mode=fixture`, `requestsUsed=0`.
   - `.venv312\Scripts\python.exe backend\scripts\check_supabase_persistence.py --env-file .env`: bloqueado por ausencia local de `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
-- No se hizo commit, push, despliegue ni cambio cloud.
-- Resultado del gate funcional: aprobado; Fase 10 queda `lista_para_revision` y espera decision del usuario.
+- Validaciones del ajuste de demostración real:
+  - Suite backend final: `193 passed`, `2 warnings` de dependencias.
+  - Ruff focal y `backend\scripts\export_openapi.py --check`: aprobados.
+  - `corepack pnpm lint` y `corepack pnpm build`: aprobados; continúa el warning no bloqueante de chunk mayor a 500 kB.
+  - Proveedores reales: Twelve Data, Finnhub, CoinGecko y FRED `live`; GDELT `fallback` por timeout; `requestsUsed=6`.
+  - Supabase Data API: `organizations`, `rowsRead=1`.
+  - Smoke HTTP real: `DEMO_E2E:20260712215331-8ec9b814`; conversación `conv_0af8a549db60`, run `run_runtime_003` completado con `gpt-5.4`, revisión `escalated` y briefing `brf_runtime_004` `draft`.
+  - QA visual: `/assistant` y `/audit/run_runtime_004` verificados en `1280x720` y `390x844`; 0 errores y 0 warnings de consola; conversación UI persistida y run OpenAI con 13 pasos.
+  - Browser integrado no tenía instancias disponibles; se usó Playwright CLI como fallback y las capturas finales quedaron fuera del repositorio.
+- No se hizo commit, push, despliegue ni cambio de esquema.
+- Resultado del ajuste: aprobado; Fase 10 vuelve a `lista_para_revision` y espera decisión del usuario.
 
 ## 8. Matriz mínima del Track 5
 

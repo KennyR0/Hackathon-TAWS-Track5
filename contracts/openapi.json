@@ -2046,6 +2046,165 @@
         "title": "PrioritizedSignal",
         "type": "object"
       },
+      "ProviderRuntimeCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "dataAsOf": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dataasof"
+          },
+          "dataMode": {
+            "$ref": "#/components/schemas/DataMode"
+          },
+          "key": {
+            "enum": [
+              "news",
+              "aapl",
+              "spy",
+              "btc",
+              "wti"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "provider": {
+            "enum": [
+              "gdelt",
+              "twelve_data",
+              "finnhub",
+              "coingecko",
+              "fred"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "resource": {
+            "minLength": 1,
+            "title": "Resource",
+            "type": "string"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "provider",
+          "resource",
+          "dataMode",
+          "ok",
+          "metrics"
+        ],
+        "title": "ProviderRuntimeCheck",
+        "type": "object"
+      },
+      "ProviderRuntimeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProviderRuntimeStatus"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ProviderRuntimeResponse",
+        "type": "object"
+      },
+      "ProviderRuntimeStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "checkedAt": {
+            "format": "date-time",
+            "title": "Checkedat",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderRuntimeCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "configuredMode": {
+            "enum": [
+              "fixture",
+              "hybrid",
+              "live"
+            ],
+            "title": "Configuredmode",
+            "type": "string"
+          },
+          "effectiveDataMode": {
+            "$ref": "#/components/schemas/DataMode"
+          },
+          "provider": {
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          },
+          "requestBudget": {
+            "minimum": 0,
+            "title": "Requestbudget",
+            "type": "integer"
+          },
+          "requestsUsed": {
+            "minimum": 0,
+            "title": "Requestsused",
+            "type": "integer"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "checkedAt",
+          "configuredMode",
+          "effectiveDataMode",
+          "provider",
+          "requestBudget",
+          "requestsUsed",
+          "checks"
+        ],
+        "title": "ProviderRuntimeStatus",
+        "type": "object"
+      },
       "ReviewListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3443,6 +3602,24 @@
           }
         },
         "summary": "List auditable run steps"
+      }
+    },
+    "/api/v1/runtime/providers": {
+      "get": {
+        "operationId": "getProviderRuntimeStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderRuntimeResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "summary": "Probe configured providers with auditable fallback"
       }
     },
     "/api/v1/signals": {

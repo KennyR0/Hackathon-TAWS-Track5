@@ -20,12 +20,14 @@ from .entities import (
     BriefingStatus,
     Claim,
     ContractModel,
+    DataMode,
     DataProvenance,
     Event,
     Evidence,
     Identifier,
     MarketSnapshot,
     NonEmptyString,
+    NonNegativeInt,
     ReviewTask,
     Sha256,
     Signal,
@@ -148,6 +150,33 @@ class MarketSnapshotListResponse(ContractModel):
     meta: DataProvenance
 
 
+class ProviderRuntimeCheck(ContractModel):
+    key: Literal["news", "aapl", "spy", "btc", "wti"]
+    provider: Literal["gdelt", "twelve_data", "finnhub", "coingecko", "fred"]
+    resource: NonEmptyString
+    data_mode: DataMode
+    ok: bool
+    metrics: dict[str, JsonValue]
+    data_as_of: AwareDatetime | None = None
+    warnings: tuple[NonEmptyString, ...] = ()
+
+
+class ProviderRuntimeStatus(ContractModel):
+    checked_at: AwareDatetime
+    configured_mode: Literal["fixture", "hybrid", "live"]
+    effective_data_mode: DataMode
+    provider: NonEmptyString
+    request_budget: NonNegativeInt
+    requests_used: NonNegativeInt
+    checks: tuple[ProviderRuntimeCheck, ...]
+    warnings: tuple[NonEmptyString, ...] = ()
+
+
+class ProviderRuntimeResponse(ContractModel):
+    data: ProviderRuntimeStatus
+    meta: DataProvenance
+
+
 class SimilarEvent(ContractModel):
     event_id: Identifier
     title: NonEmptyString
@@ -231,6 +260,9 @@ PUBLIC_API_MODELS: tuple[type[ContractModel], ...] = (
     WatchlistResponse,
     AgentRunStepsResponse,
     MarketSnapshotListResponse,
+    ProviderRuntimeCheck,
+    ProviderRuntimeStatus,
+    ProviderRuntimeResponse,
     SimilarEvent,
     SimilarEventListResponse,
     EcuadorSnapshot,
@@ -406,6 +438,13 @@ def build_openapi_document() -> dict[str, object]:
                 "summary": "List verifiable market snapshots",
                 "parameters": _market_snapshot_filters(),
                 "responses": {"200": _json_response(MarketSnapshotListResponse)},
+            }
+        },
+        "/api/v1/runtime/providers": {
+            "get": {
+                "operationId": "getProviderRuntimeStatus",
+                "summary": "Probe configured providers with auditable fallback",
+                "responses": {"200": _json_response(ProviderRuntimeResponse)},
             }
         },
         "/api/v1/analyses": {
@@ -626,6 +665,9 @@ __all__ = [
     "EventView",
     "HealthResponse",
     "MarketSnapshotListResponse",
+    "ProviderRuntimeCheck",
+    "ProviderRuntimeResponse",
+    "ProviderRuntimeStatus",
     "ReviewRequest",
     "SseEvent",
     "SimilarEvent",

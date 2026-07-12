@@ -173,6 +173,8 @@ class SupabaseRepository(FixtureRepository):
             raise KeyError("Resource not found")
 
     def list_events(self, **filters: str | None) -> tuple[tuple[Event, tuple[str, ...]], ...]:
+        if not self._enforce_ownership:
+            return super().list_events(**filters)
         owned = set(self._owned_ids("events"))
         return tuple(item for item in super().list_events(**filters) if item[0].id in owned)
 
@@ -181,6 +183,8 @@ class SupabaseRepository(FixtureRepository):
         return super().get_event(event_id)
 
     def list_signals(self, **filters: str | None) -> tuple[Signal, ...]:
+        if not self._enforce_ownership:
+            return super().list_signals(**filters)
         owned = set(self._owned_ids("signals"))
         return tuple(item for item in super().list_signals(**filters) if item.id in owned)
 

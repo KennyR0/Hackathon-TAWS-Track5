@@ -18,6 +18,7 @@ EXPECTED_OPERATIONS = {
     ("/api/v1/events/{eventId}/similar", "get"),
     ("/api/v1/ecuador-snapshots", "get"),
     ("/api/v1/market-snapshots", "get"),
+    ("/api/v1/runtime/providers", "get"),
     ("/api/v1/analyses", "post"),
     ("/api/v1/analyses/{runId}", "get"),
     ("/api/v1/analyses/{runId}/stream", "get"),
