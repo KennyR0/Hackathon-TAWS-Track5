@@ -3,6 +3,11 @@ import type {
   ApiAgentRunStep,
   ApiBriefing,
   ApiBriefingRequest,
+  ApiConversation,
+  ApiConversationCreateRequest,
+  ApiConversationMessage,
+  ApiConversationMessageRequest,
+  ApiEcuadorSnapshot,
   ApiError,
   ApiEventView,
   ApiEvidence,
@@ -11,6 +16,7 @@ import type {
   ApiReviewRequest,
   ApiSignal,
   ApiSignalReview,
+  ApiSimilarEvent,
   ApiWatchlist,
 } from './contracts'
 import { getAccessToken, supabase } from '../../lib/auth'
@@ -98,6 +104,12 @@ export const apiClient = {
   getEvent(eventId: string) {
     return request<Envelope<ApiEventView>>(`/events/${eventId}`)
   },
+  listSimilarEvents(eventId: string) {
+    return request<Envelope<ApiSimilarEvent[]>>(`/events/${eventId}/similar`)
+  },
+  listEcuadorSnapshots() {
+    return request<Envelope<ApiEcuadorSnapshot[]>>('/ecuador-snapshots')
+  },
   listSignals() {
     return request<Envelope<ApiSignal[]>>('/signals')
   },
@@ -149,5 +161,20 @@ export const apiClient = {
   },
   getWatchlist() {
     return request<Envelope<ApiWatchlist>>('/watchlists/demo-global')
+  },
+  createConversation(payload: ApiConversationCreateRequest) {
+    return request<Envelope<ApiConversation>>('/conversations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  getConversation(conversationId: string) {
+    return request<Envelope<ApiConversation>>(`/conversations/${conversationId}`)
+  },
+  createConversationMessage(conversationId: string, payload: ApiConversationMessageRequest) {
+    return request<Envelope<ApiConversationMessage>>(`/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
   },
 }

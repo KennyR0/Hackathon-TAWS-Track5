@@ -14,6 +14,10 @@ from app.llm.fixture_adapter import FixtureLLMAdapter
 from app.llm.openai_responses import OpenAIResponsesAdapter
 from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import MarketDataRuntimeService
+from app.repositories.conversation_repository import (
+    InMemoryConversationRepository,
+    SupabaseConversationRepository,
+)
 from app.repositories.fixture_repository import FixtureRepository
 from app.repositories.supabase_repository import SupabaseRepository
 from app.security.auth import (
@@ -24,6 +28,8 @@ from app.security.auth import (
 )
 from app.services.analysis_service import AnalysisService
 from app.services.briefing_service import BriefingService
+from app.services.conversation_service import ConversationService
+from app.services.differentiator_service import DifferentiatorService
 from app.services.event_service import EventService
 from app.services.market_service import MarketService
 from app.services.provider_runtime_service import (
@@ -62,6 +68,11 @@ def get_repository() -> FixtureRepository:
 @lru_cache
 def get_supabase_client():
     return create_supabase_client(get_supabase_config())
+
+
+@lru_cache
+def get_in_memory_conversation_repository() -> InMemoryConversationRepository:
+    return InMemoryConversationRepository()
 
 
 def get_current_app_user(
@@ -131,6 +142,24 @@ def get_event_service(
     user: CurrentUserDep,
 ) -> EventService:
     return EventService(get_scoped_repository(user))
+
+
+def get_differentiator_service(
+    user: CurrentUserDep,
+) -> DifferentiatorService:
+    return DifferentiatorService(get_scoped_repository(user))
+
+
+def get_conversation_service(
+    user: CurrentUserDep,
+) -> ConversationService:
+    runtime_config = get_runtime_config()
+    repository = (
+        SupabaseConversationRepository(get_supabase_client())
+        if runtime_config.repository_backend == "supabase"
+        else get_in_memory_conversation_repository()
+    )
+    return ConversationService(repository, get_scoped_repository(user))
 
 
 @lru_cache

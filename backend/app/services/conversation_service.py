@@ -2,13 +2,26 @@
 
 from __future__ import annotations
 
+from app.contracts.entities import DataProvenance
 from app.models.conversations import Conversation, ConversationMessage
 from app.repositories.conversation_repository import ConversationRepository
+from app.repositories.fixture_repository import FixtureRepository
 
 
 class ConversationService:
-    def __init__(self, repository: ConversationRepository) -> None:
+    def __init__(
+        self,
+        repository: ConversationRepository,
+        data_repository: FixtureRepository | None = None,
+    ) -> None:
         self._repository = repository
+        self._data_repository = data_repository
+
+    @property
+    def meta(self) -> DataProvenance:
+        if self._data_repository is None:
+            raise RuntimeError("ConversationService meta requires a data repository")
+        return self._data_repository.get_meta()
 
     def create_conversation(
         self,

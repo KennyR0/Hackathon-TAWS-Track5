@@ -97,7 +97,34 @@ def test_market_snapshots_endpoint_filters_by_asset_and_interval(api_client) -> 
     assert len(snapshots) == 1
     assert snapshots[0]["assetId"] == "ast_aapl"
     assert snapshots[0]["interval"] == "1d"
-    assert snapshots[0]["observations"][0]["timestamp"] < snapshots[0]["observations"][-1]["timestamp"]
+    first_observation = snapshots[0]["observations"][0]
+    last_observation = snapshots[0]["observations"][-1]
+    assert first_observation["timestamp"] < last_observation["timestamp"]
+
+
+def test_similar_events_endpoint_exposes_deterministic_matches(api_client) -> None:
+    response = api_client.get("/api/v1/events/evt_aapl_outlook_20260709/similar")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["dataMode"] == "fixture"
+    assert payload["data"]
+    scores = [item["similarityScore"] for item in payload["data"]]
+    assert scores == sorted(scores, reverse=True)
+    assert all(item["eventId"] != "evt_aapl_outlook_20260709" for item in payload["data"])
+    assert all(item["rationale"] for item in payload["data"])
+
+
+def test_ecuador_snapshots_are_traceable_and_hashed(api_client) -> None:
+    response = api_client.get("/api/v1/ecuador-snapshots")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["dataMode"] == "fixture"
+    assert len(payload["data"]) >= 2
+    assert {item["countryCode"] for item in payload["data"]} == {"EC"}
+    assert all(item["contentHash"].startswith("sha256:") for item in payload["data"])
+    assert all(item["provider"] == "ecuador_institutional_snapshot" for item in payload["data"])
 
 
 def test_get_signal_and_evidence_uses_runtime_metrics(api_client) -> None:
@@ -114,6 +141,28 @@ def test_get_signal_and_evidence_uses_runtime_metrics(api_client) -> None:
     assert signal["analysisStatus"] == "completed"
     assert evidence_response.status_code == 200
     assert len(evidence_response.json()["data"]) >= 1
+
+
+def test_conversation_endpoints_preserve_context_and_messages(api_client) -> None:
+    create_response = api_client.post(
+        "/api/v1/conversations",
+        json={"watchlistId": "watchlist_demo_global"},
+    )
+    assert create_response.status_code == 201
+    conversation = create_response.json()["data"]
+    assert conversation["summary"]
+    assert conversation["watchlistId"] == "watchlist_demo_global"
+
+    message_response = api_client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        json={"content": "Explica la senal de AAPL con evidencia."},
+    )
+    loaded_response = api_client.get(f"/api/v1/conversations/{conversation['id']}")
+
+    assert message_response.status_code == 201
+    assert message_response.json()["data"]["role"] == "user"
+    assert loaded_response.status_code == 200
+    assert loaded_response.json()["data"]["messages"][0]["content"].startswith("Explica")
 
 
 def test_create_review_updates_signal_state(api_client) -> None:
