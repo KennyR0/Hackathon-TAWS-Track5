@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexoMercado AI — Design System Showcase</title>
+  <!-- Google Fonts para Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* VARIABLES DE COLOR - SISTEMA DE DISEÑO NEXOMERCADO AI */
+    :root {
+      --bg: #FAF9F6;
+      --surface-base: #FFFFFF;
+      --surface-elevated: #F2F0EA;
+      --border: rgba(0, 0, 0, 0.08);
+      --border-focus: #1C1E20;
+
+      --text-primary: #1C1E20;
+      --text-secondary: #5A626A;
+      --text-muted: #8E969F;
+
+      --status-positive-bg: #EBF5EE;
+      --status-positive-text: #15522E;
+      --status-negative-bg: #FDF2F2;
+      --status-negative-text: #8C241E;
+      --status-neutral-bg: #F3F4F6;
+      --status-neutral-text: #374151;
+      --status-uncertain-bg: #FEF7EC;
+      --status-uncertain-text: #825712;
+
+      --action-accent: #825712;
+      --action-hover: #67430B;
+    }
+
+    body.dark {
+      --bg: #121314;
+      --surface-base: #1A1C1E;
+      --surface-elevated: #24272A;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: #E6E8EA;
+
+      --text-primary: #E6E8EA;
+      --text-secondary: #9FA6AD;
+      --text-muted: #626970;
+
+      --status-positive-bg: #1F402B;
+      --status-positive-text: #4AE385;
+      --status-negative-bg: #4F2321;
+      --status-negative-text: #FF7F75;
+      --status-neutral-bg: #282A2D;
+      --status-neutral-text: #CCD2D8;
+      --status-uncertain-bg: #4A371F;
+      --status-uncertain-text: #F3C06A;
+
+      --action-accent: #F3C06A;
+      --action-hover: #F7D08F;
+    }
+
+    /* ESTILOS DE RESET Y LAYOUT */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 32px;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* HEADER Y CONTROLES */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-b: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    .app-title-area h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .app-title-area p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    button.theme-toggle {
+      background-color: var(--surface-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color 0.1s ease, border-color 0.1s ease;
+    }
+
+    button.theme-toggle:hover {
+      background-color: var(--surface-base);
+      border-color: var(--border-focus);
+    }
+
+    button.theme-toggle:active {
+      transform: scale(0.97);
+    }
+
+    /* SECCIONES */
+    section {
+      margin-bottom: 40px;
+    }
+
+    h2.section-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .grid-tokens {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .grid-components {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* TARJETAS DE TOKEN */
+    .token-card {
+      border: 1px solid var(--border);
+      background-color: var(--surface-base);
+      border-radius: 6px;
+      padding: 16px;
+    }
+
+    .color-swatch {
+      height: 48px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    .token-info {
+      font-size: 12px;
+    }
+
+    .token-name {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .token-value {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* --- ESTILOS DE COMPONENTES ATÓMICOS --- */
+
+    /* 1. Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 2px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      user-select: none;
+    }
+    
+    .badge.positive { background-color: var(--status-positive-bg); color: var(--status-positive-text); }
+    .badge.negative { background-color: var(--status-negative-bg); color: var(--status-negative-text); }
+    .badge.neutral { background-color: var(--status-neutral-bg); color: var(--status-neutral-text); }
+    .badge.uncertain { background-color: var(--status-uncertain-bg); color: var(--status-uncertain-text); }
+    .badge.pending_review { background-color: var(--status-uncertain-bg); color: var(--status-uncertain-text); }
+    .badge.reviewed { background-color: var(--status-positive-bg); color: var(--status-positive-text); }
+    .badge.escalated { background-color: var(--status-negative-bg); color: var(--status-negative-text); }
+    .badge.discarded { background-color: var(--status-neutral-bg); color: var(--status-neutral-text); opacity: 0.6; }
+
+    /* 2. Metric Card */
+    .metric-card {
+      border: 1px solid var(--border);
+      background-color: var(--surface-base);
+      border-radius: 6px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 112px;
+      user-select: none;
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .metric-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .metric-secondary {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+      margin: 6px 0;
+    }
+
+    .metric-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .metric-change {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .metric-change.up { color: var(--status-positive-text); }
+    .metric-change.down { color: var(--status-negative-text); }
+    .metric-change.flat { color: var(--text-secondary); }
+
+    .metric-label {
+      color: var(--text-muted);
+    }
+
+    /* 3. SourceDate */
+    .source-date {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      user-select: none;
+    }
+
+    .source-name {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .source-tier {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 0 4px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+    body.dark .source-tier {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .source-separator {
+      color: rgba(142, 150, 159, 0.4);
+    }
+
+    .source-time {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .source-tag {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0 4px;
+      border: 1px solid rgba(130, 87, 18, 0.2);
+      background-color: rgba(254, 247, 236, 0.3);
+      color: var(--status-uncertain-text);
+      border-radius: 2px;
+      letter-spacing: 0.05em;
+    }
+
+    /* 4. Dense Table */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background-color: var(--surface-base);
+    }
+
+    table.dense-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    table.dense-table th {
+      background-color: var(--surface-elevated);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    table.dense-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    table.dense-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.dense-table tr.table-row {
+      transition: background-color 0.1s ease;
+      cursor: pointer;
+    }
+
+    table.dense-table tr.table-row:hover {
+      background-color: rgba(242, 240, 234, 0.4);
+    }
+    body.dark table.dense-table tr.table-row:hover {
+      background-color: rgba(36, 39, 42, 0.4);
+    }
+
+    .asset-ticker {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .asset-name {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: 6px;
+    }
+
+    .price-value {
+      font-family: 'JetBrains Mono', monospace;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .change-value {
+      font-family: 'JetBrains Mono', monospace;
+      text-align: right;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .change-value.positive { color: var(--status-positive-text); }
+    .change-value.negative { color: var(--status-negative-text); }
+    .change-value.neutral { color: var(--text-secondary); }
+
+    .confidence-value {
+      font-family: 'JetBrains Mono', monospace;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .source-cell {
+      color: var(--text-secondary);
+    }
+
+    .date-cell {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    /* CONSOLA DE AUDITORÍA SIMULADA */
+    .console-panel {
+      background-color: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .console-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* GRID ESPECIALES */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      background-color: var(--surface-base);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+  </style>
+</head>
+<body class="dark"> <!-- Carga por defecto en Dark Mode que transmite seriedad de terminal -->
+
+  <div class="container">
+    
+    <header>
+      <div class="app-title-area">
+        <h1>NexoMercado AI</h1>
+        <p>Design System base &bull; Especulación de componentes interactiva</p>
+      </div>
+      <div>
+        <button class="theme-toggle" id="themeToggler">
+          <span id="togglerText">Alternar a Modo Claro (Papel/Hueso)</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- TOKENS DE COLOR -->
+    <section>
+      <h2 class="section-title">1. Paleta Cromática Semántica (Sin Azul)</h2>
+      <div class="grid-tokens">
+        
+        <!-- BG -->
+        <div class="token-card">
+          <div class="color-swatch" style="background-color: var(--bg);"></div>
+          <div class="token-info">
+            <div class="token-name">Fondo Base (--bg)</div>
+            <div class="token-value" id="val-bg">#121314</div>
+          </div>
+        </div>
+
+        <!-- SURFACE BASE -->
+        <div class="token-card">
+          <div class="color-swatch" style="background-color: var(--surface-base);"></div>
+          <div class="token-info">
+            <div class="token-name">Superficie (--surface-base)</div>
+            <div class="token-value" id="val-surf-base">#1A1C1E</div>
+          </div>
+        </div>
+
+        <!-- SURFACE ELEVATED -->
+        <div class="token-card">
+          <div class="color-swatch" style="background-color: var(--surface-elevated);"></div>
+          <div class="token-info">
+            <div class="token-name">Elevado (--surface-elevated)</div>
+            <div class="token-value" id="val-surf-elev">#24272A</div>
+          </div>
+        </div>
+
+        <!-- BORDER -->
+        <div class="token-card">
+          <div class="color-swatch" style="background-color: var(--border);"></div>
+          <div class="token-info">
+            <div class="token-name">Borde Standard (--border)</div>
+            <div class="token-value" id="val-border">rgba(255,255,255,0.08)</div>
+          </div>
+        </div>
+
+        <!-- FOREST GREEN -->
+        <div class="token-card">
+          <div class="color-swatch" style="background-color: var(--status-positive-bg);"></div>
+          <div class="token-info">
+            <div class="token-name">Positive / Reviewed BG</div>
+            <div class="token-value" id="val-positive">#1F402B</div>
+          </div>
+        </div>
+
+        <!-- TERRACOTA -->
+        <div class="token-card">
+          <div class="color-swatch" style="background-color: var(--status-negative-bg);"></div>
+          <div class="token-info">
+            <div class="token-name">Negative / Escalated BG</div>
+            <div class="token-value" id="val-negative">#4F2321</div>
+          </div>
+        </div>
+
+        <!-- OCRE / BRONCE -->
+        <div class="token-card">
+          <div class="color-swatch" style="background-color: var(--status-uncertain-bg);"></div>
+          <div class="token-info">
+            <div class="token-name">Uncertain / Pending BG</div>
+            <div class="token-value" id="val-uncertain">#4A371F</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ESTADOS EN BADGES -->
+    <section>
+      <h2 class="section-title">2. Badges de Estado (Enum &amp; Impacto)</h2>
+      <div class="badge-row">
+        <div>
+          <span style="font-size:11px; display:block; margin-bottom:6px; color:var(--text-secondary);">Impacto / Confianza:</span>
+          <span class="badge positive">positive</span>
+          <span class="badge negative">negative</span>
+          <span class="badge neutral">neutral</span>
+          <span class="badge uncertain">uncertain</span>
+        </div>
+        <div style="border-left: 1px solid var(--border); padding-left: 16px; margin-left: 8px;">
+          <span style="font-size:11px; display:block; margin-bottom:6px; color:var(--text-secondary);">Cola de Revisión Humana (ReviewStatus):</span>
+          <span class="badge pending_review">pending_review</span>
+          <span class="badge reviewed">reviewed</span>
+          <span class="badge escalated">escalated</span>
+          <span class="badge discarded">discarded</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- METRIC CARDS -->
+    <section>
+      <h2 class="section-title">3. Tarjetas de Métrica Numérica (Metric Cards)</h2>
+      <div class="metric-grid">
+        
+        <!-- METRICA 1 -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Retorno Anormal</span>
+            <span class="metric-secondary">AAPL vs SPY</span>
+          </div>
+          <div class="metric-value">-3.30%</div>
+          <div class="metric-footer">
+            <span class="metric-change down">&darr; -0.033</span>
+            <span class="metric-label">Ventana 24h</span>
+          </div>
+        </div>
+
+        <!-- METRICA 2 -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Volumen Relativo</span>
+            <span class="metric-secondary">20-Sesiones</span>
+          </div>
+          <div class="metric-value">2.4x</div>
+          <div class="metric-footer">
+            <span class="metric-change up">&uarr; +1.4</span>
+            <span class="metric-label">Sobre la media</span>
+          </div>
+        </div>
+
+        <!-- METRICA 3 -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Puntaje de Volatilidad</span>
+            <span class="metric-secondary">Z-Score</span>
+          </div>
+          <div class="metric-value">2.10</div>
+          <div class="metric-footer">
+            <span class="metric-change up">&uarr; Elevada</span>
+            <span class="metric-label">Desviación estándar</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- DENSE TABLE -->
+    <section>
+      <h2 class="section-title">4. Tabla de Datos Densa (Interactive &bull; Click to Inspect)</h2>
+      <div class="grid-components">
+        
+        <div class="table-container">
+          <table class="dense-table">
+            <thead>
+              <tr>
+                <th style="width: 20%;">Activo</th>
+                <th style="width: 15%;">Impacto</th>
+                <th style="text-align: right; width: 12%;">Precio</th>
+                <th style="text-align: right; width: 12%;">Var. %</th>
+                <th style="text-align: right; width: 12%;">Confianza</th>
+                <th>Fuente Primaria</th>
+                <th style="text-align: right; width: 15%;">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              <!-- FILA 1 -->
+              <tr class="table-row" data-ticker="AAPL" data-name="Apple Inc." data-price="$189.45" data-change="-2.10%" data-confidence="86%" data-source="Reuters">
+                <td>
+                  <span class="asset-ticker">AAPL</span>
+                  <span class="asset-name">Apple Inc.</span>
+                </td>
+                <td><span class="badge negative">negative</span></td>
+                <td class="price-value">$189.45</td>
+                <td class="change-value negative">-2.10%</td>
+                <td class="confidence-value">86%</td>
+                <td class="source-cell">Reuters</td>
+                <td class="date-cell">10 jul 2026</td>
+              </tr>
+
+              <!-- FILA 2 -->
+              <tr class="table-row" data-ticker="BTC" data-name="Bitcoin" data-price="$57,280.00" data-change="+4.52%" data-confidence="91%" data-source="SEC EDGAR">
+                <td>
+                  <span class="asset-ticker">BTC</span>
+                  <span class="asset-name">Bitcoin</span>
+                </td>
+                <td><span class="badge positive">positive</span></td>
+                <td class="price-value">$57,280.00</td>
+                <td class="change-value positive">+4.52%</td>
+                <td class="confidence-value">91%</td>
+                <td class="source-cell">SEC Presentation File</td>
+                <td class="date-cell">10 jul 2026</td>
+              </tr>
+
+              <!-- FILA 3 -->
+              <tr class="table-row" data-ticker="WTI" data-name="West Texas Int." data-price="$78.20" data-change="0.00%" data-confidence="65%" data-source="FRED">
+                <td>
+                  <span class="asset-ticker">WTI</span>
+                  <span class="asset-name">Crudo WTI</span>
+                </td>
+                <td><span class="badge neutral">neutral</span></td>
+                <td class="price-value">$78.20</td>
+                <td class="change-value neutral">0.00%</td>
+                <td class="confidence-value">65%</td>
+                <td class="source-cell">FRED St. Louis Fed</td>
+                <td class="date-cell">09 jul 2026</td>
+              </tr>
+
+              <!-- FILA 4 -->
+              <tr class="table-row" data-ticker="SPY" data-name="S&amp;P 500 ETF" data-price="$520.40" data-change="-0.82%" data-confidence="72%" data-source="Twelve Data">
+                <td>
+                  <span class="asset-ticker">SPY</span>
+                  <span class="asset-name">S&amp;P 500 ETF</span>
+                </td>
+                <td><span class="badge uncertain">uncertain</span></td>
+                <td class="price-value">$520.40</td>
+                <td class="change-value negative">-0.82%</td>
+                <td class="confidence-value">72%</td>
+                <td class="source-cell">Twelve Data Feed</td>
+                <td class="date-cell">10 jul 2026</td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <!-- DETALLE EN FUENTE Y FECHA -->
+        <div class="console-panel">
+          <div class="console-title">
+            <span>Trazabilidad de Fuente / Linaje de Datos</span>
+            <span style="color: var(--text-muted);">Console Output</span>
+          </div>
+          <div style="margin-bottom: 12px; color: var(--text-primary);" id="detailLineage">
+            Haga clic en una fila de la tabla para trazar la procedencia de la señal explicable...
+          </div>
+          <!-- Componente SourceDate -->
+          <div class="source-date" id="sourceDateComponent" style="display: none;">
+            <span class="source-name" id="sdName">Reuters</span>
+            <span class="source-tier" id="sdTier">TIER A</span>
+            <span class="source-separator">&bull;</span>
+            <span class="source-time" id="sdTime">10 jul 2026</span>
+            <span class="source-separator">&bull;</span>
+            <span id="sdRelative">hace 2h</span>
+            <span class="source-separator">&bull;</span>
+            <span class="source-tag">Fixture Data</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // CONTROL DEL MODO OSCURO / CLARO
+    const toggler = document.getElementById('themeToggler');
+    const togglerText = document.getElementById('togglerText');
+    const body = document.body;
+
+    const valBg = document.getElementById('val-bg');
+    const valSurfBase = document.getElementById('val-surf-base');
+    const valSurfElev = document.getElementById('val-surf-elev');
+    const valBorder = document.getElementById('val-border');
+    const valPositive = document.getElementById('val-positive');
+    const valNegative = document.getElementById('val-negative');
+    const valUncertain = document.getElementById('val-uncertain');
+
+    toggler.addEventListener('click', () => {
+      body.classList.toggle('dark');
+      const isDark = body.classList.contains('dark');
+      
+      if (isDark) {
+        togglerText.textContent = "Alternar a Modo Claro (Papel/Hueso)";
+        valBg.textContent = "#121314";
+        valSurfBase.textContent = "#1A1C1E";
+        valSurfElev.textContent = "#24272A";
+        valBorder.textContent = "rgba(255,255,255,0.08)";
+        valPositive.textContent = "#1F402B";
+        valNegative.textContent = "#4F2321";
+        valUncertain.textContent = "#4A371F";
+      } else {
+        togglerText.textContent = "Alternar a Modo Oscuro (Grafito/Carbón)";
+        valBg.textContent = "#FAF9F6";
+        valSurfBase.textContent = "#FFFFFF";
+        valSurfElev.textContent = "#F2F0EA";
+        valBorder.textContent = "rgba(0,0,0,0.08)";
+        valPositive.textContent = "#EBF5EE";
+        valNegative.textContent = "#FDF2F2";
+        valUncertain.textContent = "#FEF7EC";
+      }
+    });
+
+    // CONTROL DE INTERACCIÓN CON LA TABLA DENSE
+    const rows = document.querySelectorAll('.table-row');
+    const detailLineage = document.getElementById('detailLineage');
+    const sourceDateComponent = document.getElementById('sourceDateComponent');
+    const sdName = document.getElementById('sdName');
+    const sdTier = document.getElementById('sdTier');
+    const sdTime = document.getElementById('sdTime');
+    const sdRelative = document.getElementById('sdRelative');
+
+    rows.forEach(row => {
+      row.addEventListener('click', () => {
+        const ticker = row.getAttribute('data-ticker');
+        const name = row.getAttribute('data-name');
+        const price = row.getAttribute('data-price');
+        const change = row.getAttribute('data-change');
+        const confidence = row.getAttribute('data-confidence');
+        const source = row.getAttribute('data-source');
+
+        let tier = 'A';
+        let relative = 'hace 2h';
+        if (ticker === 'WTI') { tier = 'B'; relative = 'hace 1d'; }
+        if (ticker === 'SPY') { tier = 'A'; relative = 'hace 4h'; }
+        if (ticker === 'BTC') { tier = 'A'; relative = 'hace 35m'; }
+
+        detailLineage.innerHTML = `<strong>Trazando señal de ${ticker} (${name}):</strong> Precio actual <span style="font-family:'JetBrains Mono'">${price}</span> (${change}) con confianza de cálculo de <span style="font-family:'JetBrains Mono'">${confidence}</span>. Origen respaldado por el proveedor:`;
+        
+        // Cargar componente de SourceDate
+        sdName.textContent = source;
+        sdTier.textContent = `TIER ${tier}`;
+        sdTime.textContent = row.querySelector('.date-cell').textContent;
+        sdRelative.textContent = relative;
+        sourceDateComponent.style.display = 'flex';
+      });
+    });
+  </script>
+</body>
+</html>

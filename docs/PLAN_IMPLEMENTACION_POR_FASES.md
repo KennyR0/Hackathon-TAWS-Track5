@@ -1,9 +1,9 @@
 ---
 plan_version: 2
-current_phase: S0
-phase_S0: lista_para_revision
-phase_0: pendiente
-phase_1: pendiente
+current_phase: 1
+phase_S0: aceptada
+phase_0: aceptada
+phase_1: en_curso
 phase_2: pendiente
 phase_3: pendiente
 phase_4: pendiente
