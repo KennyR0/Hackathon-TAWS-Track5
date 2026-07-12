@@ -7,6 +7,8 @@ import type { ApiReviewRequest } from './contracts'
 export const queryKeys = {
   events: (filters?: { instrumentType?: string; asset?: string; publishedAfter?: string }) => ['events', filters] as const,
   event: (eventId: string) => ['event', eventId] as const,
+  similarEvents: (eventId: string) => ['event', eventId, 'similar'] as const,
+  ecuadorSnapshots: () => ['ecuador-snapshots'] as const,
   signals: () => ['signals'] as const,
   marketSnapshots: (filters?: { asset?: string; interval?: '1h' | '1d' }) => ['market-snapshots', filters] as const,
   signal: (signalId: string) => ['signal', signalId] as const,
@@ -18,6 +20,7 @@ export const queryKeys = {
   runSteps: (runId: string) => ['run', runId, 'steps'] as const,
   recentRuns: () => ['runs', 'recent'] as const,
   watchlist: () => ['watchlist', 'demo-global'] as const,
+  conversation: (conversationId: string) => ['conversation', conversationId] as const,
 }
 
 export function useEventsQuery(filters?: { instrumentType?: string; asset?: string; publishedAfter?: string }) {
@@ -41,6 +44,33 @@ export function useEventQuery(eventId: string) {
       return mapEventView(payload.data, payload.meta)
     },
     enabled: Boolean(eventId),
+  })
+}
+
+export function useSimilarEventsQuery(eventId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.similarEvents(eventId),
+    queryFn: async () => {
+      const payload = await apiClient.listSimilarEvents(eventId)
+      return {
+        items: payload.data,
+        meta: payload.meta,
+      }
+    },
+    enabled: (options?.enabled ?? true) && Boolean(eventId),
+  })
+}
+
+export function useEcuadorSnapshotsQuery() {
+  return useQuery({
+    queryKey: queryKeys.ecuadorSnapshots(),
+    queryFn: async () => {
+      const payload = await apiClient.listEcuadorSnapshots()
+      return {
+        items: payload.data,
+        meta: payload.meta,
+      }
+    },
   })
 }
 
@@ -160,6 +190,20 @@ export function useWatchlistQuery() {
   })
 }
 
+export function useConversationQuery(conversationId: string) {
+  return useQuery({
+    queryKey: queryKeys.conversation(conversationId),
+    queryFn: async () => {
+      const payload = await apiClient.getConversation(conversationId)
+      return {
+        conversation: payload.data,
+        meta: payload.meta,
+      }
+    },
+    enabled: Boolean(conversationId),
+  })
+}
+
 export function useCreateReviewMutation(signalId: string) {
   const queryClient = useQueryClient()
 
@@ -198,6 +242,29 @@ export function useCreateAnalysisMutation() {
     onSuccess: async payload => {
       recentRunsStorage.push(payload.data.id)
       await queryClient.invalidateQueries({ queryKey: queryKeys.run(payload.data.id) })
+    },
+  })
+}
+
+export function useCreateConversationMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: apiClient.createConversation,
+    onSuccess: async payload => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.conversation(payload.data.id) })
+    },
+  })
+}
+
+export function useCreateConversationMessageMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: { conversationId: string; content: string }) =>
+      apiClient.createConversationMessage(payload.conversationId, { content: payload.content }),
+    onSuccess: async (_payload, variables) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.conversation(variables.conversationId) })
     },
   })
 }

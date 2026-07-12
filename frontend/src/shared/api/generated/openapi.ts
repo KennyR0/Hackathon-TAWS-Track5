@@ -89,6 +89,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a persistent assistant conversation */
+        post: operations["createConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read conversation context and messages */
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Append a user message to a conversation */
+        post: operations["createConversationMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ecuador-snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List traceable Ecuador institutional snapshots */
+        get: operations["listEcuadorSnapshots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events": {
         parameters: {
             query?: never;
@@ -115,6 +183,23 @@ export interface paths {
         };
         /** Read a normalized market event */
         get: operations["getEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{eventId}/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List deterministic historical event similarities */
+        get: operations["listSimilarEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -556,6 +641,101 @@ export interface components {
              */
             unit: string | null;
         };
+        /** Conversation */
+        Conversation: {
+            /**
+             * Activeeventid
+             * @default null
+             */
+            activeEventId: string | null;
+            /**
+             * Activesignalid
+             * @default null
+             */
+            activeSignalId: string | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Id */
+            id: string;
+            /**
+             * Lastrunid
+             * @default null
+             */
+            lastRunId: string | null;
+            /**
+             * Messages
+             * @default []
+             */
+            messages: components["schemas"]["ConversationMessage"][];
+            /** Organizationid */
+            organizationId: string;
+            /**
+             * Summary
+             * @default null
+             */
+            summary: string | null;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+            /** Userid */
+            userId: string;
+            /**
+             * Watchlistid
+             * @default null
+             */
+            watchlistId: string | null;
+        };
+        /** ConversationCreateRequest */
+        ConversationCreateRequest: {
+            /**
+             * Watchlistid
+             * @default null
+             */
+            watchlistId: string | null;
+        };
+        /** ConversationMessage */
+        ConversationMessage: {
+            /** Content */
+            content: string;
+            /** Conversationid */
+            conversationId: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Id */
+            id: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant" | "system" | "tool";
+        };
+        /** ConversationMessageRequest */
+        ConversationMessageRequest: {
+            /** Content */
+            content: string;
+        };
+        /** ConversationMessageResponse */
+        ConversationMessageResponse: {
+            data: components["schemas"]["ConversationMessage"];
+            meta: components["schemas"]["DataProvenance"];
+        };
+        /** ConversationResponse */
+        ConversationResponse: {
+            data: components["schemas"]["Conversation"];
+            meta: components["schemas"]["DataProvenance"];
+        };
         /**
          * DataMode
          * @enum {string}
@@ -579,6 +759,53 @@ export interface components {
             retrievedAt: string;
             /** Warnings */
             warnings: string[];
+        };
+        /** EcuadorSnapshot */
+        EcuadorSnapshot: {
+            /**
+             * Capturedat
+             * Format: date-time
+             */
+            capturedAt: string;
+            /** Contenthash */
+            contentHash: string;
+            /**
+             * Countrycode
+             * @constant
+             */
+            countryCode: "EC";
+            /**
+             * Dataasof
+             * Format: date-time
+             */
+            dataAsOf: string;
+            dataMode: components["schemas"]["DataMode"];
+            freshness: components["schemas"]["Freshness"];
+            /** Id */
+            id: string;
+            /** Provider */
+            provider: string;
+            /**
+             * Retrievedat
+             * Format: date-time
+             */
+            retrievedAt: string;
+            /** Sourcename */
+            sourceName: string;
+            /** Sourceurl */
+            sourceUrl: string;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** EcuadorSnapshotListResponse */
+        EcuadorSnapshotListResponse: {
+            /** Data */
+            data: components["schemas"]["EcuadorSnapshot"][];
+            meta: components["schemas"]["DataProvenance"];
         };
         /** Event */
         Event: {
@@ -1068,6 +1295,32 @@ export interface components {
             signalId: string;
             status: components["schemas"]["ReviewStatus"];
         };
+        /** SimilarEvent */
+        SimilarEvent: {
+            /**
+             * Eventat
+             * Format: date-time
+             */
+            eventAt: string;
+            /** Eventid */
+            eventId: string;
+            /** Rationale */
+            rationale: string;
+            /** Sharedassetsymbols */
+            sharedAssetSymbols: string[];
+            /** Sharedsourcegroups */
+            sharedSourceGroups: string[];
+            /** Similarityscore */
+            similarityScore: number;
+            /** Title */
+            title: string;
+        };
+        /** SimilarEventListResponse */
+        SimilarEventListResponse: {
+            /** Data */
+            data: components["schemas"]["SimilarEvent"][];
+            meta: components["schemas"]["DataProvenance"];
+        };
         /** Source */
         Source: {
             /** Countrycode */
@@ -1353,6 +1606,134 @@ export interface operations {
             };
         };
     };
+    createConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Conversation created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationResponse"];
+                };
+            };
+            /** @description Request could not be completed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationResponse"];
+                };
+            };
+            /** @description Request could not be completed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createConversationMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Message recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationMessageResponse"];
+                };
+            };
+            /** @description Request could not be completed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request could not be completed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listEcuadorSnapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EcuadorSnapshotListResponse"];
+                };
+            };
+        };
+    };
     listEvents: {
         parameters: {
             query?: {
@@ -1395,6 +1776,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Request could not be completed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listSimilarEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarEventListResponse"];
                 };
             };
             /** @description Request could not be completed */

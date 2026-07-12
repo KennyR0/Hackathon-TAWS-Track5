@@ -15,6 +15,8 @@ EXPECTED_OPERATIONS = {
     ("/health", "get"),
     ("/api/v1/events", "get"),
     ("/api/v1/events/{eventId}", "get"),
+    ("/api/v1/events/{eventId}/similar", "get"),
+    ("/api/v1/ecuador-snapshots", "get"),
     ("/api/v1/market-snapshots", "get"),
     ("/api/v1/analyses", "post"),
     ("/api/v1/analyses/{runId}", "get"),
@@ -27,6 +29,9 @@ EXPECTED_OPERATIONS = {
     ("/api/v1/briefings", "post"),
     ("/api/v1/briefings/{briefingId}", "get"),
     ("/api/v1/watchlists/demo-global", "get"),
+    ("/api/v1/conversations", "post"),
+    ("/api/v1/conversations/{conversationId}", "get"),
+    ("/api/v1/conversations/{conversationId}/messages", "post"),
     ("/api/v1/runs/{runId}/steps", "get"),
 }
 

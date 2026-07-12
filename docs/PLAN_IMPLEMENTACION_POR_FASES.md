@@ -1,6 +1,6 @@
 ---
 plan_version: 2
-current_phase: 9
+current_phase: 10
 phase_S0: aceptada
 phase_0: aceptada
 phase_1: aceptada
@@ -11,8 +11,8 @@ phase_5: aceptada
 phase_6: aceptada
 phase_7: aceptada
 phase_8: aceptada
-phase_9: lista_para_revision
-phase_10: pendiente
+phase_9: aceptada
+phase_10: lista_para_revision
 last_updated: 2026-07-12
 ---
 
@@ -89,8 +89,8 @@ Reglas:
 | 6 | aceptada | Proveedores live y fallback |
 | 7 | aceptada | Despliegue y demo |
 | 8 | aceptada | Auth, roles y RLS |
-| 9 | lista_para_revision | Workers y operación |
-| 10 | pendiente | Diferenciadores |
+| 9 | aceptada | Workers y operación |
+| 10 | lista_para_revision | Diferenciadores |
 
 Estado operativo actual del repositorio:
 
@@ -541,6 +541,27 @@ Evidencia de cierre local:
 - Snapshots ecuatorianos trazables.
 - Continuidad conversacional y mayor cobertura de instrumentos.
 
+Evidencia de cierre local:
+
+- Fase 10 ejecutada en rama `codex/fase-10-diferenciadores`.
+- Contratos y API agregan:
+  - `GET /api/v1/events/{eventId}/similar` con similitud deterministica por activos, grupos editoriales y tokens.
+  - `GET /api/v1/ecuador-snapshots` con snapshots institucionales EC, hash `sha256`, proveedor, frescura y warnings fixture.
+  - `POST /api/v1/conversations`, `GET /api/v1/conversations/{conversationId}` y `POST /api/v1/conversations/{conversationId}/messages`.
+- Frontend conecta Assistant con conversacion persistida, snapshots Ecuador y detalle de senal con historicos similares.
+- Smoke de historias ampliado: radar, senal/evidencia, revision/briefing, similares, snapshots Ecuador y conversacion.
+- Validaciones ejecutadas:
+  - `.venv312\Scripts\python.exe -m pytest backend\tests --basetemp .tmp\pytest -p no:cacheprovider`: `187 passed`, `2 warnings`.
+  - `.venv312\Scripts\python.exe -m ruff check` sobre archivos de Fase 10: aprobado.
+  - `.venv312\Scripts\python.exe backend\scripts\export_openapi.py --check`: aprobado.
+  - `.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py`: aprobado con `similarEventCount=2`, `ecuadorSnapshotCount=2`, conversacion y briefing draft.
+  - `corepack pnpm lint`: aprobado.
+  - `corepack pnpm build`: aprobado; mantiene warning no bloqueante de chunk mayor a 500 kB.
+  - `.venv312\Scripts\python.exe backend\scripts\check_market_data_pipeline.py --env-file .env`: aprobado en `mode=fixture`, `requestsUsed=0`.
+  - `.venv312\Scripts\python.exe backend\scripts\check_supabase_persistence.py --env-file .env`: bloqueado por ausencia local de `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
+- No se hizo commit, push, despliegue ni cambio cloud.
+- Resultado del gate funcional: aprobado; Fase 10 queda `lista_para_revision` y espera decision del usuario.
+
 ## 8. Matriz mínima del Track 5
 
 | Criterio | Fase |
@@ -602,6 +623,8 @@ Producto:
 | 2026-07-12 | 8 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para auth, roles y RLS |
 | 2026-07-12 | 8 | Avanzar a Fase 9 sin migraciones nuevas | La base ya tenia Auth/RLS; el cierre fue integracion FastAPI y permisos |
 | 2026-07-12 | 9 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para workers y operacion |
+| 2026-07-12 | 10 | Crear rama `codex/fase-10-diferenciadores` | Gate original de fase exige rama `codex/fase-*`; no se autorizo excepcion para `main` |
+| 2026-07-12 | 10 | Cerrar diferenciadores sin migracion nueva | Conversaciones ya existian en DB; similares y snapshots EC se implementan fixture-first y trazables |
 
 ## 12. Registro de cambios
 
@@ -614,3 +637,4 @@ Producto:
 | 2026-07-12 | 2 | Fase 6 live/fallback implementada y lista para revision |
 | 2026-07-12 | 2 | Fase 7 deploy-ready implementada y lista para revision |
 | 2026-07-12 | 2 | Fase 8 auth/roles/RLS cerrada sin migraciones nuevas y Fase 9 workers/operacion lista para revision |
+| 2026-07-12 | 2 | Fase 10 diferenciadores implementada y lista para revision |

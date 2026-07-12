@@ -817,6 +817,254 @@
         "title": "Claim",
         "type": "object"
       },
+      "Conversation": {
+        "additionalProperties": false,
+        "properties": {
+          "activeEventId": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 3,
+                "pattern": "^[a-z][a-z0-9_:-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Activeeventid"
+          },
+          "activeSignalId": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 3,
+                "pattern": "^[a-z][a-z0-9_:-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Activesignalid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "lastRunId": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 3,
+                "pattern": "^[a-z][a-z0-9_:-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Lastrunid"
+          },
+          "messages": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ConversationMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "organizationId": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Organizationid",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Summary"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "userId": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Userid",
+            "type": "string"
+          },
+          "watchlistId": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 3,
+                "pattern": "^[a-z][a-z0-9_:-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Watchlistid"
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "Conversation",
+        "type": "object"
+      },
+      "ConversationCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "watchlistId": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 3,
+                "pattern": "^[a-z][a-z0-9_:-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Watchlistid"
+          }
+        },
+        "title": "ConversationCreateRequest",
+        "type": "object"
+      },
+      "ConversationMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "conversationId": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Conversationid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant",
+              "system",
+              "tool"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "conversationId",
+          "role",
+          "content",
+          "createdAt"
+        ],
+        "title": "ConversationMessage",
+        "type": "object"
+      },
+      "ConversationMessageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ConversationMessageRequest",
+        "type": "object"
+      },
+      "ConversationMessageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConversationMessage"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ConversationMessageResponse",
+        "type": "object"
+      },
+      "ConversationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Conversation"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ConversationResponse",
+        "type": "object"
+      },
       "DataMode": {
         "enum": [
           "fixture",
@@ -868,6 +1116,121 @@
           "warnings"
         ],
         "title": "DataProvenance",
+        "type": "object"
+      },
+      "EcuadorSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "capturedAt": {
+            "format": "date-time",
+            "title": "Capturedat",
+            "type": "string"
+          },
+          "contentHash": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Contenthash",
+            "type": "string"
+          },
+          "countryCode": {
+            "const": "EC",
+            "title": "Countrycode",
+            "type": "string"
+          },
+          "dataAsOf": {
+            "format": "date-time",
+            "title": "Dataasof",
+            "type": "string"
+          },
+          "dataMode": {
+            "$ref": "#/components/schemas/DataMode"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
+          },
+          "id": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "provider": {
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          },
+          "retrievedAt": {
+            "format": "date-time",
+            "title": "Retrievedat",
+            "type": "string"
+          },
+          "sourceName": {
+            "minLength": 1,
+            "title": "Sourcename",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "minLength": 1,
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "summary": {
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dataMode",
+          "provider",
+          "retrievedAt",
+          "dataAsOf",
+          "freshness",
+          "warnings",
+          "id",
+          "title",
+          "summary",
+          "countryCode",
+          "sourceName",
+          "sourceUrl",
+          "capturedAt",
+          "contentHash"
+        ],
+        "title": "EcuadorSnapshot",
+        "type": "object"
+      },
+      "EcuadorSnapshotListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EcuadorSnapshot"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "EcuadorSnapshotListResponse",
         "type": "object"
       },
       "Event": {
@@ -2135,6 +2498,91 @@
         "title": "SignalReview",
         "type": "object"
       },
+      "SimilarEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "eventAt": {
+            "format": "date-time",
+            "title": "Eventat",
+            "type": "string"
+          },
+          "eventId": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "rationale": {
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "sharedAssetSymbols": {
+            "items": {
+              "maxLength": 24,
+              "minLength": 1,
+              "pattern": "^[A-Z0-9][A-Z0-9./-]*$",
+              "type": "string"
+            },
+            "title": "Sharedassetsymbols",
+            "type": "array"
+          },
+          "sharedSourceGroups": {
+            "items": {
+              "maxLength": 96,
+              "minLength": 3,
+              "pattern": "^[a-z][a-z0-9_:-]*$",
+              "type": "string"
+            },
+            "title": "Sharedsourcegroups",
+            "type": "array"
+          },
+          "similarityScore": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Similarityscore",
+            "type": "number"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventId",
+          "title",
+          "eventAt",
+          "similarityScore",
+          "sharedAssetSymbols",
+          "sharedSourceGroups",
+          "rationale"
+        ],
+        "title": "SimilarEvent",
+        "type": "object"
+      },
+      "SimilarEventListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SimilarEvent"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "SimilarEventListResponse",
+        "type": "object"
+      },
       "Source": {
         "additionalProperties": false,
         "properties": {
@@ -2632,6 +3080,160 @@
         "summary": "Read a briefing"
       }
     },
+    "/api/v1/conversations": {
+      "post": {
+        "operationId": "createConversation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            },
+            "description": "Conversation created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request could not be completed"
+          }
+        },
+        "summary": "Create a persistent assistant conversation"
+      }
+    },
+    "/api/v1/conversations/{conversationId}": {
+      "get": {
+        "operationId": "getConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "minLength": 3,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request could not be completed"
+          }
+        },
+        "summary": "Read conversation context and messages"
+      }
+    },
+    "/api/v1/conversations/{conversationId}/messages": {
+      "post": {
+        "operationId": "createConversationMessage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "minLength": 3,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationMessageResponse"
+                }
+              }
+            },
+            "description": "Message recorded"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request could not be completed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request could not be completed"
+          }
+        },
+        "summary": "Append a user message to a conversation"
+      }
+    },
+    "/api/v1/ecuador-snapshots": {
+      "get": {
+        "operationId": "listEcuadorSnapshots",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EcuadorSnapshotListResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "summary": "List traceable Ecuador institutional snapshots"
+      }
+    },
     "/api/v1/events": {
       "get": {
         "operationId": "listEvents",
@@ -2723,6 +3325,45 @@
           }
         },
         "summary": "Read a normalized market event"
+      }
+    },
+    "/api/v1/events/{eventId}/similar": {
+      "get": {
+        "operationId": "listSimilarEvents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eventId",
+            "required": true,
+            "schema": {
+              "minLength": 3,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarEventListResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request could not be completed"
+          }
+        },
+        "summary": "List deterministic historical event similarities"
       }
     },
     "/api/v1/market-snapshots": {

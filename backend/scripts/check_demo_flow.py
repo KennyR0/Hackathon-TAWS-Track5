@@ -29,11 +29,33 @@ def main() -> int:
         events = events_payload["data"]
         if not events:
             raise RuntimeError("Radar returned no events")
+        event_id = events[0]["event"]["id"]
 
         signal_payload = _expect_ok(client.get("/api/v1/signals/sig_btc_uncertain"))
         evidence_payload = _expect_ok(client.get("/api/v1/signals/sig_btc_uncertain/evidence"))
         if not evidence_payload["data"]:
             raise RuntimeError("Signal evidence endpoint returned no evidence")
+        similar_payload = _expect_ok(client.get(f"/api/v1/events/{event_id}/similar"))
+        if not similar_payload["data"]:
+            raise RuntimeError("Similar events endpoint returned no comparisons")
+        ecuador_payload = _expect_ok(client.get("/api/v1/ecuador-snapshots"))
+        if not ecuador_payload["data"]:
+            raise RuntimeError("Ecuador snapshots endpoint returned no snapshots")
+        conversation_payload = _expect_ok(
+            client.post(
+                "/api/v1/conversations",
+                json={"watchlistId": "watchlist_demo_global"},
+            ),
+            expected_status=201,
+        )
+        conversation_id = conversation_payload["data"]["id"]
+        message_payload = _expect_ok(
+            client.post(
+                f"/api/v1/conversations/{conversation_id}/messages",
+                json={"content": "Explica la senal con evidencia y contexto Ecuador."},
+            ),
+            expected_status=201,
+        )
 
         review_payload = _expect_ok(
             client.post(
@@ -68,6 +90,10 @@ def main() -> int:
         "eventCount": len(events),
         "signalId": signal_payload["data"]["id"],
         "evidenceCount": len(evidence_payload["data"]),
+        "similarEventCount": len(similar_payload["data"]),
+        "ecuadorSnapshotCount": len(ecuador_payload["data"]),
+        "conversationId": conversation_id,
+        "conversationMessageId": message_payload["data"]["id"],
         "reviewStatus": review_payload["data"][-1]["status"],
         "briefingId": briefing_payload["data"]["briefingId"],
         "briefingStatus": briefing_payload["data"]["status"],

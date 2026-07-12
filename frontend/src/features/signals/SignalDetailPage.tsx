@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { useEventQuery, useMarketSnapshotsQuery, useSignalDetailQuery } from '../../shared/api/queries'
+import { useEventQuery, useMarketSnapshotsQuery, useSignalDetailQuery, useSimilarEventsQuery } from '../../shared/api/queries'
 import { ConfidenceBreakdown } from '../../shared/ui/charts/ConfidenceBreakdown'
 import { ReactionChart } from '../../shared/ui/charts/ReactionChart'
 import { AnalysisStatusBadge, ImpactBadge, ReviewStatusBadge, WarningList } from '../../shared/ui/badges'
@@ -11,6 +11,9 @@ export function SignalDetailPage() {
   const { signalId = '' } = useParams()
   const signalQuery = useSignalDetailQuery(signalId)
   const eventQuery = useEventQuery(signalQuery.data?.signal.eventId ?? '')
+  const similarEventsQuery = useSimilarEventsQuery(signalQuery.data?.signal.eventId ?? '', {
+    enabled: Boolean(signalQuery.data?.signal.eventId),
+  })
   const snapshotsQuery = useMarketSnapshotsQuery(
     { asset: signalQuery.data?.signal.asset.symbol, interval: '1d' },
     { enabled: Boolean(signalQuery.data?.signal.asset.symbol) },
@@ -96,6 +99,25 @@ export function SignalDetailPage() {
           )}
         </SurfaceCard>
       </section>
+
+      <SurfaceCard eyebrow="Historicos similares" title="Comparacion semantica deterministica">
+        {similarEventsQuery.data?.items.length ? (
+          <div className="stack-list">
+            {similarEventsQuery.data.items.slice(0, 3).map(item => (
+              <article key={item.eventId} className="timeline-item">
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{Math.round(item.similarityScore * 100)}%</span>
+                </div>
+                <p>{item.rationale}</p>
+                <small>{formatDateTime(item.eventAt)}</small>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Sin comparables" description="No hay eventos historicos suficientes para esta senal." />
+        )}
+      </SurfaceCard>
 
       <section className="content-grid content-grid--wide">
         <SurfaceCard eyebrow="Revision humana" title="Decision y justificacion">

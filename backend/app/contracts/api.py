@@ -8,11 +8,14 @@ from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, Field, JsonValue
 
+from app.models.conversations import Conversation, ConversationMessage
+
 from .entities import (
     AgentRun,
     AnalysisStatus,
     Article,
     Asset,
+    AssetSymbol,
     Briefing,
     BriefingStatus,
     Claim,
@@ -24,9 +27,11 @@ from .entities import (
     MarketSnapshot,
     NonEmptyString,
     ReviewTask,
+    Sha256,
     Signal,
     SignalReview,
     Source,
+    UnitInterval,
 )
 
 
@@ -143,6 +148,55 @@ class MarketSnapshotListResponse(ContractModel):
     meta: DataProvenance
 
 
+class SimilarEvent(ContractModel):
+    event_id: Identifier
+    title: NonEmptyString
+    event_at: AwareDatetime
+    similarity_score: UnitInterval
+    shared_asset_symbols: tuple[AssetSymbol, ...]
+    shared_source_groups: tuple[Identifier, ...]
+    rationale: NonEmptyString
+
+
+class SimilarEventListResponse(ContractModel):
+    data: tuple[SimilarEvent, ...]
+    meta: DataProvenance
+
+
+class EcuadorSnapshot(DataProvenance):
+    id: Identifier
+    title: NonEmptyString
+    summary: NonEmptyString
+    country_code: Literal["EC"]
+    source_name: NonEmptyString
+    source_url: NonEmptyString
+    captured_at: AwareDatetime
+    content_hash: Sha256
+
+
+class EcuadorSnapshotListResponse(ContractModel):
+    data: tuple[EcuadorSnapshot, ...]
+    meta: DataProvenance
+
+
+class ConversationCreateRequest(ContractModel):
+    watchlist_id: Identifier | None = None
+
+
+class ConversationMessageRequest(ContractModel):
+    content: NonEmptyString
+
+
+class ConversationResponse(ContractModel):
+    data: Conversation
+    meta: DataProvenance
+
+
+class ConversationMessageResponse(ContractModel):
+    data: ConversationMessage
+    meta: DataProvenance
+
+
 PUBLIC_API_MODELS: tuple[type[ContractModel], ...] = (
     Source,
     Article,
@@ -177,6 +231,16 @@ PUBLIC_API_MODELS: tuple[type[ContractModel], ...] = (
     WatchlistResponse,
     AgentRunStepsResponse,
     MarketSnapshotListResponse,
+    SimilarEvent,
+    SimilarEventListResponse,
+    EcuadorSnapshot,
+    EcuadorSnapshotListResponse,
+    Conversation,
+    ConversationMessage,
+    ConversationCreateRequest,
+    ConversationMessageRequest,
+    ConversationResponse,
+    ConversationMessageResponse,
 )
 
 
@@ -318,6 +382,24 @@ def build_openapi_document() -> dict[str, object]:
                 },
             }
         },
+        "/api/v1/events/{eventId}/similar": {
+            "get": {
+                "operationId": "listSimilarEvents",
+                "summary": "List deterministic historical event similarities",
+                "parameters": [_path_parameter("eventId")],
+                "responses": {
+                    "200": _json_response(SimilarEventListResponse),
+                    **_error_responses("404"),
+                },
+            }
+        },
+        "/api/v1/ecuador-snapshots": {
+            "get": {
+                "operationId": "listEcuadorSnapshots",
+                "summary": "List traceable Ecuador institutional snapshots",
+                "responses": {"200": _json_response(EcuadorSnapshotListResponse)},
+            }
+        },
         "/api/v1/market-snapshots": {
             "get": {
                 "operationId": "listMarketSnapshots",
@@ -366,7 +448,10 @@ def build_openapi_document() -> dict[str, object]:
                         "in": "query",
                         "required": False,
                         "schema": {"type": "string"},
-                        "description": "Browser EventSource replay cursor when custom headers are unavailable.",
+                        "description": (
+                            "Browser EventSource replay cursor when custom headers "
+                            "are unavailable."
+                        ),
                     },
                 ],
                 "responses": {
@@ -464,6 +549,40 @@ def build_openapi_document() -> dict[str, object]:
                 "responses": {"200": _json_response(WatchlistResponse)},
             }
         },
+        "/api/v1/conversations": {
+            "post": {
+                "operationId": "createConversation",
+                "summary": "Create a persistent assistant conversation",
+                "requestBody": _request_body(ConversationCreateRequest),
+                "responses": {
+                    "201": _json_response(ConversationResponse, "Conversation created"),
+                    **_error_responses("422"),
+                },
+            }
+        },
+        "/api/v1/conversations/{conversationId}": {
+            "get": {
+                "operationId": "getConversation",
+                "summary": "Read conversation context and messages",
+                "parameters": [_path_parameter("conversationId")],
+                "responses": {
+                    "200": _json_response(ConversationResponse),
+                    **_error_responses("404"),
+                },
+            }
+        },
+        "/api/v1/conversations/{conversationId}/messages": {
+            "post": {
+                "operationId": "createConversationMessage",
+                "summary": "Append a user message to a conversation",
+                "parameters": [_path_parameter("conversationId")],
+                "requestBody": _request_body(ConversationMessageRequest),
+                "responses": {
+                    "201": _json_response(ConversationMessageResponse, "Message recorded"),
+                    **_error_responses("404", "422"),
+                },
+            }
+        },
         "/api/v1/runs/{runId}/steps": {
             "get": {
                 "operationId": "listAgentRunSteps",
@@ -496,6 +615,12 @@ __all__ = [
     "ApiError",
     "BriefingRequest",
     "BriefingResponse",
+    "ConversationCreateRequest",
+    "ConversationMessageRequest",
+    "ConversationMessageResponse",
+    "ConversationResponse",
+    "EcuadorSnapshot",
+    "EcuadorSnapshotListResponse",
     "EventListResponse",
     "EventResponse",
     "EventView",
@@ -503,6 +628,8 @@ __all__ = [
     "MarketSnapshotListResponse",
     "ReviewRequest",
     "SseEvent",
+    "SimilarEvent",
+    "SimilarEventListResponse",
     "SignalListResponse",
     "SignalResponse",
     "Watchlist",

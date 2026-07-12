@@ -1,13 +1,29 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCreateAnalysisMutation, useEventsQuery, useRecentRunsQuery, useSignalsQuery } from '../../shared/api/queries'
+import {
+  useConversationQuery,
+  useCreateAnalysisMutation,
+  useCreateConversationMessageMutation,
+  useCreateConversationMutation,
+  useEcuadorSnapshotsQuery,
+  useEventsQuery,
+  useRecentRunsQuery,
+  useSignalsQuery,
+} from '../../shared/api/queries'
 import { EmptyState, SurfaceCard } from '../../shared/ui/primitives'
 import { AnalysisStatusBadge } from '../../shared/ui/badges'
 import { compactId } from '../../shared/lib/format'
 
 export function AssistantPage() {
   const navigate = useNavigate()
+  const [conversationId, setConversationId] = useState('')
+  const [prompt, setPrompt] = useState('Explica la senal de AAPL con evidencia y contexto Ecuador.')
   const eventsQuery = useEventsQuery()
   const signalsQuery = useSignalsQuery()
+  const ecuadorSnapshotsQuery = useEcuadorSnapshotsQuery()
+  const conversationQuery = useConversationQuery(conversationId)
+  const createConversation = useCreateConversationMutation()
+  const createConversationMessage = useCreateConversationMessageMutation()
   const createAnalysis = useCreateAnalysisMutation()
   const latestRun = useRecentRunsQuery().map(item => item.data).find(Boolean)
 
@@ -21,12 +37,23 @@ export function AssistantPage() {
     navigate(`/audit/${response.data.id}`)
   }
 
+  const handleConversation = async () => {
+    const activeConversationId =
+      conversationId ||
+      (
+        await createConversation.mutateAsync({
+          watchlistId: 'watchlist_demo_global',
+        })
+      ).data.id
+    if (!conversationId) setConversationId(activeConversationId)
+    await createConversationMessage.mutateAsync({ conversationId: activeConversationId, content: prompt })
+  }
+
   return (
     <div className="page-stack">
       <SurfaceCard eyebrow="Asistente IA" title="Orquestacion visible y honesta">
         <p className="hero-copy">
-          Esta vista muestra contexto activo, prompts sugeridos y progreso real del run. El backend actual no expone un endpoint de chat libre,
-          asi que no simulamos una conversacion falsa.
+          Conversacion persistida con contexto activo, prompts guiados y progreso real del run.
         </p>
         <div className="card-actions">
           <button className="primary-button" type="button" onClick={handleAnalyze} disabled={createAnalysis.isPending || !eventsQuery.data?.items.length}>
@@ -64,12 +91,48 @@ export function AssistantPage() {
         </SurfaceCard>
       </section>
 
-      <SurfaceCard eyebrow="Chat libre" title="Pendiente de soporte backend">
+      <section className="content-grid content-grid--wide">
+        <SurfaceCard eyebrow="Contexto Ecuador" title="Snapshots institucionales trazables">
+          {ecuadorSnapshotsQuery.data?.items.length ? (
+            <ul className="text-list">
+              {ecuadorSnapshotsQuery.data.items.map(snapshot => (
+                <li key={snapshot.id}>
+                  {snapshot.sourceName}: {snapshot.title}. Hash {compactId(snapshot.contentHash)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="Sin snapshots" description="No se pudo cargar el contexto institucional." />
+          )}
+        </SurfaceCard>
+
+        <SurfaceCard eyebrow="Conversacion" title={conversationId ? `Contexto ${compactId(conversationId)}` : 'Nueva conversacion'}>
+          <div className="disabled-composer">
+            <textarea rows={4} value={prompt} onChange={event => setPrompt(event.target.value)} />
+            <button
+              className="primary-button"
+              disabled={!prompt.trim() || createConversation.isPending || createConversationMessage.isPending}
+              type="button"
+              onClick={handleConversation}
+            >
+              {createConversation.isPending || createConversationMessage.isPending ? 'Guardando' : 'Guardar mensaje'}
+            </button>
+          </div>
+          {conversationQuery.data?.conversation.messages.length ? (
+            <ul className="text-list">
+              {conversationQuery.data.conversation.messages.map(message => (
+                <li key={message.id}>
+                  {message.role}: {message.content}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </SurfaceCard>
+      </section>
+
+      <SurfaceCard eyebrow="Run reciente" title="Auditoria conectada">
         <div className="disabled-composer">
-          <textarea rows={4} disabled value="El backend aun no expone un endpoint conversacional libre para enviar mensajes desde esta pantalla." />
-          <button className="primary-button" disabled type="button">
-            Enviar no disponible
-          </button>
+          <textarea rows={4} disabled value="La conversacion queda separada del run; el analisis usa los contratos auditables del backend." />
         </div>
         {latestRun ? (
           <div className="status-strip status-strip--embedded">
