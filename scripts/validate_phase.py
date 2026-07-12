@@ -21,6 +21,9 @@ VALID_STATUSES = {
     "bloqueada",
 }
 ACTIVE_STATUSES = {"en_curso", "lista_para_revision"}
+MAIN_BRANCH_PHASE6_EXCEPTION = (
+    "Fase 6 ejecutada en `main` por autorizacion explicita del usuario"
+)
 
 
 class ValidationError(RuntimeError):
@@ -83,6 +86,15 @@ def git_output(repo_root: Path, *args: str) -> str:
     return completed.stdout.strip()
 
 
+def allows_main_branch_phase6_exception(
+    *,
+    phase: str,
+    branch: str,
+    plan_text: str,
+) -> bool:
+    return phase == "6" and branch == "main" and MAIN_BRANCH_PHASE6_EXCEPTION in plan_text
+
+
 def validate(args: argparse.Namespace) -> dict[str, object]:
     repo_root = find_repo_root(Path(args.repo or Path.cwd()))
     plan_path = repo_root / "docs" / "PLAN_IMPLEMENTACION_POR_FASES.md"
@@ -142,7 +154,11 @@ def validate(args: argparse.Namespace) -> dict[str, object]:
 
         phase_slug = args.phase.lower()
         branch_pattern = re.compile(rf"^codex/fase-{re.escape(phase_slug)}(?:-|$)")
-        if not branch_pattern.match(branch):
+        if not branch_pattern.match(branch) and not allows_main_branch_phase6_exception(
+            phase=args.phase,
+            branch=branch,
+            plan_text=plan_text,
+        ):
             raise ValidationError(
                 f"Implementing Phase {args.phase} requires a codex/fase-{phase_slug}-* "
                 f"branch; current branch: {branch or '(detached)'}"

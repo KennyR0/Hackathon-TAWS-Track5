@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Callable
 
 import httpx
 
@@ -12,6 +13,9 @@ from app.contracts.entities import DataMode, DataProvenance, Freshness, allow_in
 from app.providers.base import FixtureDataProvider, MacroProvider, NewsProvider, PriceProvider, ProviderProbeResult
 
 FIXTURE_WARNINGS: tuple[str, ...] = ("FIXTURE_DATA", "NOT_REAL_TIME")
+DEFAULT_REQUEST_BUDGET = 8
+DEFAULT_RETRY_LIMIT = 1
+DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD = 1
 
 
 def _utc_now() -> datetime:
@@ -177,6 +181,8 @@ class MarketRuntimeSnapshot:
     provider: str
     warnings: tuple[str, ...]
     checks: dict[str, ProviderProbeResult]
+    request_budget: int
+    requests_used: int
 
 
 class MarketDataRuntimeService:
@@ -190,9 +196,17 @@ class MarketDataRuntimeService:
         crypto_price_provider: PriceProvider | None = None,
         macro_provider: MacroProvider | None = None,
         metadata_provider: PriceProvider | None = None,
+        request_budget: int = DEFAULT_REQUEST_BUDGET,
+        retry_limit: int = DEFAULT_RETRY_LIMIT,
+        circuit_breaker_failure_threshold: int = DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
     ) -> None:
         self._config = config
         self._fixture_provider = fixture_provider
+        self._request_budget = max(0, request_budget)
+        self._retry_limit = max(0, retry_limit)
+        self._circuit_breaker_failure_threshold = max(1, circuit_breaker_failure_threshold)
+        self._failed_provider_counts: dict[str, int] = {}
+        self._requests_used = 0
         self._news_provider = news_provider or GDELTNewsProvider()
         self._equity_price_provider = equity_price_provider or TwelveDataPriceProvider(
             config.twelve_data_api_key
@@ -236,6 +250,7 @@ class MarketDataRuntimeService:
         checks: dict[str, ProviderProbeResult] = {}
         warnings: list[str] = []
         provider_names: list[str] = []
+        self._requests_used = 0
 
         for key, provider_call in (
             ("news", lambda: self._safe_probe(self._news_provider.probe, "gdelt")),
@@ -265,20 +280,67 @@ class MarketDataRuntimeService:
             provider="+".join(dict.fromkeys(provider_names)),
             warnings=tuple(dict.fromkeys(warnings)),
             checks=checks,
+            request_budget=self._request_budget,
+            requests_used=self._requests_used,
         )
 
-    def _safe_probe(self, probe, provider: str) -> ProviderProbeResult:
+    def _safe_probe(self, probe: Callable[[], ProviderProbeResult], provider: str) -> ProviderProbeResult:
         if self._config.mode == DataMode.FIXTURE.value:
             return _fallback_result(
                 provider,
                 payload={"mode": DataMode.FIXTURE.value},
                 warning="FIXTURE_MODE_FORCES_OFFLINE_DATA",
             )
-        try:
-            return probe()
-        except Exception as exc:
+        if self._is_circuit_open(provider):
             return _fallback_result(
                 provider,
-                payload={"error": type(exc).__name__},
-                warning=f"{provider.upper()}_FALLBACK_ACTIVE",
+                payload={"circuitOpen": True},
+                warning=f"{provider.upper()}_CIRCUIT_OPEN",
             )
+        if self._request_budget <= 0:
+            return _fallback_result(
+                provider,
+                payload={"requestBudget": self._request_budget, "requestsUsed": self._requests_used},
+                warning=f"{provider.upper()}_BUDGET_EXHAUSTED",
+            )
+
+        last_exc: Exception | None = None
+        for attempt in range(1, self._retry_limit + 2):
+            if self._requests_used >= self._request_budget:
+                return _fallback_result(
+                    provider,
+                    payload={
+                        "attempts": attempt - 1,
+                        "requestBudget": self._request_budget,
+                        "requestsUsed": self._requests_used,
+                    },
+                    warning=f"{provider.upper()}_BUDGET_EXHAUSTED",
+                )
+            self._requests_used += 1
+            try:
+                result = probe()
+            except Exception as exc:
+                last_exc = exc
+                continue
+            if result.ok:
+                self._failed_provider_counts.pop(provider, None)
+            return result
+
+        self._record_provider_failure(provider)
+        return _fallback_result(
+            provider,
+            payload={
+                "error": type(last_exc).__name__ if last_exc is not None else "UnknownError",
+                "attempts": self._retry_limit + 1,
+            },
+            warning=f"{provider.upper()}_FALLBACK_ACTIVE",
+        )
+
+    def _is_circuit_open(self, provider: str) -> bool:
+        return (
+            self._failed_provider_counts.get(provider, 0)
+            >= self._circuit_breaker_failure_threshold
+        )
+
+    def _record_provider_failure(self, provider: str) -> None:
+        self._failed_provider_counts[provider] = self._failed_provider_counts.get(provider, 0) + 1

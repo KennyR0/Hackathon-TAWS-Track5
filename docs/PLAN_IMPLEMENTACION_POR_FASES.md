@@ -1,14 +1,14 @@
 ---
 plan_version: 2
-current_phase: 1
+current_phase: 7
 phase_S0: aceptada
 phase_0: aceptada
-phase_1: lista_para_revision
-phase_2: pendiente
-phase_3: pendiente
-phase_4: pendiente
-phase_5: pendiente
-phase_6: pendiente
+phase_1: aceptada
+phase_2: aceptada
+phase_3: aceptada
+phase_4: aceptada
+phase_5: aceptada
+phase_6: aceptada
 phase_7: pendiente
 phase_8: pendiente
 phase_9: pendiente
@@ -70,19 +70,20 @@ Reglas:
 - No se hace commit, push, despliegue ni cambio cloud sin autorización explícita.
 - Una alternativa rechazada no modifica el último baseline aceptado.
 - Los cambios preexistentes del usuario se preservan; si se solapan con una fase, la ejecución se detiene y reporta el conflicto.
+- Excepcion autorizada: Fase 6 ejecutada en `main` por autorizacion explicita del usuario. Esta excepcion no aplica a fases futuras.
 
 ## 4. Estado
 
 | Fase | Estado | Propósito |
 |---|---|---|
-| S0 | lista_para_revision | Plan persistente y skills |
+| S0 | aceptada | Plan persistente y skills |
 | 0 | aceptada | Contratos y fixtures |
-| 1 | lista_para_revision | Walking skeleton |
-| 2 | pendiente | Radar |
-| 3 | pendiente | Señal explicable |
-| 4 | pendiente | Supabase, revisión y briefing |
-| 5 | pendiente | Dos agentes y LangGraph |
-| 6 | pendiente | Proveedores live y fallback |
+| 1 | aceptada | Walking skeleton |
+| 2 | aceptada | Radar |
+| 3 | aceptada | Señal explicable |
+| 4 | aceptada | Supabase, revisión y briefing |
+| 5 | aceptada | Dos agentes y LangGraph |
+| 6 | lista_para_revision | Proveedores live y fallback |
 | 7 | pendiente | Despliegue y demo |
 | 8 | pendiente | Auth, roles y RLS |
 | 9 | pendiente | Workers y operación |
@@ -324,6 +325,13 @@ Entregables:
 
 Gate: Historia de Usuario 1 completa sin red.
 
+Evidencia de auditoria:
+
+- API `GET /api/v1/events` con filtros por activo y metadatos `fixture`.
+- Normalizacion y diagnostico de fuentes en `FixtureRepository`.
+- Cobertura en `backend/tests/api/test_runtime_api.py` y contratos de consumidores.
+- Resultado: fase aceptada por autorizacion del usuario para continuar a Fase 6.
+
 ### Fase 3 — Señal explicable
 
 Prerrequisito: Fase 2 `aceptada`.
@@ -337,6 +345,13 @@ Entregables:
 
 Gate: Historia de Usuario 2 completa y ninguna cifra sin snapshot o evidencia.
 
+Evidencia de auditoria:
+
+- Calculos deterministas de retornos, benchmark, volumen relativo, confianza y abstencion.
+- Senales runtime reconstruidas desde fixtures con evidencia favorable y contradictoria.
+- Cobertura en `backend/tests/contracts/test_runtime_logic.py` y API de senales/evidencia.
+- Resultado: fase aceptada por autorizacion del usuario para continuar a Fase 6.
+
 ### Fase 4 — Supabase, revisión y briefing
 
 Prerrequisito: Fase 3 `aceptada`.
@@ -349,6 +364,13 @@ Entregables:
 - Revisión inmutable y briefing determinístico.
 
 Gate: datos conservados tras reinicio, justificación obligatoria y reglas de publicación verificadas.
+
+Evidencia de auditoria:
+
+- `SupabaseRepository` persiste revisiones, briefings, corridas, pasos e idempotencia sobre el baseline fixture.
+- Scripts server-side: `bootstrap_supabase.py`, `check_supabase_connection.py` y `check_supabase_persistence.py`.
+- Cobertura en `backend/tests/repositories/test_supabase_repository.py` y contratos de configuracion Supabase.
+- Resultado: fase aceptada por autorizacion del usuario para continuar a Fase 6.
 
 ### Fase 5 — Dos agentes y LangGraph
 
@@ -376,6 +398,14 @@ Entregables:
 
 Gate: recuperación desde checkpoint sin duplicados y ninguna señal inválida llega al Asesor.
 
+Evidencia de auditoria:
+
+- Workflow LangGraph con nodos de normalizacion, calculo, Analista, validacion, abstencion, Asesor y auditoria.
+- Adaptadores `fixture` y OpenAI Responses API con salida estructurada y `store: false`.
+- Gate de asesor estricto: solo senales `completed` pasan tras `abstention_guard`.
+- Cobertura en tests API de analisis, stream/replay, contratos OpenAI y persistencia de pasos.
+- Resultado: fase aceptada por autorizacion del usuario para continuar a Fase 6.
+
 ### Fase 6 — Proveedores live y fallback
 
 Prerrequisito: Fase 5 `aceptada`.
@@ -389,6 +419,23 @@ Entregables:
 - Caché, presupuesto, reintentos, circuit breaker y fallback.
 
 Gate: recorrido live y caída simulada con advertencia y confianza reducida.
+
+Decision de ejecucion:
+
+- Fase 6 ejecutada en `main` por autorizacion explicita del usuario.
+- El recorrido live real se soporta con `.env` local, pero no es obligatorio para cerrar el gate si no hay claves.
+- El cierre exige recorrido offline, proveedores simulados, caida simulada, fallback visible y penalizacion de confianza.
+
+Evidencia de cierre local:
+
+- Auditoria S0-Fase 5: backend, contratos, Supabase, LangGraph, revision humana y SSE presentes en codigo y tests.
+- `.venv312\Scripts\python.exe scripts\validate_phase.py implement 6 --repo .`: aprobado antes de cerrar el gate, usando excepcion documentada para `main`.
+- `.venv312\Scripts\python.exe -m pytest backend\tests --basetemp .tmp\pytest -p no:cacheprovider`: `143 passed`.
+- `MARKET_DATA_MODE=fixture .venv312\Scripts\python.exe backend\scripts\check_market_data_pipeline.py`: `effectiveDataMode=fixture`, `requestsUsed=0`.
+- `MARKET_DATA_MODE=hybrid .venv312\Scripts\python.exe backend\scripts\check_market_data_pipeline.py`: `effectiveDataMode=fallback`, warnings de proveedores y claves faltantes, sin exponer secretos.
+- Tests nuevos cubren proveedores live simulados, claves faltantes, error con retry, circuit breaker, presupuesto y penalizacion de confianza por fallback.
+- No se hizo commit, push, despliegue ni cambio cloud.
+- Resultado del gate: aprobado; Fase 6 queda `lista_para_revision` y espera decision del usuario.
 
 ### Fase 7 — Despliegue y demo
 
@@ -462,7 +509,7 @@ Producto:
 
 - Las fases S0–5 pueden trabajar sin claves de proveedores mediante fixtures.
 - Supabase debe estar provisionado antes de aceptar la Fase 4.
-- La Fase 6 requiere credenciales live.
+- La Fase 6 soporta credenciales live; sin claves locales, su gate se cierra con mocks, fallback simulado y scripts listos para `.env`.
 - La Fase 7 requiere autorización y acceso a Vercel y Render.
 - La demo pública usa datos no sensibles y una identidad fija; no se considera producción.
 - Quedan fuera: trading, personalización financiera, alta frecuencia, roles completos, móvil, correo, PDF y cobertura extensa de crédito.
@@ -478,6 +525,8 @@ Producto:
 | 2026-07-11 | S0 | Solicitar revisión | Todos los gates de S0 terminaron verdes; solo el usuario puede aceptarla |
 | 2026-07-12 | 1 | Conectar frontend con backend solo local | Alcance elegido por el usuario; despliegue Vercel/Render queda pendiente |
 | 2026-07-12 | 1 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario |
+| 2026-07-12 | 6 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para implementar proveedores live/fallback |
+| 2026-07-12 | 6 | Cerrar live sin claves obligatorias | El gate acepta mocks, caida simulada y script live opcional para no exponer secretos |
 
 ## 12. Registro de cambios
 
@@ -486,3 +535,5 @@ Producto:
 | 2026-07-11 | 1 | Plan inicial persistido; Fase S0 en curso |
 | 2026-07-11 | 2 | Skills auditadas y sincronizadas; forward-tests aprobados; S0 lista para revisión |
 | 2026-07-12 | 2 | Fase 1 conectada localmente entre React/Vite y FastAPI; queda lista para revision |
+| 2026-07-12 | 2 | Auditoria S0-Fase 5 registrada; Fase 6 iniciada en main por autorizacion explicita |
+| 2026-07-12 | 2 | Fase 6 live/fallback implementada y lista para revision |

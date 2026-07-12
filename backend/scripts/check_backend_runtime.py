@@ -56,6 +56,8 @@ def main() -> int:
                     "effectiveDataMode": market_snapshot.data_mode,
                     "provider": market_snapshot.provider,
                     "warnings": list(market_snapshot.warnings),
+                    "requestBudget": market_snapshot.request_budget,
+                    "requestsUsed": market_snapshot.requests_used,
                 },
             },
             ensure_ascii=False,

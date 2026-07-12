@@ -38,6 +38,8 @@ def main() -> int:
                 "effectiveDataMode": snapshot.data_mode,
                 "provider": snapshot.provider,
                 "warnings": list(snapshot.warnings),
+                "requestBudget": snapshot.request_budget,
+                "requestsUsed": snapshot.requests_used,
                 "checks": {
                     key: {
                         "provider": value.provider,
