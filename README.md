@@ -2,6 +2,18 @@
 
 Plataforma de inteligencia de mercado que transforma noticias y datos verificables en señales explicables y briefings sujetos a revisión humana.
 
+## Qué hay hoy en el repo
+
+- Backend FastAPI con contratos tipados y OpenAPI exportado.
+- Workflow con dos agentes y nodos de control:
+  - Analista de Coyuntura de Mercados IA
+  - Asesor Financiero e Inversiones IA
+- Modo `fixture` offline, modo `supabase` para persistencia mutable y modo `hybrid/live` para proveedores.
+- Frontend React/Vite conectado al backend real para radar, señales, reviews, briefings y auditoría.
+- Persistencia con Supabase para reviews, briefings, runs, steps e idempotencia.
+
+El foco del proyecto es explicar por qué una señal existe, de dónde salen sus datos y qué necesita revisión humana antes de compartirse.
+
 ## Documentación
 
 - [Plan de implementación por fases](docs/PLAN_IMPLEMENTACION_POR_FASES.md)
@@ -16,6 +28,15 @@ Plataforma de inteligencia de mercado que transforma noticias y datos verificabl
 - [Guion de demo](docs/demo-script.md)
 
 El repositorio trabaja por fases gobernadas en `docs/PLAN_IMPLEMENTACION_POR_FASES.md`. Ninguna fase se acepta o avanza automaticamente.
+
+## Recorrido principal del producto
+
+1. `GET /api/v1/events`: radar de eventos y filtros.
+2. `GET /api/v1/signals` y `GET /api/v1/signals/{signalId}`: señales explicables por activo.
+3. `GET /api/v1/signals/{signalId}/evidence`: trazabilidad y respaldo.
+4. `POST /api/v1/signals/{signalId}/reviews`: revisión humana con justificación.
+5. `POST /api/v1/briefings`: briefing `draft` o `shareable`.
+6. `POST /api/v1/analyses` + SSE: ejecución del workflow y auditoría por pasos.
 
 ## Estructura rápida del repo
 
@@ -32,6 +53,70 @@ supabase/            esquema SQL y soporte de persistencia
 ```
 
 La guía ampliada está en [docs/ESTRUCTURA_REPO.md](docs/ESTRUCTURA_REPO.md).
+
+## Arranque rápido
+
+### 1. Variables de entorno
+
+```bash
+cp .env.example .env
+```
+
+Valores mínimos para trabajar offline:
+
+```bash
+LLM_PROVIDER=fixture
+REPOSITORY_BACKEND=fixture
+MARKET_DATA_MODE=fixture
+FIXTURE_BUNDLE_PATH=data/fixtures/v1/phase0_bundle.json
+VITE_API_BASE_URL=/api
+```
+
+### 2. Backend
+
+Instala dependencias del backend en Python 3.12:
+
+```bash
+cd backend
+python -m pip install -e .[dev]
+```
+
+Levanta la API:
+
+```bash
+python -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
+```
+
+### 3. Frontend
+
+En otra terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+También puedes usar `pnpm` si lo prefieres. En desarrollo, Vite proxifica `/api` hacia `http://127.0.0.1:8000`.
+
+### 4. Verificaciones útiles
+
+Backend:
+
+```bash
+pytest backend/tests -q
+python backend/scripts/check_demo_flow.py
+python backend/scripts/check_backend_runtime.py --env-file .env
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run typecheck
+npm run lint
+npm run build
+```
 
 ## Configuracion de OpenAI
 
@@ -146,3 +231,27 @@ Smoke local del flujo de demo sin red ni secretos:
 ```powershell
 MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py
 ```
+
+## Frontend actual
+
+La SPA vive en `frontend/src/app`, `frontend/src/features` y `frontend/src/shared`.
+
+Pantallas disponibles:
+
+- `/summary`
+- `/radar`
+- `/assets/:symbol`
+- `/signals`
+- `/signals/:signalId`
+- `/reviews`
+- `/briefings`
+- `/briefings/:briefingId`
+- `/assistant`
+- `/audit`
+- `/audit/:runId`
+
+Notas de contrato:
+
+- El detalle de activo se deriva desde señales, eventos y snapshots existentes; hoy no hay endpoint profundo por activo.
+- El asistente no envía chat libre porque el backend no expone ese endpoint todavía.
+- La auditoría usa SSE real y replay de pasos persistidos.

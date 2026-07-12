@@ -20,7 +20,7 @@ Frontend:
 
 ```powershell
 cd frontend
-corepack pnpm dev
+npm run dev
 ```
 
 Variable publica local:
@@ -60,7 +60,7 @@ BACKEND_CORS_ORIGINS=https://<vercel-app>.vercel.app,http://localhost:5173,http:
 | Detalle de senal | `GET /api/v1/signals/{signalId}` y `GET /api/v1/signals/{signalId}/evidence` | Muestra impacto, confianza, revision, evidencia, `dataMode` y warnings. |
 | Revision humana | `POST /api/v1/signals/{signalId}/reviews` | Guarda `reviewed`, `escalated` o `discarded` con justificacion e `Idempotency-Key`. |
 | Briefing | `POST /api/v1/briefings` | Crea briefing `draft`, hidrata senales y expone warnings agregados. |
-| Auditoria | `POST /api/v1/analyses`, `GET /api/v1/analyses/{runId}`, `GET /api/v1/runs/{runId}/steps` | Crea una ejecucion, espera terminal y renderiza pasos, modo de datos y warnings. |
+| Auditoria | `POST /api/v1/analyses`, `GET /api/v1/analyses/{runId}`, `GET /api/v1/runs/{runId}/steps`, `GET /api/v1/analyses/{runId}/stream` | Crea una ejecucion, escucha SSE real, rehidrata pasos y renderiza modo de datos, warnings y timeline. |
 
 ## Smoke local de demo
 
@@ -75,4 +75,5 @@ Este smoke recorre `radar -> senal -> evidencia -> revision -> briefing` usando 
 - No se ejecuto despliegue real en Vercel ni Render.
 - No se validaron URLs publicas reales porque aun no existen en el repo.
 - Auth, roles y RLS productivo quedan para fases posteriores.
-- La auditoria visual usa polling mas lectura de pasos; el endpoint SSE sigue disponible para una mejora posterior.
+- No existe endpoint profundo por activo; esa pantalla se deriva desde señales y eventos existentes.
+- No existe endpoint de chat libre; la pantalla `assistant` muestra contexto del run sin simular conversación.

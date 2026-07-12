@@ -1,41 +1,89 @@
-p# React + TypeScript + Vite
+# Frontend de NexoMercado AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+SPA en React + Vite para el Track 5 del hackathon. Consume el backend FastAPI real, muestra el modo de datos (`fixture`, `live`, `fallback`) y prioriza trazabilidad, revisión humana y auditoría.
 
-## Development
+## Stack
+
+- React 19
+- React Router 7
+- TanStack Query
+- TypeScript
+- Recharts
+- Lightweight Charts
+- OpenAPI types generados desde `../contracts/openapi.json`
+
+## Pantallas principales
+
+- `/summary`: resumen operativo
+- `/radar`: eventos y filtros
+- `/assets/:symbol`: detalle derivado por activo
+- `/signals`: cola de señales
+- `/signals/:signalId`: detalle de señal con evidencia y revisión
+- `/reviews`: centro de revisión humana
+- `/briefings`: lista de briefings recientes
+- `/briefings/:briefingId`: detalle de briefing y tareas embebidas
+- `/assistant`: contexto del workflow y estado del run
+- `/audit`: runs recientes
+- `/audit/:runId`: timeline del workflow con SSE
+
+## Configuración
+
+Variables públicas:
 
 ```bash
-corepack pnpm install
-corepack pnpm dev
-corepack pnpm lint
-corepack pnpm build
+VITE_API_BASE_URL=/api
 ```
 
-Currently, two official plugins are available:
+Para despliegue:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+VITE_API_BASE_URL=https://<render-service>/api
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+El frontend también acepta `VITE_API_URL` por compatibilidad, pero normaliza siempre al prefijo `/api`.
+
+## Desarrollo local
+
+Con `npm`:
+
+```bash
+npm install
+npm run dev
+```
+
+Con `pnpm`:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+En local, Vite proxifica `/api` hacia `http://127.0.0.1:8000`.
+
+## Scripts
+
+```bash
+npm run generate:types
+npm run typecheck
+npm run lint
+npm run build
+```
+
+`build` regenera tipos OpenAPI antes de compilar.
+
+## Estructura
+
+```text
+src/
+  app/        shell, router y providers
+  features/   vistas por dominio
+  shared/     api, mappers, ui y utilidades
+```
+
+Hay archivos legacy en `src/components`, `src/pages` y `src/lib` que pertenecen a la etapa anterior del frontend. La ruta activa del proyecto vive en `src/app`, `src/features` y `src/shared`.
+
+## Límites actuales del contrato backend
+
+- No existe un endpoint profundo de series por activo; `/assets/:symbol` se deriva desde señales y eventos existentes.
+- No existe un endpoint de chat libre; `/assistant` muestra contexto real, prompts sugeridos y el progreso del workflow, sin simular conversación falsa.
+- La auditoría usa SSE real en `/api/v1/analyses/{runId}/stream` y rehidratación con `/api/v1/runs/{runId}/steps`.
