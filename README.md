@@ -94,6 +94,7 @@ Probe operativo del runtime de mercado:
 
 ```bash
 backend/.venv314/bin/python backend/scripts/check_market_data_pipeline.py --env-file .env
+backend/.venv314/bin/python backend/scripts/check_backend_runtime.py --env-file .env
 ```
 
 Variables live esperadas:
