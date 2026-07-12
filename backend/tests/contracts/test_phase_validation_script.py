@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+import json
+import subprocess
+from pathlib import Path
+
+SCRIPT_PATH = Path(__file__).resolve().parents[3] / "scripts" / "validate_phase.py"
+
+
+def run_validation(*args: str) -> tuple[int, dict[str, object]]:
+    completed = subprocess.run(
+        ["python3", str(SCRIPT_PATH), *args],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    payload = completed.stdout.strip() or completed.stderr.strip()
+    return completed.returncode, json.loads(payload)
+
+
+def create_temp_repo(tmp_path: Path) -> Path:
+    repo_path = tmp_path / "demo-repo"
+    docs_path = repo_path / "docs"
+    docs_path.mkdir(parents=True)
+
+    (repo_path / "README.md").write_text("# NexoMercado AI\n", encoding="utf-8")
+    (docs_path / "PLAN_IMPLEMENTACION_POR_FASES.md").write_text(
+        """---
+plan_version: 2
+current_phase: 1
+phase_S0: aceptada
+phase_0: aceptada
+phase_1: en_curso
+phase_2: pendiente
+phase_3: pendiente
+phase_4: pendiente
+phase_5: pendiente
+phase_6: pendiente
+phase_7: pendiente
+phase_8: pendiente
+phase_9: pendiente
+phase_10: pendiente
+last_updated: 2026-07-12
+---
+
+# Plan de implementación por fases — NexoMercado AI
+
+### Fase 1 — Walking skeleton
+
+- Backend mínimo.
+""",
+        encoding="utf-8",
+    )
+
+    subprocess.run(["git", "init", "-b", "main"], cwd=repo_path, check=True)
+    subprocess.run(
+        ["git", "config", "user.name", "Codex Tests"],
+        cwd=repo_path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "codex-tests@example.com"],
+        cwd=repo_path,
+        check=True,
+    )
+    subprocess.run(["git", "add", "."], cwd=repo_path, check=True)
+    subprocess.run(["git", "commit", "-m", "Base"], cwd=repo_path, check=True)
+    return repo_path
+
+
+def test_validate_phase_script_accepts_valid_repo(tmp_path: Path) -> None:
+    repo_path = create_temp_repo(tmp_path)
+
+    code, payload = run_validation("validate", "1", "--repo", str(repo_path))
+
+    assert code == 0
+    assert payload["ok"] is True
+    assert payload["status"] == "en_curso"
+    assert payload["currentPhase"] == "1"
+    assert payload["activePhases"] == ["1"]
+    assert payload["branch"] == "main"
+
+
+def test_validate_phase_script_rejects_wrong_implement_branch(tmp_path: Path) -> None:
+    repo_path = create_temp_repo(tmp_path)
+
+    code, payload = run_validation("implement", "1", "--repo", str(repo_path))
+
+    assert code == 1
+    assert payload["ok"] is False
+    assert "codex/fase-1" in str(payload["error"])
