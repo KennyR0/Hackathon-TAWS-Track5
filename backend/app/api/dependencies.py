@@ -4,17 +4,19 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from app.config import get_runtime_config
+from app.config import get_runtime_config, get_supabase_config
 from app.llm.base import LLMAdapter
 from app.llm.fixture_adapter import FixtureLLMAdapter
 from app.llm.openai_responses import OpenAIResponsesAdapter
 from app.providers.fixture_provider import FixtureProvider
 from app.repositories.fixture_repository import FixtureRepository
+from app.repositories.supabase_repository import SupabaseRepository
 from app.services.analysis_service import AnalysisService
 from app.services.briefing_service import BriefingService
 from app.services.event_service import EventService
 from app.services.review_service import ReviewService
 from app.services.signal_service import SignalService
+from app.supabase_client import create_supabase_client
 
 
 @lru_cache
@@ -25,7 +27,18 @@ def get_fixture_provider() -> FixtureProvider:
 
 @lru_cache
 def get_repository() -> FixtureRepository:
+    runtime_config = get_runtime_config()
+    if runtime_config.repository_backend == "supabase":
+        return SupabaseRepository(
+            get_fixture_provider(),
+            get_supabase_client(),
+        )
     return FixtureRepository(get_fixture_provider())
+
+
+@lru_cache
+def get_supabase_client():
+    return create_supabase_client(get_supabase_config())
 
 
 @lru_cache

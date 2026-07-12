@@ -29,8 +29,12 @@ def consumer_manifest() -> dict[str, object]:
 @pytest.fixture(autouse=True)
 def reset_backend_singletons(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_PROVIDER", "fixture")
+    monkeypatch.setenv("REPOSITORY_BACKEND", "fixture")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
     dependencies.get_fixture_provider.cache_clear()
+    dependencies.get_supabase_client.cache_clear()
     dependencies.get_repository.cache_clear()
     dependencies.get_llm_adapter.cache_clear()
     dependencies.get_event_service.cache_clear()
