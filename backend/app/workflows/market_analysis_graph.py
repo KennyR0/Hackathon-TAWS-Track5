@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
+from time import sleep
 from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
 from app.contracts.api import AgentRunStep
-from app.contracts.entities import AnalysisStatus, Signal, allow_internal_field_names
+from app.contracts.entities import AnalysisStatus, Impact, Signal, allow_internal_field_names
 from app.llm.base import LLMAdapter
 from app.repositories.fixture_repository import FixtureRepository
 from app.workflows.state import MarketAnalysisState
+
+FORBIDDEN_LANGUAGE = (
+    "compra",
+    "comprar",
+    "buy",
+    "vende",
+    "vender",
+    "sell",
+    "garantiza",
+    "garantizado",
+    "definitivamente",
+)
 
 
 def run_market_analysis_workflow(
@@ -21,11 +34,14 @@ def run_market_analysis_workflow(
     run_id: str,
     event_id: str,
     asset_ids: tuple[str, ...],
+    started_at: datetime,
+    step_sink,
 ) -> tuple[Signal, ...]:
     graph = StateGraph(MarketAnalysisState)
     for node_name, handler in (
         ("load_context", _load_context(repository)),
         ("normalize_news", _normalize_news(repository)),
+        ("verify_sources", _verify_sources(repository)),
         ("link_assets", _link_assets(repository)),
         ("fetch_market_snapshots", _fetch_market_snapshots()),
         ("calculate_reactions", _calculate_reactions(repository)),
@@ -33,20 +49,23 @@ def run_market_analysis_workflow(
         ("validate_evidence", _validate_evidence(repository)),
         ("abstention_guard", _abstention_guard()),
         ("advisor_agent", _advisor_agent(llm_adapter)),
+        ("risk_language_guard", _risk_language_guard()),
         ("briefing_builder", _briefing_builder()),
         ("audit_writer", _audit_writer()),
     ):
         graph.add_node(node_name, handler)
     graph.add_edge(START, "load_context")
     graph.add_edge("load_context", "normalize_news")
-    graph.add_edge("normalize_news", "link_assets")
+    graph.add_edge("normalize_news", "verify_sources")
+    graph.add_edge("verify_sources", "link_assets")
     graph.add_edge("link_assets", "fetch_market_snapshots")
     graph.add_edge("fetch_market_snapshots", "calculate_reactions")
     graph.add_edge("calculate_reactions", "analyst_agent")
     graph.add_edge("analyst_agent", "validate_evidence")
     graph.add_edge("validate_evidence", "abstention_guard")
     graph.add_edge("abstention_guard", "advisor_agent")
-    graph.add_edge("advisor_agent", "briefing_builder")
+    graph.add_edge("advisor_agent", "risk_language_guard")
+    graph.add_edge("risk_language_guard", "briefing_builder")
     graph.add_edge("briefing_builder", "audit_writer")
     graph.add_edge("audit_writer", END)
 
@@ -58,11 +77,24 @@ def run_market_analysis_workflow(
         "steps": [],
         "payloads": {},
         "fixture_clock": repository.fixture_clock.isoformat(),
+        "run_started_at": started_at.isoformat(),
+        "step_sink": step_sink,
     }
     compiled = graph.compile()
     final_state = compiled.invoke(state)
-    repository.set_run_steps(run_id, tuple(final_state["steps"]))
     return final_state["matched_signals"]
+
+
+def sanitize_risk_language(text: str) -> tuple[str, tuple[str, ...]]:
+    lower_text = text.lower()
+    violations = tuple(token for token in FORBIDDEN_LANGUAGE if token in lower_text)
+    if not violations:
+        return text, ()
+    safe_text = (
+        "Resumen bloqueado por lenguaje de riesgo. "
+        "Se reemplazo por una version prudente sujeta a revision humana."
+    )
+    return safe_text, violations
 
 
 def _load_context(repository: FixtureRepository):
@@ -97,20 +129,23 @@ def _load_context(repository: FixtureRepository):
 
 def _normalize_news(repository: FixtureRepository):
     def handler(state: MarketAnalysisState) -> MarketAnalysisState:
-        payload = {
-            "articles": [
-                {
-                    "id": article.id,
-                    "headline": article.headline,
-                    "sourceId": article.source_id,
-                    "publishedAt": article.published_at.isoformat().replace("+00:00", "Z"),
-                }
-                for article in state["event_articles"]
-            ],
-            "sourceDomains": [source.domain for source in state["event_sources"]],
-        }
+        normalized_articles = repository.get_normalized_event_articles(state["event"].id)
+        payload = {"articles": list(normalized_articles)}
+        state["normalized_articles"] = normalized_articles
         state["payloads"]["normalize_news"] = payload
         _append_step(state, "normalize_news", payload)
+        return state
+
+    return handler
+
+
+def _verify_sources(repository: FixtureRepository):
+    def handler(state: MarketAnalysisState) -> MarketAnalysisState:
+        diagnostics = repository.get_event_source_diagnostics(state["event"].id)
+        state["source_validation"] = diagnostics
+        state["warnings"].extend(str(item) for item in diagnostics["warnings"])
+        state["payloads"]["verify_sources"] = diagnostics
+        _append_step(state, "verify_sources", diagnostics)
         return state
 
     return handler
@@ -142,25 +177,19 @@ def _fetch_market_snapshots():
     return handler
 
 
-def _passthrough_node(node_name: str):
-    def handler(state: MarketAnalysisState) -> MarketAnalysisState:
-        _append_step(state, node_name, {"status": "ok"})
-        return state
-
-    return handler
-
-
 def _calculate_reactions(repository: FixtureRepository):
     def handler(state: MarketAnalysisState) -> MarketAnalysisState:
         payload: dict[str, Any] = {}
-        enriched_signals: list[Signal] = []
+        runtime_signals = []
         for signal in state["matched_signals"]:
-            price_reaction = signal.price_reaction or repository.calculate_signal_price_reaction(signal)
-            if price_reaction is not None:
-                signal = signal.model_copy(update={"price_reaction": price_reaction})
-            enriched_signals.append(signal)
-            payload[signal.id] = signal.price_reaction.model_dump(mode="json", by_alias=True) if signal.price_reaction else {}
-        state["matched_signals"] = tuple(enriched_signals)
+            runtime_signal = repository.build_runtime_signal(signal.id)
+            runtime_signals.append(runtime_signal)
+            payload[runtime_signal.id] = (
+                runtime_signal.price_reaction.model_dump(mode="json", by_alias=True)
+                if runtime_signal.price_reaction is not None
+                else {}
+            )
+        state["matched_signals"] = tuple(runtime_signals)
         state["payloads"]["calculate_reactions"] = payload
         _append_step(state, "calculate_reactions", payload)
         return state
@@ -170,13 +199,22 @@ def _calculate_reactions(repository: FixtureRepository):
 
 def _analyst_agent(llm_adapter: LLMAdapter):
     def handler(state: MarketAnalysisState) -> MarketAnalysisState:
-        summaries = {
-            signal.id: llm_adapter.summarize_signal(signal)
+        outputs = {
+            signal.id: llm_adapter.analyze_signal(signal)
             for signal in state["matched_signals"]
         }
-        state["result_summary"] = " | ".join(summaries.values())
-        state["payloads"]["analyst_agent"] = summaries
-        _append_step(state, "analyst_agent", summaries)
+        payload = {
+            signal_id: {
+                "thesis": output.thesis,
+                "assumptions": output.assumptions,
+                "invalidationConditions": output.invalidation_conditions,
+                "suggestedResearchActions": output.suggested_research_actions,
+            }
+            for signal_id, output in outputs.items()
+        }
+        state["analyst_outputs"] = outputs
+        state["payloads"]["analyst_agent"] = payload
+        _append_step(state, "analyst_agent", payload)
         return state
 
     return handler
@@ -185,14 +223,25 @@ def _analyst_agent(llm_adapter: LLMAdapter):
 def _validate_evidence(repository: FixtureRepository):
     def handler(state: MarketAnalysisState) -> MarketAnalysisState:
         payload = {}
+        validated_signals: list[Signal] = []
         for signal in state["matched_signals"]:
             evidence = repository.get_signal_evidence(signal.id)
+            is_complete = repository._signal_evidence_is_complete(signal, evidence)
+            if not is_complete:
+                signal = signal.model_copy(
+                    update={
+                        "impact": Impact.UNCERTAIN,
+                        "analysis_status": AnalysisStatus.INSUFFICIENT_EVIDENCE,
+                        "confidence": min(signal.confidence, 0.59),
+                    }
+                )
             payload[signal.id] = {
                 "evidenceCount": len(evidence),
-                "counterEvidenceCount": len(
-                    tuple(item for item in evidence if not item.supports_signal)
-                ),
+                "counterEvidenceCount": len([item for item in evidence if not item.supports_signal]),
+                "isComplete": is_complete,
             }
+            validated_signals.append(signal)
+        state["matched_signals"] = tuple(validated_signals)
         state["evidence_checked"] = True
         state["payloads"]["validate_evidence"] = payload
         _append_step(state, "validate_evidence", payload)
@@ -201,36 +250,69 @@ def _validate_evidence(repository: FixtureRepository):
     return handler
 
 
-def _advisor_agent(llm_adapter: LLMAdapter):
-    def handler(state: MarketAnalysisState) -> MarketAnalysisState:
-        summary = llm_adapter.build_briefing_summary(state["matched_signals"])
-        state["advisor_summary"] = summary
-        _append_step(state, "advisor_agent", {"summary": summary})
-        return state
-
-    return handler
-
-
 def _abstention_guard():
     def handler(state: MarketAnalysisState) -> MarketAnalysisState:
+        advisor_signals = tuple(
+            signal
+            for signal in state["matched_signals"]
+            if signal.analysis_status == AnalysisStatus.COMPLETED
+        )
         payload = {
             "uncertainSignals": [
                 signal.id
                 for signal in state["matched_signals"]
                 if signal.analysis_status != AnalysisStatus.COMPLETED
             ],
-            "completedSignals": [
-                signal.id
-                for signal in state["matched_signals"]
-                if signal.analysis_status == AnalysisStatus.COMPLETED
-            ],
+            "completedSignals": [signal.id for signal in advisor_signals],
         }
-        state["warnings"] = [
+        state["warnings"].extend(
             f"Signal {signal_id} requires abstention or revision humana."
             for signal_id in payload["uncertainSignals"]
-        ]
+        )
+        state["advisor_signals"] = advisor_signals
         state["payloads"]["abstention_guard"] = payload
         _append_step(state, "abstention_guard", payload)
+        return state
+
+    return handler
+
+
+def _advisor_agent(llm_adapter: LLMAdapter):
+    def handler(state: MarketAnalysisState) -> MarketAnalysisState:
+        summary = llm_adapter.build_briefing(
+            state.get("advisor_signals", ()),
+            warnings=tuple(state.get("warnings", [])),
+        )
+        payload = {"executiveSummary": summary.executive_summary}
+        state["advisor_summary"] = summary
+        state["payloads"]["advisor_agent"] = payload
+        _append_step(state, "advisor_agent", payload)
+        return state
+
+    return handler
+
+
+def _risk_language_guard():
+    def handler(state: MarketAnalysisState) -> MarketAnalysisState:
+        guarded_summary, violations = sanitize_risk_language(
+            state.get("advisor_summary").executive_summary
+        )
+        analyst_payload: dict[str, Any] = {}
+        analyst_outputs = state.get("analyst_outputs", {})
+        sanitized_outputs = {}
+        for signal_id, output in analyst_outputs.items():
+            safe_summary, summary_violations = sanitize_risk_language(output.analyst_summary)
+            analyst_payload[signal_id] = {"violations": list(summary_violations)}
+            sanitized_outputs[signal_id] = output.model_copy(update={"analyst_summary": safe_summary})
+        state["analyst_outputs"] = sanitized_outputs
+        state["advisor_summary"] = state["advisor_summary"].model_copy(
+            update={"executive_summary": guarded_summary}
+        )
+        if violations:
+            state["warnings"].append("RISK_LANGUAGE_BLOCKED")
+        payload = {"summaryViolations": list(violations), "analystViolations": analyst_payload}
+        state["payloads"]["risk_language_guard"] = payload
+        _append_step(state, "risk_language_guard", payload)
         return state
 
     return handler
@@ -239,8 +321,8 @@ def _abstention_guard():
 def _briefing_builder():
     def handler(state: MarketAnalysisState) -> MarketAnalysisState:
         payload = {
-            "summary": state.get("advisor_summary", ""),
-            "signalIds": [signal.id for signal in state["matched_signals"]],
+            "executiveSummary": state["advisor_summary"].executive_summary,
+            "eligibleSignalIds": [signal.id for signal in state.get("advisor_signals", ())],
             "warnings": state.get("warnings", []),
         }
         state["payloads"]["briefing_builder"] = payload
@@ -252,8 +334,14 @@ def _briefing_builder():
 
 def _audit_writer():
     def handler(state: MarketAnalysisState) -> MarketAnalysisState:
+        completed_signals = len(state.get("advisor_signals", ()))
+        terminal_status = (
+            AnalysisStatus.COMPLETED.value if completed_signals else AnalysisStatus.INSUFFICIENT_EVIDENCE.value
+        )
         payload = {
+            "runId": state["run_id"],
             "finalNode": "pending_review",
+            "terminalStatus": terminal_status,
             "stepCount": len(state["steps"]) + 1,
             "warnings": state.get("warnings", []),
         }
@@ -266,22 +354,23 @@ def _audit_writer():
 
 def _append_step(state: MarketAnalysisState, node: str, payload: dict[str, Any]) -> None:
     sequence = len(state["steps"]) + 1
-    timestamp = _step_timestamp(state["fixture_clock"], sequence)
+    timestamp = _step_timestamp(state["run_started_at"], sequence)
     with allow_internal_field_names():
-        state["steps"].append(
-            AgentRunStep(
-                id=f"step_{state['run_id']}_{sequence:03d}",
-                run_id=state["run_id"],
-                node=node,
-                status="completed",
-                timestamp=timestamp,
-                payload=payload,
-            )
+        step = AgentRunStep(
+            id=f"step_{state['run_id']}_{sequence:03d}",
+            run_id=state["run_id"],
+            node=node,
+            status="completed",
+            timestamp=timestamp,
+            payload=payload,
         )
+    state["steps"].append(step)
     state["current_node"] = node
+    step_sink = state.get("step_sink")
+    if step_sink is not None:
+        step_sink(step)
+        sleep(0.01)
 
 
-def _step_timestamp(fixture_clock: str, sequence: int):
-    from datetime import datetime
-
-    return datetime.fromisoformat(fixture_clock) + timedelta(seconds=sequence)
+def _step_timestamp(run_started_at: str, sequence: int) -> datetime:
+    return datetime.fromisoformat(run_started_at) + timedelta(seconds=sequence)

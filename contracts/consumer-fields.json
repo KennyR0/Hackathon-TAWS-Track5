@@ -187,6 +187,14 @@
         "Briefing.prioritizedSignals[].suggestedResearchActions[]",
         "Briefing.prioritizedSignals[].review.status",
         "Briefing.prioritizedSignals[].review.justification",
+        "Briefing.reviewTasks[].id",
+        "Briefing.reviewTasks[].signalId",
+        "Briefing.reviewTasks[].kind",
+        "Briefing.reviewTasks[].status",
+        "Briefing.reviewTasks[].title",
+        "Briefing.reviewTasks[].description",
+        "Briefing.reviewTasks[].createdAt",
+        "Briefing.reviewTasks[].resolvedAt",
         "Briefing.humanReviewSummary.totalSignals",
         "Briefing.humanReviewSummary.pendingReview",
         "Briefing.humanReviewSummary.reviewed",
@@ -219,6 +227,7 @@
       ],
       "nullablePaths": [
         "Briefing.prioritizedSignals[].review.justification",
+        "Briefing.reviewTasks[].resolvedAt",
         "Signal.priceReaction",
         "Signal.priceReaction.assetReturn"
       ]

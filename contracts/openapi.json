@@ -622,6 +622,14 @@
             "title": "Requireshumanreview",
             "type": "boolean"
           },
+          "reviewTasks": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReviewTask"
+            },
+            "title": "Reviewtasks",
+            "type": "array"
+          },
           "status": {
             "$ref": "#/components/schemas/BriefingStatus"
           },
@@ -1758,6 +1766,80 @@
           "status"
         ],
         "title": "ReviewSummary",
+        "type": "object"
+      },
+      "ReviewTask": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "description": {
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "review",
+              "escalation"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "resolvedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resolvedat"
+          },
+          "signalId": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Signalid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "signalId",
+          "kind",
+          "status",
+          "title",
+          "description",
+          "createdAt"
+        ],
+        "title": "ReviewTask",
         "type": "object"
       },
       "Reviewer": {

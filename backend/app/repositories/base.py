@@ -5,7 +5,15 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.contracts.api import AgentRunStep, AnalysisRequest, BriefingRequest, ReviewRequest, Watchlist
-from app.contracts.entities import AgentRun, Briefing, DataProvenance, Event, Evidence, Signal, SignalReview
+from app.contracts.entities import (
+    AgentRun,
+    Briefing,
+    DataProvenance,
+    Event,
+    Evidence,
+    Signal,
+    SignalReview,
+)
 
 
 class BackendRepository(Protocol):
@@ -62,8 +70,28 @@ class BackendRepository(Protocol):
         idempotency_key: str,
         model_name: str,
         prompt_version: str,
-    ) -> AgentRun: ...
+    ) -> tuple[AgentRun, bool]: ...
 
     def get_analysis_run(self, run_id: str) -> AgentRun: ...
+
+    def append_run_step(self, run_id: str, step: AgentRunStep) -> None: ...
+
+    def complete_analysis_run(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        current_node: str,
+    ) -> AgentRun: ...
+
+    def fail_analysis_run(
+        self,
+        run_id: str,
+        *,
+        current_node: str,
+        error_code: str,
+    ) -> AgentRun: ...
+
+    def is_run_terminal(self, run_id: str) -> bool: ...
 
     def get_run_steps(self, run_id: str) -> tuple[AgentRunStep, ...]: ...

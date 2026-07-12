@@ -19,6 +19,7 @@ def build_responses_request(
     *,
     config: OpenAIConfig | None = None,
     system_prompt: str | None = None,
+    text_format: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Build a standard Responses API payload for agentic text generation."""
 
@@ -37,9 +38,12 @@ def build_responses_request(
             "content": [{"type": "input_text", "text": prompt}],
         }
     )
-    return {
+    payload: dict[str, object] = {
         "model": resolved_config.model,
         "store": False,
         "reasoning": {"effort": resolved_config.reasoning_effort},
         "input": input_items,
     }
+    if text_format is not None:
+        payload["text"] = {"format": text_format}
+    return payload

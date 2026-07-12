@@ -4,7 +4,7 @@
     "schemaVersion": "1.0.0",
     "fixtureClock": "2026-07-11T13:00:00Z",
     "generatorVersion": "1.0.0",
-    "fixtureHash": "sha256:9cf3cbc2e9832cf440bbdab29dc44d9916fcda151bf22ef32d1f15ea2a27377a"
+    "fixtureHash": "sha256:2d7ad422698fbea74be1473d7ad3bc17da37a3bea4ec5b5b57a25830ae71bd37"
   },
   "sources": [
     {
@@ -1666,6 +1666,7 @@
           }
         }
       ],
+      "reviewTasks": [],
       "humanReviewSummary": {
         "totalSignals": 3,
         "pendingReview": 2,

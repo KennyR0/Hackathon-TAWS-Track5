@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from time import sleep
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header
@@ -47,15 +48,26 @@ def stream_analysis(
     last_event_id: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
     service: AnalysisService = Depends(get_analysis_service),
 ) -> StreamingResponse:
-    events = service.build_sse_events(run_id, last_event_id)
+    start_index = service.resolve_sse_cursor(run_id, last_event_id)
 
     def iter_events():
+        cursor = start_index
         yield ": heartbeat\n\n"
-        for event in events:
-            payload = event.model_dump(mode="json", by_alias=True)
-            yield f"id: {event.id}\n"
-            yield "event: analysis-step\n"
-            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+        while True:
+            events, cursor, is_terminal = service.poll_sse_events(run_id, cursor)
+            if not events and is_terminal:
+                return
+            if not events:
+                yield ": heartbeat\n\n"
+                sleep(0.01)
+                continue
+            for event in events:
+                payload = event.model_dump(mode="json", by_alias=True)
+                yield f"id: {event.id}\n"
+                yield "event: analysis-step\n"
+                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            if is_terminal:
+                return
 
     return StreamingResponse(iter_events(), media_type="text/event-stream")
 

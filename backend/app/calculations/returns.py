@@ -12,10 +12,14 @@ def compute_asset_return(snapshot: MarketSnapshot) -> float:
     return observations[-1].close / observations[-2].close - 1
 
 
-def compute_benchmark_return(snapshot: MarketSnapshot) -> float | None:
-    if snapshot.benchmark_asset_id is None:
+def compute_benchmark_return(
+    *,
+    asset_snapshot: MarketSnapshot,
+    benchmark_snapshot: MarketSnapshot | None,
+) -> float | None:
+    if asset_snapshot.benchmark_asset_id is None or benchmark_snapshot is None:
         return None
-    return None
+    return compute_asset_return(benchmark_snapshot)
 
 
 def compute_relative_volume(snapshot: MarketSnapshot) -> float | None:

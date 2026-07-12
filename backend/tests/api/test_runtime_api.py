@@ -1,5 +1,20 @@
 from __future__ import annotations
 
+from time import sleep
+
+import pytest
+
+
+def _wait_for_terminal_run(api_client, run_id: str) -> dict[str, object]:
+    for _ in range(200):
+        response = api_client.get(f"/api/v1/analyses/{run_id}")
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        if payload["status"] != "processing":
+            return payload
+        sleep(0.01)
+    raise AssertionError(f"Run {run_id} did not reach a terminal state")
+
 
 def test_health_endpoint(api_client) -> None:
     response = api_client.get("/health")
@@ -19,6 +34,8 @@ def test_list_events_supports_filters(api_client) -> None:
     payload = response.json()
     assert len(payload["data"]) == 1
     assert payload["data"][0]["event"]["id"] == "evt_aapl_outlook_20260709"
+    assert len(payload["data"][0]["articles"]) == 2
+    assert len(payload["data"][0]["sources"]) == 2
     assert payload["meta"]["dataMode"] == "fixture"
 
 
@@ -31,12 +48,18 @@ def test_watchlist_demo_global(api_client) -> None:
     assert payload["data"]["assetIds"] == ["ast_aapl", "ast_btc_usd", "ast_wti"]
 
 
-def test_get_signal_and_evidence(api_client) -> None:
+def test_get_signal_and_evidence_uses_runtime_metrics(api_client) -> None:
     signal_response = api_client.get("/api/v1/signals/sig_aapl_negative")
     evidence_response = api_client.get("/api/v1/signals/sig_aapl_negative/evidence")
 
     assert signal_response.status_code == 200
-    assert signal_response.json()["data"]["id"] == "sig_aapl_negative"
+    signal = signal_response.json()["data"]
+    assert signal["id"] == "sig_aapl_negative"
+    assert signal["priceReaction"]["assetReturn"] == pytest.approx(-0.04)
+    assert signal["priceReaction"]["benchmarkReturn"] == pytest.approx(-0.006)
+    assert signal["priceReaction"]["abnormalReturn"] == pytest.approx(-0.034)
+    assert signal["priceReaction"]["relativeVolume"] == pytest.approx(2.0)
+    assert signal["analysisStatus"] == "completed"
     assert evidence_response.status_code == 200
     assert len(evidence_response.json()["data"]) >= 1
 
@@ -97,10 +120,11 @@ def test_review_idempotency_rejects_different_payload(api_client) -> None:
     )
 
     assert response.status_code == 409
-    assert "different review payload" in response.json()["detail"]
+    assert response.json()["code"] == "conflict"
+    assert "different review payload" in response.json()["message"]
 
 
-def test_create_draft_briefing(api_client) -> None:
+def test_create_draft_briefing_includes_review_tasks(api_client) -> None:
     response = api_client.post(
         "/api/v1/briefings",
         headers={"Idempotency-Key": "briefing-001"},
@@ -115,6 +139,9 @@ def test_create_draft_briefing(api_client) -> None:
     payload = response.json()
     assert payload["data"]["status"] == "draft"
     assert len(payload["data"]["prioritizedSignals"]) == 2
+    assert len(payload["data"]["reviewTasks"]) >= 2
+    assert any(task["kind"] == "review" for task in payload["data"]["reviewTasks"])
+    assert any(task["status"] == "open" for task in payload["data"]["reviewTasks"])
 
 
 def test_shareable_briefing_rejects_pending_reviews(api_client) -> None:
@@ -123,16 +150,17 @@ def test_shareable_briefing_rejects_pending_reviews(api_client) -> None:
         headers={"Idempotency-Key": "briefing-shareable-001"},
         json={
             "watchlistId": "watchlist_demo_global",
-            "signalIds": ["sig_aapl_negative", "sig_btc_uncertain"],
+            "signalIds": ["sig_aapl_negative", "sig_wti_context"],
             "status": "shareable",
         },
     )
 
     assert response.status_code == 409
-    assert "reviewed signals only" in response.json()["detail"]
+    assert response.json()["code"] == "conflict"
+    assert "reviewed signals only" in response.json()["message"]
 
 
-def test_create_analysis_and_stream_steps(api_client) -> None:
+def test_create_analysis_returns_processing_and_streams_steps(api_client) -> None:
     response = api_client.post(
         "/api/v1/analyses",
         headers={"Idempotency-Key": "analysis-001"},
@@ -144,15 +172,20 @@ def test_create_analysis_and_stream_steps(api_client) -> None:
 
     assert response.status_code == 202
     run_id = response.json()["data"]["id"]
+    assert response.json()["data"]["status"] == "processing"
 
+    terminal_run = _wait_for_terminal_run(api_client, run_id)
     steps_response = api_client.get(f"/api/v1/runs/{run_id}/steps")
     stream_response = api_client.get(f"/api/v1/analyses/{run_id}/stream")
 
+    assert terminal_run["status"] == "completed"
     assert steps_response.status_code == 200
-    assert len(steps_response.json()["data"]) == 11
+    assert len(steps_response.json()["data"]) == 13
     assert stream_response.status_code == 200
     assert ": heartbeat" in stream_response.text
     assert "analysis-step" in stream_response.text
+    assert "verify_sources" in stream_response.text
+    assert "risk_language_guard" in stream_response.text
 
 
 def test_analysis_idempotency_replays_same_run(api_client) -> None:
@@ -167,7 +200,7 @@ def test_analysis_idempotency_replays_same_run(api_client) -> None:
 
     assert first_response.status_code == 202
     assert second_response.status_code == 202
-    assert first_response.json() == second_response.json()
+    assert first_response.json()["data"]["id"] == second_response.json()["data"]["id"]
 
 
 def test_analysis_idempotency_rejects_different_payload(api_client) -> None:
@@ -190,7 +223,8 @@ def test_analysis_idempotency_rejects_different_payload(api_client) -> None:
     )
 
     assert response.status_code == 409
-    assert "different analysis payload" in response.json()["detail"]
+    assert response.json()["code"] == "conflict"
+    assert "different analysis payload" in response.json()["message"]
 
 
 def test_analysis_stream_supports_last_event_id_replay(api_client) -> None:
@@ -203,6 +237,7 @@ def test_analysis_stream_supports_last_event_id_replay(api_client) -> None:
         },
     )
     run_id = response.json()["data"]["id"]
+    _wait_for_terminal_run(api_client, run_id)
     steps = api_client.get(f"/api/v1/runs/{run_id}/steps").json()["data"]
     stream_response = api_client.get(
         f"/api/v1/analyses/{run_id}/stream",
@@ -212,3 +247,13 @@ def test_analysis_stream_supports_last_event_id_replay(api_client) -> None:
     assert stream_response.status_code == 200
     assert steps[0]["id"] not in stream_response.text
     assert steps[5]["id"] in stream_response.text
+
+
+def test_api_errors_follow_api_error_shape(api_client) -> None:
+    response = api_client.get("/api/v1/signals/sig_missing")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "code": "not_found",
+        "message": "sig_missing",
+    }

@@ -560,6 +560,27 @@ class PrioritizedSignal(ContractModel):
     review: ReviewSummary
 
 
+class ReviewTask(ContractModel):
+    id: Identifier
+    signal_id: Identifier
+    kind: Literal["review", "escalation"]
+    status: Literal["open", "resolved"]
+    title: NonEmptyString
+    description: NonEmptyString
+    created_at: AwareDatetime
+    resolved_at: AwareDatetime | None = None
+
+    @model_validator(mode="after")
+    def validate_review_task(self) -> ReviewTask:
+        if self.status == "open" and self.resolved_at is not None:
+            raise ValueError("open review tasks cannot have resolvedAt")
+        if self.status == "resolved" and self.resolved_at is None:
+            raise ValueError("resolved review tasks require resolvedAt")
+        if self.resolved_at is not None and self.created_at > self.resolved_at:
+            raise ValueError("createdAt must not be later than resolvedAt")
+        return self
+
+
 class HumanReviewSummary(ContractModel):
     total_signals: NonNegativeInt
     pending_review: NonNegativeInt
@@ -581,6 +602,7 @@ class Briefing(ContractModel):
     watchlist: WatchlistRef
     executive_summary: NonEmptyString
     prioritized_signals: tuple[PrioritizedSignal, ...]
+    review_tasks: tuple[ReviewTask, ...] = ()
     human_review_summary: HumanReviewSummary
     requires_human_review: Literal[True]
     disclaimer: DisclaimerText
@@ -594,6 +616,12 @@ class Briefing(ContractModel):
             raise ValueError("prioritizedSignals must not repeat signalId")
         if len(signal_ids) > self.human_review_summary.total_signals:
             raise ValueError("prioritizedSignals cannot exceed totalSignals")
+        task_ids = [item.id for item in self.review_tasks]
+        if len(task_ids) != len(set(task_ids)):
+            raise ValueError("reviewTasks must not repeat an id")
+        task_signal_ids = {item.signal_id for item in self.review_tasks}
+        if not task_signal_ids <= set(signal_ids):
+            raise ValueError("reviewTasks must reference prioritized signals only")
         if self.created_at > self.updated_at:
             raise ValueError("createdAt must not be later than updatedAt")
         if self.status == BriefingStatus.SHAREABLE and (
@@ -602,6 +630,10 @@ class Briefing(ContractModel):
             or self.human_review_summary.discarded
         ):
             raise ValueError("shareable briefings can only contain reviewed signals")
+        if self.status == BriefingStatus.SHAREABLE and any(
+            task.status != "resolved" for task in self.review_tasks
+        ):
+            raise ValueError("shareable briefings cannot contain open review tasks")
         return self
 
 

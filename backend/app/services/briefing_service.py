@@ -20,11 +20,11 @@ class BriefingService:
         idempotency_key: str,
     ) -> BriefingResponse:
         signals = tuple(self._repository.get_signal(signal_id) for signal_id in request.signal_ids)
-        executive_summary = self._llm_adapter.build_briefing_summary(signals)
+        briefing_output = self._llm_adapter.build_briefing(signals)
         briefing = self._repository.create_briefing(
             request,
             idempotency_key=idempotency_key,
-            executive_summary=executive_summary,
+            executive_summary=briefing_output.executive_summary,
         )
         with allow_internal_field_names():
             return BriefingResponse(data=briefing, meta=self._repository.get_meta())
@@ -35,4 +35,3 @@ class BriefingService:
                 data=self._repository.get_briefing(briefing_id),
                 meta=self._repository.get_meta(),
             )
-
