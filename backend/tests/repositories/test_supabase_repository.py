@@ -141,7 +141,8 @@ def test_review_persists_and_rehydrates_after_repository_restart() -> None:
     assert restarted.list_signal_reviews("sig_wti_context")[-1].justification == (
         "Persistencia verificada."
     )
-    assert client.rows["audit_events"][-1]["event_type"] == "review_reviewed"
+    assert client.rows["audit_events"][-1]["action"] == "review_reviewed"
+    assert client.rows["audit_events"][-1]["actor_user_id"] == "usr_analista_demo"
 
 
 def test_review_idempotency_rejects_different_payload_after_restart() -> None:
@@ -244,15 +245,15 @@ def test_analysis_run_and_steps_persist_after_restart() -> None:
     assert restarted.get_analysis_run(run.id).status.value == "completed"
     assert restarted.get_run_steps(run.id)[0].id == "step_supabase_001"
     assert any(
-        row["event_type"] == "analysis_scheduled"
+        row["action"] == "analysis_scheduled"
         for row in client.rows["audit_events"]
     )
     assert any(
-        row["event_type"] == "node_load_context"
+        row["action"] == "node_load_context"
         for row in client.rows["audit_events"]
     )
     assert any(
-        row["event_type"] == "analysis_completed"
+        row["action"] == "analysis_completed"
         for row in client.rows["audit_events"]
     )
 
