@@ -1,9 +1,9 @@
-import { ArrowUp, Mic, Plus, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowRight, Sparkles, X } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 import { useStartAnalysis } from '../../shared/api/useStartAnalysis'
 
-export function AssistantPanel({ onNavigate }: { onNavigate?: () => void }) {
-  const [draft, setDraft] = useState('')
+export function AssistantPanel({ onNavigate, onClose }: { onNavigate?: () => void; onClose?: () => void }) {
+  const location = useLocation()
   const analysis = useStartAnalysis()
 
   const startContextualAnalysis = async () => {
@@ -13,62 +13,32 @@ export function AssistantPanel({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <section className="assistant-panel" aria-labelledby="assistant-panel-title">
-      <header className="assistant-panel__header">
+      <header className="assistant-head">
         <div>
-          <p className="section-eyebrow">Asistente financiero</p>
+          <p className="section-eyebrow">Asistente contextual</p>
           <h2 id="assistant-panel-title">Investigación</h2>
         </div>
+        {onClose ? <button className="icon-button" type="button" aria-label="Cerrar asistente" onClick={onClose}><X size={17} /></button> : null}
       </header>
 
-      <div className="assistant-panel__body">
-        <p className="assistant-panel__greeting">Hola. Haz cualquier pregunta sobre finanzas.</p>
-        <p className="assistant-panel__copy">El chat libre esta preparado en interfaz y pendiente de endpoint conversacional.</p>
+      <div className="context-chip"><span>Contexto</span><strong>{location.pathname === '/summary' ? 'Panorama' : location.pathname.split('/')[1] || 'Panorama'}</strong></div>
 
-        <button
-          className="primary-button assistant-panel__analysis-button"
-          type="button"
-          onClick={() => {
-            void startContextualAnalysis()
-          }}
-          disabled={analysis.isStarting || !analysis.canStart}
-        >
+      <div className="assistant-panel-body">
+        <span>NEXO</span>
+        <p>Puedo iniciar un análisis verificable del contexto disponible y llevarte a su auditoría. No genero cifras nuevas desde esta interfaz.</p>
+        <button className="primary-button" type="button" onClick={() => void startContextualAnalysis()} disabled={analysis.isStarting || !analysis.canStart}>
           <Sparkles size={15} />
-          {analysis.isStarting ? 'Arrancando análisis' : 'Iniciar análisis'}
+          {analysis.isStarting ? 'Iniciando análisis' : 'Analizar contexto'}
         </button>
       </div>
 
-      <form
-        className="assistant-composer"
-        aria-label="Chat libre"
-        onSubmit={event => {
-          event.preventDefault()
-        }}
-      >
-        <label className="sr-only" htmlFor="assistant-message">
-          Hacer pregunta
-        </label>
-        <textarea
-          id="assistant-message"
-          value={draft}
-          onChange={event => setDraft(event.target.value)}
-          placeholder="Hacer pregunta"
-          rows={4}
-        />
-        <div className="assistant-composer__footer">
-          <button className="icon-button" type="button" aria-label="Adjuntar contexto" disabled>
-            <Plus size={17} />
-          </button>
-          <div className="assistant-composer__actions">
-            <button className="icon-button" type="button" aria-label="Dictar pregunta" disabled>
-              <Mic size={17} />
-            </button>
-            <button className="icon-button assistant-composer__send" type="submit" aria-label="Enviar pregunta" disabled>
-              <ArrowUp size={17} />
-            </button>
-          </div>
-        </div>
-        <p className="assistant-composer__status">Envío no disponible hasta conectar el endpoint de chat libre.</p>
-      </form>
+      <div className="assistant-panel-footer">
+        <p>Conversación persistida y proveedores live</p>
+        <Link className="assistant-link" to="/assistant" onClick={onNavigate}>
+          Abrir asistente completo <ArrowRight size={15} />
+        </Link>
+        <small>El análisis y la conversación permanecen como flujos auditables separados.</small>
+      </div>
     </section>
   )
 }

@@ -28,7 +28,7 @@ export function ReviewsPage() {
 
   return (
     <div className="page-stack">
-      <SurfaceCard eyebrow="Centro de revisión" title="Work queue para decisiones humanas">
+      <SurfaceCard eyebrow="04 · Revisión" title="Cola de decisiones humanas" className="page-intro-panel">
         <div className="toolbar-grid">
           <label className="field">
             <span>Estado</span>

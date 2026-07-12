@@ -37,8 +37,9 @@ export function RadarPage() {
   return (
     <div className="page-stack">
       <SurfaceCard
-        eyebrow="Radar de mercado"
-        title="Eventos verificados y filtros operativos"
+        eyebrow="02 · Radar"
+        title="Eventos, fuentes y contexto verificable"
+        className="page-intro-panel"
         action={
           <div className="surface-card__actions">
             <RefreshButton onClick={() => eventsQuery.refetch()} busy={eventsQuery.isFetching} />

@@ -31,7 +31,7 @@ export function SignalDetailPage() {
     <div className="page-stack">
       <BackToHomeButton />
       <section className="content-grid content-grid--wide">
-        <SurfaceCard eyebrow={signal.asset.symbol} title={signal.asset.name}>
+        <SurfaceCard eyebrow={`${signal.asset.symbol} · Tesis`} title={signal.asset.name} className="signal-hero">
           <div className="badge-row">
             <ImpactBadge impact={signal.impact} />
             <ReviewStatusBadge status={signal.reviewStatus} />
@@ -61,7 +61,7 @@ export function SignalDetailPage() {
       </section>
 
       <section className="content-grid content-grid--wide">
-        <SurfaceCard eyebrow="Evidencia favorable" title="Soportes trazables">
+        <SurfaceCard eyebrow="Ledger · Evidencia favorable" title="Soportes trazables" className="evidence-ledger">
           <div className="stack-list">
             {supportiveEvidence.map(item => (
               <article key={item.id} className="evidence-card">
@@ -78,7 +78,7 @@ export function SignalDetailPage() {
           </div>
         </SurfaceCard>
 
-        <SurfaceCard eyebrow="Contraevidencia" title="Señales de abstención y contradicción">
+        <SurfaceCard eyebrow="Ledger · Contraevidencia" title="Abstención y contradicción" className="evidence-ledger evidence-ledger--counter">
           {contradictoryEvidence.length ? (
             <div className="stack-list">
               {contradictoryEvidence.map(item => (
@@ -120,7 +120,7 @@ export function SignalDetailPage() {
       </SurfaceCard>
 
       <section className="content-grid content-grid--wide">
-        <SurfaceCard eyebrow="Revisión humana" title="Decisión y justificación">
+        <SurfaceCard eyebrow="Control humano" title="Decisión y justificación" className="review-console">
           <ReviewComposer signalId={signal.id} currentStatus={signal.reviewStatus} />
           <div className="stack-list">
             {reviews.map(review => (

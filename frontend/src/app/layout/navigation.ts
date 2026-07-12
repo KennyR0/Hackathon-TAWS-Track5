@@ -1,11 +1,48 @@
-import { BellRing, Bot, BriefcaseBusiness, Home, Newspaper, Radar, ShieldCheck } from 'lucide-react'
+import { Bot, BriefcaseBusiness, ChartNoAxesCombined, Newspaper, Radar, ShieldCheck } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
-export const navigationItems = [
-  { to: '/summary', label: 'Resumen', icon: Home },
-  { to: '/radar', label: 'Radar', icon: Radar },
-  { to: '/signals', label: 'Señales', icon: BellRing },
-  { to: '/reviews', label: 'Revisión', icon: ShieldCheck },
-  { to: '/briefings', label: 'Briefings', icon: BriefcaseBusiness },
-  { to: '/assistant', label: 'Demo IA', icon: Bot },
-  { to: '/audit', label: 'Auditoría', icon: Newspaper },
+export interface NavigationItem {
+  to: string
+  label: string
+  number: string
+  icon: LucideIcon
+}
+
+interface NavigationSection {
+  label: string
+  items: NavigationItem[]
+}
+
+export const navigationSections: NavigationSection[] = [
+  {
+    label: 'Mercado',
+    items: [{ to: '/summary', label: 'Panorama', number: '01', icon: ChartNoAxesCombined }],
+  },
+  {
+    label: 'Investigación',
+    items: [
+      { to: '/radar', label: 'Radar', number: '02', icon: Radar },
+      { to: '/signals', label: 'Señales', number: '03', icon: Newspaper },
+    ],
+  },
+  {
+    label: 'Operaciones',
+    items: [
+      { to: '/reviews', label: 'Revisión', number: '04', icon: ShieldCheck },
+      { to: '/briefings', label: 'Briefings', number: '05', icon: BriefcaseBusiness },
+    ],
+  },
+  {
+    label: 'Control',
+    items: [{ to: '/audit', label: 'Auditoría', number: '06', icon: Newspaper }],
+  },
+]
+
+export const navigationItems: NavigationItem[] = navigationSections.flatMap(section => section.items)
+
+export const mobileNavigationItems: NavigationItem[] = [
+  navigationItems[0],
+  navigationItems[1],
+  navigationItems[3],
+  { to: '/assistant', label: 'Consultar', number: 'AI', icon: Bot },
 ]

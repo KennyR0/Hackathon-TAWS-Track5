@@ -18,7 +18,7 @@ export function BriefingDetailPage() {
   return (
     <div className="page-stack">
       <BackToHomeButton />
-      <SurfaceCard eyebrow={briefing.watchlist.name} title={`Briefing ${briefing.status}`}>
+      <SurfaceCard eyebrow={`${briefing.watchlist.name} · ${briefing.status}`} title="Lectura ejecutiva" className="briefing-paper">
         <p className="hero-copy">{briefing.executiveSummary}</p>
         <div className="data-points">
           <span>{formatDateTime(briefing.createdAt)}</span>
@@ -54,7 +54,7 @@ export function BriefingDetailPage() {
           </div>
         </SurfaceCard>
 
-        <SurfaceCard eyebrow="Review tasks" title="Pendientes embebidos">
+        <SurfaceCard eyebrow="Control editorial" title="Antes de compartir" className="editorial-control">
           {briefing.reviewTasks.length ? (
             <div className="stack-list">
               {briefing.reviewTasks.map(task => (

@@ -43,7 +43,7 @@ export function AuditDetailPage() {
   return (
     <div className="page-stack">
       <BackToHomeButton />
-      <SurfaceCard eyebrow={`Run ${compactId(run.id)}`} title={run.currentNode}>
+      <SurfaceCard eyebrow="Ejecución reproducible" title={`Run ${compactId(run.id)}`} className="audit-hero">
         <div className="badge-row">
           <AnalysisStatusBadge status={run.status} />
         </div>
@@ -55,7 +55,7 @@ export function AuditDetailPage() {
         <WarningList warnings={run.warnings} />
       </SurfaceCard>
 
-      <SurfaceCard eyebrow="Timeline" title="Pasos del workflow">
+      <SurfaceCard eyebrow="Timeline" title="Pasos del workflow" className="audit-timeline">
         <div className="stack-list">
           {mergedSteps.map(step => (
             <article className="timeline-item" key={step.id}>

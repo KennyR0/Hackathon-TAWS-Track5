@@ -542,6 +542,8 @@ Evidencia de cierre local:
 - Continuidad conversacional y mayor cobertura de instrumentos.
 - Ajuste de cierre: demostrativo local real y auditable con proveedores live/fallback,
   flujo HTTP, persistencia Supabase, agentes OpenAI y verificación visual.
+- Ajuste visual: adopción integral del prototipo NexoMercado Finance sobre el frontend
+  React productivo, conservando contratos, persistencia y operaciones reales.
 
 Decisión de ajuste:
 
@@ -550,6 +552,8 @@ Decisión de ajuste:
 - No se autoriza cambio de esquema, despliegue, commit ni push.
 - El modo será híbrido auditable: cada proveedor conserva su estado `live` o `fallback`
   y ningún dato fixture se presentará como live.
+- El rediseño se ejecuta en `codex/fase-10-redesign-frontend`; el prototipo define la
+  presentación, pero sus fixtures, respuestas simuladas y estado local no pasan a producción.
 
 Evidencia de cierre local:
 
@@ -587,6 +591,30 @@ Evidencia de cierre local:
   - Browser integrado no tenía instancias disponibles; se usó Playwright CLI como fallback y las capturas finales quedaron fuera del repositorio.
 - No se hizo commit, push, despliegue ni cambio de esquema.
 - Resultado del ajuste: aprobado; Fase 10 vuelve a `lista_para_revision` y espera decisión del usuario.
+
+Evidencia del rediseño integral:
+
+- Rama: `codex/fase-10-redesign-frontend`; `skills-lock.json` se preservó como cambio preexistente.
+- El frontend React adopta el prototipo NexoMercado Finance: temas claro/oscuro,
+  navegación agrupada, búsqueda global, asistente contextual, tablas densas, ledger de
+  evidencia, briefing editorial, auditoría secuencial y navegación móvil.
+- Se conservaron React Router, TanStack Query, Supabase Auth, OpenAPI, SSE y las rutas
+  existentes; no se copiaron fixtures, respuestas simuladas ni estado financiero local.
+- Gates frontend:
+  - `corepack pnpm lint`: aprobado sin warnings.
+  - `corepack pnpm typecheck`: aprobado.
+  - `corepack pnpm build`: aprobado; persiste el warning no bloqueante del chunk principal de 511 kB.
+  - generación TypeScript desde `contracts/openapi.json`: aprobada sin cambio de contrato.
+  - `export_openapi.py --check` detectó solo la conversión CRLF del working tree en Windows;
+    normalizando EOL, los 100001 bytes esperados coinciden semánticamente con el snapshot.
+- QA Playwright en `1280x720` y `390x844`: temas persistentes, búsqueda `Ctrl+K`,
+  navegación responsive, AAPL y ledger de señal, briefing `brf_runtime_004` y run
+  `run_runtime_003` con 13 pasos; consola final con 0 errores y 0 warnings.
+- Verificación bajo demanda: Twelve Data, Finnhub, CoinGecko y FRED `live`; GDELT
+  `fallback` por timeout; `requestsUsed=5/8`, procedencia y degradación visibles.
+- No se creó un nuevo run OpenAI ni registros adicionales durante esta QA; se releyó la
+  evidencia durable ya existente. No hubo cambios backend, esquema, commit, push o despliegue.
+- Resultado: rediseño aprobado localmente; Fase 10 queda `lista_para_revision` y espera decisión humana.
 
 ## 8. Matriz mínima del Track 5
 

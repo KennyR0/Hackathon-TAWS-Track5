@@ -75,7 +75,7 @@ export function AssistantPage() {
 
   return (
     <div className="page-stack">
-      <SurfaceCard eyebrow="Asistente IA" title="Orquestación visible y honesta">
+      <SurfaceCard eyebrow="Asistente" title="Investiga con el contexto visible" className="assistant-page-intro">
         <p className="hero-copy">
           Conversación persistida con contexto activo, prompts guiados y progreso real del run.
         </p>

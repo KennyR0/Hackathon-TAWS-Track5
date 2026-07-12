@@ -25,7 +25,7 @@ export function SignalsPage() {
 
   return (
     <div className="page-stack">
-      <SurfaceCard eyebrow="Señales" title="Cola explicable y accionable">
+      <SurfaceCard eyebrow="03 · Señales" title="Decisiones con evidencia" className="page-intro-panel">
         <div className="toolbar-grid">
           <label className="field">
             <span>Buscar</span>

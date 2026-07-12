@@ -72,9 +72,9 @@ export function RefreshButton({ onClick, busy = false, label = 'Actualizar' }: {
 
 export function BackToHomeButton() {
   return (
-    <Link className="back-home-button" to="/summary" aria-label="Volver al inicio">
+    <Link className="back-home-button" to="/summary" aria-label="Volver al panorama">
       <ArrowLeft size={16} />
-      <span>Volver al inicio</span>
+      <span>Volver al panorama</span>
     </Link>
   )
 }
