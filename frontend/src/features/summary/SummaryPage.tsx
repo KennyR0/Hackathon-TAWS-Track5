@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  useCreateAnalysisMutation,
   useEventsQuery,
   useMarketSnapshotsQuery,
   useRecentRunsQuery,
@@ -9,6 +8,7 @@ import {
   useWatchlistQuery,
 } from '../../shared/api/queries'
 import { deriveMarketAssets } from '../../shared/api/mappers'
+import { useStartAnalysis } from '../../shared/api/useStartAnalysis'
 import { ErrorState, LoadingSkeleton, RefreshButton } from '../../shared/ui/primitives'
 import {
   MarketAssetCard,
@@ -31,7 +31,6 @@ export function SummaryPage() {
   const recentRuns = recentRunQueries
     .map(item => item.data)
     .filter((run): run is NonNullable<typeof run> => Boolean(run))
-  const createAnalysis = useCreateAnalysisMutation()
 
   const eventsData = eventsQuery.data?.items
   const signalsData = signalsQuery.data?.items
@@ -39,6 +38,7 @@ export function SummaryPage() {
   const events = useMemo(() => eventsData ?? [], [eventsData])
   const signals = useMemo(() => signalsData ?? [], [signalsData])
   const snapshots = useMemo(() => snapshotsData ?? [], [snapshotsData])
+  const analysis = useStartAnalysis(events)
   const assets = useMemo(() => deriveMarketAssets(snapshots, signals, events), [snapshots, signals, events])
   const categories = useMemo(() => buildMarketCategories(assets), [assets])
   const firstEnabledCategory = categories.find(category => category.enabled)?.id ?? 'us'
@@ -65,16 +65,6 @@ export function SummaryPage() {
       return
     }
     navigate(`/radar?asset=${encodeURIComponent(trimmed.toUpperCase())}`)
-  }
-
-  const handleAnalyze = async () => {
-    const candidate = events.find(event => event.relatedAssets.length > 0)
-    if (!candidate) return
-    const response = await createAnalysis.mutateAsync({
-      eventId: candidate.id,
-      assetIds: candidate.relatedAssets.map(asset => asset.assetId),
-    })
-    navigate(`/audit/${response.data.id}`)
   }
 
   if (isLoading) return <LoadingSkeleton rows={10} />
@@ -107,10 +97,10 @@ export function SummaryPage() {
         onQueryChange={setQuery}
         onSearch={handleSearch}
         onAnalyze={() => {
-          void handleAnalyze()
+          void analysis.startAnalysis()
         }}
-        isAnalyzing={createAnalysis.isPending}
-        canAnalyze={events.length > 0}
+        isAnalyzing={analysis.isStarting}
+        canAnalyze={analysis.canStart}
       />
 
       <MarketTabs categories={categories} activeCategory={selectedCategory} onChange={setActiveCategory} />

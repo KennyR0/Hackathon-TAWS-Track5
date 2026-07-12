@@ -1,41 +1,28 @@
-import { ArrowUpRight, Menu, Search, Sparkles } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Bot, Menu, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet } from 'react-router-dom'
 import { navigationItems } from './navigation'
-import { AgentStatus, DataFreshnessIndicator, DataModeBadge } from '../../shared/ui/badges'
-import { useCreateAnalysisMutation, useEventsQuery, useRecentRunsQuery, useSignalsQuery } from '../../shared/api/queries'
-import { compactId } from '../../shared/lib/format'
+import { AssistantPanel } from '../../features/assistant/AssistantPanel'
 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(false)
-  const [query, setQuery] = useState('')
-  const navigate = useNavigate()
-  const eventsQuery = useEventsQuery()
-  const signalsQuery = useSignalsQuery()
-  const recentRuns = useRecentRunsQuery()
-  const latestRun = useMemo(() => recentRuns.map(item => item.data).find(Boolean), [recentRuns])
-  const createAnalysis = useCreateAnalysisMutation()
+  const [assistantOpen, setAssistantOpen] = useState(false)
 
-  const handleSearch = () => {
-    const trimmed = query.trim()
-    if (!trimmed) return
-    const signal = signalsQuery.data?.items.find(item => item.asset.symbol.toLowerCase() === trimmed.toLowerCase() || item.id === trimmed)
-    if (signal) {
-      navigate(`/signals/${signal.id}`)
-      return
+  useEffect(() => {
+    if (!assistantOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAssistantOpen(false)
     }
-    navigate(`/radar?asset=${encodeURIComponent(trimmed.toUpperCase())}`)
-  }
 
-  const handleAnalyze = async () => {
-    const candidate = eventsQuery.data?.items.find(item => item.relatedAssets.length > 0)
-    if (!candidate) return
-    const response = await createAnalysis.mutateAsync({
-      eventId: candidate.id,
-      assetIds: candidate.relatedAssets.map(asset => asset.assetId),
-    })
-    navigate(`/audit/${response.data.id}`)
-  }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [assistantOpen])
 
   return (
     <div className={`app-shell ${collapsed ? 'app-shell--collapsed' : ''}`}>
@@ -77,58 +64,37 @@ export function AppShell() {
       </aside>
 
       <div className="app-shell__main">
-        <header className="topbar">
-          <form
-            className="topbar__search"
-            onSubmit={event => {
-              event.preventDefault()
-              handleSearch()
-            }}
-          >
-            <Search size={16} />
-            <input
-              aria-label="Buscar activo o senal"
-              value={query}
-              onChange={event => setQuery(event.target.value)}
-              onKeyDown={event => {
-                if (event.key === 'Enter') handleSearch()
-              }}
-              placeholder="Buscar simbolo o signalId"
-            />
-            <button className="icon-button topbar__search-button" type="submit" aria-label="Buscar">
-              <ArrowUpRight size={15} />
-            </button>
-          </form>
-
-          <div className="topbar__meta">
-            {signalsQuery.data ? <DataModeBadge mode={signalsQuery.data.meta.dataMode} /> : null}
-            {signalsQuery.data ? (
-              <DataFreshnessIndicator asOf={signalsQuery.data.meta.dataAsOf} retrievedAt={signalsQuery.data.meta.retrievedAt} />
-            ) : null}
-            <AgentStatus
-              status={latestRun?.status ?? 'completed'}
-              currentNode={latestRun?.currentNode}
-              modelName={latestRun?.modelName}
-            />
-            <button className="primary-button" type="button" onClick={handleAnalyze} disabled={createAnalysis.isPending || !eventsQuery.data?.items.length}>
-              <Sparkles size={16} />
-              {createAnalysis.isPending ? 'Lanzando analisis' : 'Nuevo analisis'}
-            </button>
-          </div>
-        </header>
-
-        {latestRun ? (
-          <div className="status-strip">
-            <span>Run reciente {compactId(latestRun.id)}</span>
-            <span>{latestRun.steps.length} pasos</span>
-            <span>{latestRun.currentNode}</span>
-          </div>
-        ) : null}
-
         <main className="page-container">
           <Outlet />
         </main>
       </div>
+
+      <aside className="assistant-rail" aria-label="Asistente financiero permanente">
+        <AssistantPanel />
+      </aside>
+
+      <button className="assistant-drawer-trigger" type="button" onClick={() => setAssistantOpen(true)} aria-controls="assistant-drawer">
+        <Bot size={18} />
+        <span>Asistente</span>
+      </button>
+
+      {assistantOpen ? (
+        <div className="assistant-drawer-backdrop" onClick={() => setAssistantOpen(false)}>
+          <section
+            id="assistant-drawer"
+            className="assistant-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assistant-panel-title"
+            onClick={event => event.stopPropagation()}
+          >
+            <button className="icon-button assistant-drawer__close" type="button" onClick={() => setAssistantOpen(false)} aria-label="Cerrar asistente">
+              <X size={18} />
+            </button>
+            <AssistantPanel onNavigate={() => setAssistantOpen(false)} />
+          </section>
+        </div>
+      ) : null}
     </div>
   )
 }

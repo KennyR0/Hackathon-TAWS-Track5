@@ -11,7 +11,6 @@ const SignalDetailPage = lazy(() => import('../features/signals/SignalDetailPage
 const BriefingsPage = lazy(() => import('../features/briefings/BriefingsPage').then(module => ({ default: module.BriefingsPage })))
 const BriefingDetailPage = lazy(() => import('../features/briefings/BriefingDetailPage').then(module => ({ default: module.BriefingDetailPage })))
 const ReviewsPage = lazy(() => import('../features/reviews/ReviewsPage').then(module => ({ default: module.ReviewsPage })))
-const AssistantPage = lazy(() => import('../features/assistant/AssistantPage').then(module => ({ default: module.AssistantPage })))
 const AuditPage = lazy(() => import('../features/audit/AuditPage').then(module => ({ default: module.AuditPage })))
 const AuditDetailPage = lazy(() => import('../features/audit/AuditDetailPage').then(module => ({ default: module.AuditDetailPage })))
 
@@ -91,11 +90,7 @@ export function AppRouter() {
           />
           <Route
             path="assistant"
-            element={
-              <Suspense fallback={<RouteFallback />}>
-                <AssistantPage />
-              </Suspense>
-            }
+            element={<Navigate replace to="/summary" />}
           />
           <Route
             path="audit"

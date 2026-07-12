@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { Sparkles } from 'lucide-react'
 import { useEventsQuery } from '../../shared/api/queries'
-import { DataFreshnessIndicator, WarningList } from '../../shared/ui/badges'
+import { useStartAnalysis } from '../../shared/api/useStartAnalysis'
+import { DataFreshnessIndicator, DataModeBadge, WarningList } from '../../shared/ui/badges'
 import { EventCard } from '../../shared/ui/cards'
 import { EmptyState, LoadingSkeleton, RefreshButton, SurfaceCard } from '../../shared/ui/primitives'
 
@@ -25,18 +27,33 @@ export function RadarPage() {
     [searchParams],
   )
   const eventsQuery = useEventsQuery(filters)
-
-  if (eventsQuery.isLoading) return <LoadingSkeleton rows={10} />
-
   const events = eventsQuery.data?.items ?? []
   const meta = eventsQuery.data?.meta
+  const analysis = useStartAnalysis(events)
+
+  if (eventsQuery.isLoading) return <LoadingSkeleton rows={10} />
 
   return (
     <div className="page-stack">
       <SurfaceCard
         eyebrow="Radar de mercado"
         title="Eventos verificados y filtros operativos"
-        action={<RefreshButton onClick={() => eventsQuery.refetch()} busy={eventsQuery.isFetching} />}
+        action={
+          <div className="surface-card__actions">
+            <RefreshButton onClick={() => eventsQuery.refetch()} busy={eventsQuery.isFetching} />
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => {
+                void analysis.startAnalysis()
+              }}
+              disabled={analysis.isStarting || !analysis.canStart}
+            >
+              <Sparkles size={16} />
+              {analysis.isStarting ? 'Lanzando analisis' : 'Nuevo analisis'}
+            </button>
+          </div>
+        }
       >
         <div className="toolbar-grid">
           <label className="field">
@@ -101,7 +118,12 @@ export function RadarPage() {
           </div>
         </div>
 
-        {meta ? <DataFreshnessIndicator asOf={meta.dataAsOf} retrievedAt={meta.retrievedAt} /> : null}
+        {meta ? (
+          <div className="data-status-row">
+            <DataModeBadge mode={meta.dataMode} />
+            <DataFreshnessIndicator asOf={meta.dataAsOf} retrievedAt={meta.retrievedAt} />
+          </div>
+        ) : null}
         {meta ? <WarningList warnings={meta.warnings} /> : null}
       </SurfaceCard>
 
