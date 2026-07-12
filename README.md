@@ -221,7 +221,8 @@ Variables live esperadas:
 La Fase 7 deja configuracion versionada para Vercel y Render, pero no ejecuta commit, push ni despliegue cloud real.
 
 - Backend Render: [`render.yaml`](render.yaml) define un servicio FastAPI con `uvicorn`, health check `/health` y secretos `sync: false`.
-- Frontend Vercel: [`frontend/vercel.json`](frontend/vercel.json) mantiene fallback SPA a `index.html`.
+- Frontend Vercel: [`vercel.json`](vercel.json) permite importar el repo completo y construir `frontend/`; [`frontend/vercel.json`](frontend/vercel.json) cubre la alternativa con Root Directory `frontend`.
+- Guia Vercel: [`docs/VERCEL_DEPLOY.md`](docs/VERCEL_DEPLOY.md) documenta comandos, output directory, variables publicas y CORS.
 - CORS backend: `BACKEND_CORS_ORIGINS` debe listar los origenes exactos permitidos, por ejemplo `https://<vercel-app>.vercel.app,http://localhost:5173`.
 - Frontend publico: `frontend/.env.example` usa `VITE_API_BASE_URL=https://<render-service>/api`. Por compatibilidad tambien se acepta `VITE_API_URL`.
 - Secretos: OpenAI, Supabase y proveedores live se configuran solo en el entorno backend.

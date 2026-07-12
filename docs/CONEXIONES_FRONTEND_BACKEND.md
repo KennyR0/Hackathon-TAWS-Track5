@@ -35,9 +35,12 @@ En desarrollo, Vite proxifica `/api` hacia `http://127.0.0.1:8000`. Las claves p
 
 Frontend:
 
-- `frontend/vercel.json` define fallback SPA a `/index.html`.
+- `vercel.json` permite importar el repo completo en Vercel y construir `frontend/`.
+- `frontend/vercel.json` cubre el caso alternativo donde el Root Directory del proyecto Vercel sea `frontend`.
+- Ambos archivos definen fallback SPA a `/index.html`.
 - `frontend/.env.example` documenta `VITE_API_BASE_URL=https://<render-service>/api`.
 - El cliente tambien acepta `VITE_API_URL` por compatibilidad y normaliza siempre al prefijo `/api`.
+- La guia completa esta en `docs/VERCEL_DEPLOY.md`.
 
 Backend:
 
