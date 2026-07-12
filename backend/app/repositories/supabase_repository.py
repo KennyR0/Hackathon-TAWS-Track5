@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from datetime import timedelta
 from hashlib import sha256
 from typing import Any
@@ -106,6 +107,8 @@ class SupabaseRepository(FixtureRepository):
                     payload=row["payload"],
                 )
             self._run_steps[step.run_id].append(step)
+        for run_id, steps in self._run_steps.items():
+            self._run_steps[run_id] = sorted(steps, key=lambda item: item.timestamp)
 
     @staticmethod
     def _review_summary(review: SignalReview):
@@ -138,6 +141,28 @@ class SupabaseRepository(FixtureRepository):
                 "expires_at": (self.fixture_clock + timedelta(days=1)).isoformat(),
             },
             on_conflict="organization_id,operation,idempotency_key",
+        ).execute()
+
+    def _persist_audit_event(
+        self,
+        *,
+        audit_id: str,
+        entity_type: str,
+        entity_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        created_at: datetime,
+    ) -> None:
+        self._supabase.table("audit_events").upsert(
+            {
+                "id": audit_id,
+                "organization_id": "org_demo",
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "event_type": event_type,
+                "payload": payload,
+                "created_at": created_at.isoformat(),
+            }
         ).execute()
 
     def _get_idempotency(
@@ -208,6 +233,19 @@ class SupabaseRepository(FixtureRepository):
                     for item in reviews
                 ],
             )
+            self._persist_audit_event(
+                audit_id=f"audit_review_{created.id}",
+                entity_type="signal_review",
+                entity_id=signal_id,
+                event_type=f"review_{created.status.value}",
+                payload={
+                    "reviewId": created.id,
+                    "previousStatus": created.previous_status.value,
+                    "status": created.status.value,
+                    "justification": created.justification,
+                },
+                created_at=created.created_at,
+            )
         return reviews
 
     def create_briefing(
@@ -267,6 +305,18 @@ class SupabaseRepository(FixtureRepository):
             payload=payload,
             response_body=briefing.model_dump(mode="json", by_alias=True),
         )
+        self._persist_audit_event(
+            audit_id=f"audit_briefing_{briefing.briefing_id}",
+            entity_type="briefing",
+            entity_id=briefing.briefing_id,
+            event_type=f"briefing_{briefing.status.value}",
+            payload={
+                "signalIds": [item.signal_id for item in briefing.prioritized_signals],
+                "reviewTaskCount": len(briefing.review_tasks),
+                "status": briefing.status.value,
+            },
+            created_at=briefing.created_at,
+        )
         return briefing
 
     def create_analysis_run(
@@ -301,12 +351,42 @@ class SupabaseRepository(FixtureRepository):
                 for snapshot_id in run.source_snapshot_ids
             ]
             if links:
-                self._supabase.table("agent_run_source_snapshots").upsert(links).execute()
+                existing_links = (
+                    self._supabase.table("agent_run_source_snapshots")
+                    .select("run_id,snapshot_id")
+                    .eq("run_id", run.id)
+                    .execute()
+                    .data
+                    or []
+                )
+                existing_pairs = {
+                    (row["run_id"], row["snapshot_id"])
+                    for row in existing_links
+                }
+                rows_to_insert = [
+                    row
+                    for row in links
+                    if (row["run_id"], row["snapshot_id"]) not in existing_pairs
+                ]
+                if rows_to_insert:
+                    self._supabase.table("agent_run_source_snapshots").insert(rows_to_insert).execute()
             self._persist_idempotency(
                 operation="analysis",
                 key=idempotency_key,
                 payload=payload,
                 response_body=run.model_dump(mode="json", by_alias=True),
+            )
+            self._persist_audit_event(
+                audit_id=f"audit_run_{run.id}_scheduled",
+                entity_type="agent_run",
+                entity_id=run.id,
+                event_type="analysis_scheduled",
+                payload={
+                    "eventId": request.event_id,
+                    "assetIds": list(request.asset_ids),
+                    "sourceSnapshotIds": list(run.source_snapshot_ids),
+                },
+                created_at=run.started_at,
             )
         return run, is_created
 
@@ -333,8 +413,11 @@ class SupabaseRepository(FixtureRepository):
         ).execute()
 
     def append_run_step(self, run_id: str, step: AgentRunStep) -> None:
+        existing_step_ids = {item.id for item in self.get_run_steps(run_id)}
         super().append_run_step(run_id, step)
-        self._supabase.table("agent_run_steps").upsert(
+        if step.id in existing_step_ids:
+            return
+        self._supabase.table("agent_run_steps").insert(
             {
                 "id": step.id,
                 "run_id": step.run_id,
@@ -344,6 +427,18 @@ class SupabaseRepository(FixtureRepository):
                 "payload": step.payload,
             }
         ).execute()
+        self._persist_audit_event(
+            audit_id=f"audit_step_{step.id}",
+            entity_type="agent_run_step",
+            entity_id=run_id,
+            event_type=f"node_{step.node}",
+            payload={
+                "node": step.node,
+                "status": step.status,
+                "payload": step.payload,
+            },
+            created_at=step.timestamp,
+        )
         self._persist_run(self.get_analysis_run(run_id))
 
     def complete_analysis_run(
@@ -359,6 +454,19 @@ class SupabaseRepository(FixtureRepository):
             current_node=current_node,
         )
         self._persist_run(run)
+        if run.finished_at is not None:
+            self._persist_audit_event(
+                audit_id=f"audit_run_{run.id}_completed",
+                entity_type="agent_run",
+                entity_id=run.id,
+                event_type=f"analysis_{run.status.value}",
+                payload={
+                    "currentNode": run.current_node,
+                    "status": run.status.value,
+                    "errorCode": run.error_code,
+                },
+                created_at=run.finished_at,
+            )
         return run
 
     def fail_analysis_run(
@@ -374,6 +482,19 @@ class SupabaseRepository(FixtureRepository):
             error_code=error_code,
         )
         self._persist_run(run)
+        if run.finished_at is not None:
+            self._persist_audit_event(
+                audit_id=f"audit_run_{run.id}_failed",
+                entity_type="agent_run",
+                entity_id=run.id,
+                event_type="analysis_failed",
+                payload={
+                    "currentNode": run.current_node,
+                    "status": run.status.value,
+                    "errorCode": run.error_code,
+                },
+                created_at=run.finished_at,
+            )
         return run
 
 

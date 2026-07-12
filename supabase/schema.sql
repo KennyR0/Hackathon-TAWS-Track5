@@ -85,6 +85,40 @@ create table if not exists agent_run_source_snapshots (
     primary key (run_id, snapshot_id)
 );
 
+create table if not exists audit_events (
+    id text primary key,
+    organization_id text not null,
+    entity_type text not null,
+    entity_id text not null,
+    event_type text not null,
+    payload jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null
+);
+
+create table if not exists provider_cache (
+    cache_key text primary key,
+    provider text not null,
+    resource_type text not null,
+    payload jsonb not null,
+    content_hash text not null,
+    data_mode text not null,
+    retrieved_at timestamptz not null,
+    data_as_of timestamptz not null,
+    expires_at timestamptz not null,
+    created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists provider_budgets (
+    provider text primary key,
+    daily_limit integer null,
+    daily_used integer not null default 0,
+    monthly_limit integer null,
+    monthly_used integer not null default 0,
+    circuit_state text not null default 'closed',
+    last_error_at timestamptz null,
+    updated_at timestamptz not null default timezone('utc', now())
+);
+
 create index if not exists idx_signal_reviews_signal_id
     on signal_reviews (signal_id, created_at);
 
@@ -96,6 +130,9 @@ create index if not exists idx_agent_runs_status
 
 create index if not exists idx_agent_run_steps_run_id
     on agent_run_steps (run_id, step_at);
+
+create index if not exists idx_audit_events_entity
+    on audit_events (entity_type, entity_id, created_at);
 
 create or replace function prevent_append_only_mutation()
 returns trigger

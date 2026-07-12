@@ -141,6 +141,7 @@ def test_review_persists_and_rehydrates_after_repository_restart() -> None:
     assert restarted.list_signal_reviews("sig_wti_context")[-1].justification == (
         "Persistencia verificada."
     )
+    assert client.rows["audit_events"][-1]["event_type"] == "review_reviewed"
 
 
 def test_review_idempotency_rejects_different_payload_after_restart() -> None:
@@ -242,3 +243,52 @@ def test_analysis_run_and_steps_persist_after_restart() -> None:
     assert replayed.id == run.id
     assert restarted.get_analysis_run(run.id).status.value == "completed"
     assert restarted.get_run_steps(run.id)[0].id == "step_supabase_001"
+    assert any(
+        row["event_type"] == "analysis_scheduled"
+        for row in client.rows["audit_events"]
+    )
+    assert any(
+        row["event_type"] == "node_load_context"
+        for row in client.rows["audit_events"]
+    )
+    assert any(
+        row["event_type"] == "analysis_completed"
+        for row in client.rows["audit_events"]
+    )
+
+
+def test_duplicate_run_step_is_not_reinserted_after_restart() -> None:
+    client = FakeClient()
+    first = _repository(client)
+    request = AnalysisRequest.model_validate(
+        {
+            "eventId": "evt_aapl_outlook_20260709",
+            "assetIds": ["ast_aapl"],
+        }
+    )
+    run, _ = first.create_analysis_run(
+        request,
+        idempotency_key="supabase-analysis-test-002",
+        model_name="fixture-llm",
+        prompt_version="test-v1",
+    )
+    step = AgentRunStep.model_validate(
+        {
+            "id": "step_supabase_002",
+            "runId": run.id,
+            "node": "verify_sources",
+            "status": "completed",
+            "timestamp": datetime(2026, 7, 12, 12, 1, tzinfo=timezone.utc),
+            "payload": {"warnings": []},
+        }
+    )
+    first.append_run_step(run.id, step)
+
+    restarted = _repository(client)
+    restarted.append_run_step(run.id, step)
+
+    rows = [
+        row for row in client.rows["agent_run_steps"]
+        if row["id"] == "step_supabase_002"
+    ]
+    assert len(rows) == 1
