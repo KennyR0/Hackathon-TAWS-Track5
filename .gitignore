@@ -12,6 +12,7 @@ node_modules/
 !.env.example
 supabase/
 .temp/
+.tmp/
 migrations/
 .agents/skills/supabase-postgres-best-practices/
 node_modules/

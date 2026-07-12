@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getBriefing } from '../lib/mockData';
+import { createDraftBriefing } from '../lib/api';
 import type { Briefing } from '../lib/types';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Share, AlertTriangle, FileText, CheckCircle, Clock, TrendingUp, TrendingDown, Minus, Check, X, AlertCircle as AlertCircleIcon } from 'lucide-react';
@@ -9,15 +9,18 @@ import { TRANSLATIONS } from '../lib/translations';
 export function Briefing() {
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
       try {
-        const data = await getBriefing('BRF-001');
+        const data = await createDraftBriefing();
         setBriefing(data);
+        setErrorMessage(null);
       } catch (e) {
         console.error(e);
+        setErrorMessage(e instanceof Error ? e.message : 'Error creando briefing desde backend local.');
       } finally {
         setIsLoading(false);
       }
@@ -61,7 +64,7 @@ export function Briefing() {
   }
 
   if (!briefing) {
-    return <div className="p-8 text-center text-[13px] text-status-negative-text">{t.errorLoading}</div>;
+    return <div className="p-8 text-center text-[13px] text-status-negative-text">{errorMessage ?? t.errorLoading}</div>;
   }
 
   const isDraft = briefing.status === 'draft';

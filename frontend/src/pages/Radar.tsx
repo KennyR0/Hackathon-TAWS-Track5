@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getEvents } from '../lib/mockData';
+import { getEvents } from '../lib/api';
 import type { Event, InstrumentType } from '../lib/types';
 import { Search, Filter, Clock, ExternalLink, Users, LineChart, Layers, Coins, Box, Globe } from 'lucide-react';
 import { TRANSLATIONS } from '../lib/translations';
@@ -23,6 +23,8 @@ const instrumentColorMap: Record<InstrumentType, string> = {
   crypto: 'border-accent-signal/20 text-accent-signal bg-accent-signal/5',
   commodity: 'border-status-uncertain-text/20 text-status-uncertain-text bg-status-uncertain-text/5',
   macro: 'border-accent-audit/20 text-accent-audit bg-accent-audit/5',
+  credit: 'border-status-neutral-text/20 text-status-neutral-text bg-status-neutral-text/5',
+  other: 'border-text-muted/20 text-text-muted bg-text-muted/5',
 };
 
 function getInstrumentIcon(type: InstrumentType) {
@@ -32,6 +34,8 @@ function getInstrumentIcon(type: InstrumentType) {
     case 'crypto': return <Coins size={10} className="shrink-0" />;
     case 'commodity': return <Box size={10} className="shrink-0" />;
     case 'macro': return <Globe size={10} className="shrink-0" />;
+    case 'credit': return <Layers size={10} className="shrink-0" />;
+    case 'other': return <Globe size={10} className="shrink-0" />;
   }
 }
 
@@ -60,6 +64,7 @@ function Sparkline({ symbol }: { symbol: string }) {
 export function Radar() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const [searchAsset, setSearchAsset] = useState('');
   const [instrumentFilter, setInstrumentFilter] = useState<InstrumentType | 'all'>('all');
@@ -69,16 +74,28 @@ export function Radar() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const data = await getEvents();
+        const publishedAfter =
+          timeFilter === '24h'
+            ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+            : timeFilter === '7d'
+              ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+              : undefined;
+        const data = await getEvents({
+          instrumentType: instrumentFilter,
+          asset: searchAsset.trim() || undefined,
+          publishedAfter,
+        });
         setEvents(data);
+        setErrorMessage(null);
       } catch (e) {
         console.error(e);
+        setErrorMessage(e instanceof Error ? e.message : 'Error cargando eventos desde backend local.');
       } finally {
         setIsLoading(false);
       }
     }
     loadData();
-  }, []);
+  }, [instrumentFilter, searchAsset, timeFilter]);
 
   const filteredEvents = useMemo(() => {
     return events.filter(ev => {
@@ -168,6 +185,12 @@ export function Radar() {
                 <div className="h-4 bg-surface-elevated rounded w-12"></div>
               </div>
             ))}
+          </div>
+        ) : errorMessage ? (
+          <div className="p-12 text-center flex flex-col items-center">
+            <Filter size={24} className="text-status-negative-text mb-2" />
+            <h3 className="text-[13px] font-mono uppercase font-bold text-status-negative-text">Backend local no disponible</h3>
+            <p className="text-[11px] text-text-secondary mt-1">{errorMessage}</p>
           </div>
         ) : filteredEvents.length === 0 ? (
           <div className="p-12 text-center flex flex-col items-center">

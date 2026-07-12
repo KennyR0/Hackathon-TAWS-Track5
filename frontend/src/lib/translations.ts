@@ -39,6 +39,8 @@ export const TRANSLATIONS = {
     crypto: 'Criptoactivo',
     commodity: 'Commodity',
     macro: 'Tema Macro',
+    credit: 'Credito',
+    other: 'Otro',
   } as Record<InstrumentType, string>,
 
   // Layout y Navegación
@@ -104,7 +106,7 @@ export const TRANSLATIONS = {
     approveAction: 'Aprobar',
     escalateAction: 'Escalar',
     discardAction: 'Descartar',
-    saveMockSuccess: '✔ Cambios guardados localmente (Modo de Prueba)',
+    saveMockSuccess: 'Cambio guardado en backend local',
     sessionHistory: 'Historial de Decisiones (Esta Sesión)',
   },
 

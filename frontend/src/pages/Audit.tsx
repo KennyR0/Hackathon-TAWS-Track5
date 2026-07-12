@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAgentRun } from '../lib/mockData';
+import { createAgentRun } from '../lib/api';
 import type { AgentRun } from '../lib/types';
 import { Terminal, Clock, Activity, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { TRANSLATIONS } from '../lib/translations';
@@ -12,15 +12,18 @@ function formatLogTime(dateStr: string) {
 export function Audit() {
   const [run, setRun] = useState<AgentRun | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
       try {
-        const data = await getAgentRun('run_01hx_44mk');
+        const data = await createAgentRun();
         setRun(data);
+        setErrorMessage(null);
       } catch (e) {
         console.error(e);
+        setErrorMessage(e instanceof Error ? e.message : 'Error creando ejecucion de auditoria.');
       } finally {
         setIsLoading(false);
       }
@@ -35,7 +38,7 @@ export function Audit() {
   }
 
   if (!run) {
-    return <div className="p-8 text-center text-[13px] text-status-negative-text">{t.errorLoading}</div>;
+    return <div className="p-8 text-center text-[13px] text-status-negative-text">{errorMessage ?? t.errorLoading}</div>;
   }
 
   const durationMs = run.completedAt && run.startedAt 

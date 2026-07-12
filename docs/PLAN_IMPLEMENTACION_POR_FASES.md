@@ -3,7 +3,7 @@ plan_version: 2
 current_phase: 1
 phase_S0: aceptada
 phase_0: aceptada
-phase_1: en_curso
+phase_1: lista_para_revision
 phase_2: pendiente
 phase_3: pendiente
 phase_4: pendiente
@@ -76,8 +76,8 @@ Reglas:
 | Fase | Estado | Propósito |
 |---|---|---|
 | S0 | lista_para_revision | Plan persistente y skills |
-| 0 | pendiente | Contratos y fixtures |
-| 1 | pendiente | Walking skeleton |
+| 0 | aceptada | Contratos y fixtures |
+| 1 | lista_para_revision | Walking skeleton |
 | 2 | pendiente | Radar |
 | 3 | pendiente | Señal explicable |
 | 4 | pendiente | Supabase, revisión y briefing |
@@ -297,6 +297,21 @@ Entregables:
 
 Gate: instalación limpia, lint, tests y builds verdes.
 
+Evidencia de cierre local:
+
+- Rama de trabajo: `main`, por excepcion autorizada explicitamente por el usuario.
+- Frontend conectado al backend local con `VITE_API_BASE_URL=/api` y proxy Vite hacia `http://127.0.0.1:8000`.
+- Cliente frontend real en `frontend/src/lib/api.ts`, con adaptacion minima desde contratos FastAPI a modelos de pantalla.
+- Vistas conectadas: Radar, Detalle de senal, Revision humana, Briefing y Auditoria.
+- Documento de conexiones y pendientes: `docs/CONEXIONES_FRONTEND_BACKEND.md`.
+- Validaciones ejecutadas:
+  - `corepack pnpm build` en `frontend`: aprobado.
+  - `.venv312\Scripts\python.exe backend\scripts\export_openapi.py --check`: aprobado.
+  - `.venv312\Scripts\python.exe -m pytest backend\tests --basetemp .tmp\pytest -p no:cacheprovider`: `139 passed`, usando shim temporal de `python3` en `.tmp` para los tests que lo invocan en Windows.
+  - Smoke local FastAPI: `/health`, eventos, senal/evidencia, revision, briefing draft y analisis con 13 pasos de auditoria aprobados.
+- No se hizo commit, push, despliegue ni cambio cloud.
+- Resultado del gate: aprobado; Fase 1 queda `lista_para_revision` y espera decision del usuario.
+
 ### Fase 2 — Radar
 
 Prerrequisito: Fase 1 `aceptada`.
@@ -461,6 +476,8 @@ Producto:
 | 2026-07-11 | S0 | Registrar Apache-2.0 como licencia efectiva | La auditoría del árbol fijado corrigió la suposición inicial de licencia |
 | 2026-07-11 | S0 | Mantener la copia del repositorio como canónica | El espejo global se puede reconstruir y validar por manifiesto SHA-256 |
 | 2026-07-11 | S0 | Solicitar revisión | Todos los gates de S0 terminaron verdes; solo el usuario puede aceptarla |
+| 2026-07-12 | 1 | Conectar frontend con backend solo local | Alcance elegido por el usuario; despliegue Vercel/Render queda pendiente |
+| 2026-07-12 | 1 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario |
 
 ## 12. Registro de cambios
 
@@ -468,3 +485,4 @@ Producto:
 |---|---:|---|
 | 2026-07-11 | 1 | Plan inicial persistido; Fase S0 en curso |
 | 2026-07-11 | 2 | Skills auditadas y sincronizadas; forward-tests aprobados; S0 lista para revisión |
+| 2026-07-12 | 2 | Fase 1 conectada localmente entre React/Vite y FastAPI; queda lista para revision |

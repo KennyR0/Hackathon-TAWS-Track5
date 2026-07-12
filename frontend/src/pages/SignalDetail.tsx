@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getSignal } from '../lib/mockData';
-import type { Signal, Claim, Evidence, AnalysisStatus } from '../lib/types';
+import { demoIds, getSignal, saveSignalReview } from '../lib/api';
+import type { Signal, Claim, Evidence, AnalysisStatus, ReviewStatus } from '../lib/types';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { AlertTriangle, TrendingUp, Info, Link as LinkIcon, Database, CheckCircle2, XCircle } from 'lucide-react';
 import { TRANSLATIONS } from '../lib/translations';
@@ -57,7 +57,7 @@ function ClaimCard({ claim, evidence, variant }: { claim: Claim, evidence?: Evid
 
 interface HumanReviewPanelProps {
   signal: Signal;
-  onSave: (newStatus: 'pending_review' | 'reviewed' | 'escalated' | 'discarded', justification: string) => void;
+  onSave: (newStatus: Exclude<ReviewStatus, 'pending_review'>, justification: string) => Promise<void>;
 }
 
 function HumanReviewPanel({ signal, onSave }: HumanReviewPanelProps) {
@@ -65,20 +65,29 @@ function HumanReviewPanel({ signal, onSave }: HumanReviewPanelProps) {
   const [justification, setJustification] = useState('');
   const [saveLogs, setSaveLogs] = useState<{ status: string; justification: string; savedAt: string }[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const t = TRANSLATIONS.signalDetail;
 
-  const handleSave = () => {
-    // TODO: CONECTAR PERSISTENCIA CON EL BACKEND REAL
-    // Enviar POST/PUT a `/api/signals/${signal.id}/review` con { reviewStatus: selectedStatus, justification }
-    onSave(selectedStatus, justification);
-    setSaveLogs(prev => [
-      { status: selectedStatus, justification, savedAt: new Date().toISOString() },
-      ...prev
-    ]);
-    setIsSuccess(true);
-    setJustification('');
-    setTimeout(() => setIsSuccess(false), 3000);
+  const handleSave = async () => {
+    if (selectedStatus === 'pending_review') return;
+    setIsSaving(true);
+    setErrorMessage(null);
+    try {
+      await onSave(selectedStatus, justification);
+      setSaveLogs(prev => [
+        { status: selectedStatus, justification, savedAt: new Date().toISOString() },
+        ...prev
+      ]);
+      setIsSuccess(true);
+      setJustification('');
+      setTimeout(() => setIsSuccess(false), 3000);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'No se pudo guardar la revision.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -142,18 +151,23 @@ function HumanReviewPanel({ signal, onSave }: HumanReviewPanelProps) {
               {t.saveMockSuccess}
             </span>
           )}
+          {errorMessage && (
+            <span className="text-status-negative-text font-bold">
+              {errorMessage}
+            </span>
+          )}
         </div>
         <button
           type="button"
           onClick={handleSave}
-          disabled={!justification.trim()}
+          disabled={!justification.trim() || isSaving}
           className={`px-4 py-2 border rounded-sm text-[11px] font-mono font-bold uppercase transition-all ${
-            justification.trim()
+            justification.trim() && !isSaving
               ? 'border-accent-signal text-accent-signal hover:bg-accent-signal hover:text-bg cursor-pointer'
               : 'border-border text-text-muted cursor-not-allowed bg-surface'
           }`}
         >
-          {t.confirmButton}
+          {isSaving ? 'Guardando...' : t.confirmButton}
         </button>
       </div>
 
@@ -189,15 +203,18 @@ function HumanReviewPanel({ signal, onSave }: HumanReviewPanelProps) {
 export function SignalDetail() {
   const [signal, setSignal] = useState<Signal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
       try {
-        const data = await getSignal('SIG-9021');
+        const data = await getSignal(demoIds.signalId);
         setSignal(data);
+        setErrorMessage(null);
       } catch (e) {
         console.error(e);
+        setErrorMessage(e instanceof Error ? e.message : 'Error cargando señal desde backend local.');
       } finally {
         setIsLoading(false);
       }
@@ -210,7 +227,7 @@ export function SignalDetail() {
   }
 
   if (!signal) {
-    return <div className="p-8 text-center text-[13px] text-status-negative-text font-mono">{TRANSLATIONS.signalDetail.errorLoading}</div>;
+    return <div className="p-8 text-center text-[13px] text-status-negative-text font-mono">{errorMessage ?? TRANSLATIONS.signalDetail.errorLoading}</div>;
   }
 
   const isCompleted = signal.status === 'completed';
@@ -232,8 +249,9 @@ export function SignalDetail() {
       {/* 2.5 HUMAN REVIEW CONTROL CENTER */}
       <HumanReviewPanel 
         signal={signal} 
-        onSave={(newStatus) => {
-          setSignal(prev => prev ? { ...prev, reviewStatus: newStatus } : null);
+        onSave={async (newStatus, justification) => {
+          const result = await saveSignalReview(signal.id, newStatus, justification);
+          setSignal(result.signal);
         }} 
       />
 

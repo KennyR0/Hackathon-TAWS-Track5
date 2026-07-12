@@ -1,4 +1,4 @@
-export type InstrumentType = 'equity' | 'etf' | 'crypto' | 'commodity' | 'macro';
+export type InstrumentType = 'equity' | 'etf' | 'crypto' | 'commodity' | 'macro' | 'credit' | 'other';
 export type SourceTier = 'A' | 'B' | 'C' | 'D';
 
 export interface Asset {
@@ -80,6 +80,19 @@ export interface Signal {
   assumptions: string[];
   invalidations: string[];
   suggestedResearchActions: string[];
+}
+
+export interface ReviewDecisionResult {
+  signal: Signal;
+  reviews: {
+    id: string;
+    signalId: string;
+    previousStatus: ReviewStatus;
+    status: Exclude<ReviewStatus, 'pending_review'>;
+    justification: string;
+    reviewedBy: string;
+    reviewedAt: string;
+  }[];
 }
 
 export type BriefingStatus = 'draft' | 'shareable';
