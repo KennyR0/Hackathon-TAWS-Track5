@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from hashlib import sha256
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,6 +17,20 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from app.providers.fixture_provider import FixtureProvider  # noqa: E402
 from app.repositories.fixture_repository import FixtureRepository  # noqa: E402
 from app.supabase_client import create_supabase_client  # noqa: E402
+
+
+def _existing_ids(client, table: str) -> set[str]:
+    rows = client.table(table).select("id").execute().data or []
+    return {row["id"] for row in rows if "id" in row}
+
+
+def _existing_pairs(client, table: str, left: str, right: str) -> set[tuple[str, str]]:
+    rows = client.table(table).select(f"{left},{right}").execute().data or []
+    return {
+        (row[left], row[right])
+        for row in rows
+        if left in row and right in row
+    }
 
 
 def _upsert(client, table: str, rows: list[dict], *, conflict: str | None = None) -> None:
@@ -37,6 +52,7 @@ def bootstrap() -> dict[str, int]:
         "organizations",
         [{"id": "org_demo", "name": "NexoMercado Demo"}],
     )
+    existing_review_ids = _existing_ids(client, "signal_reviews")
     _upsert(
         client,
         "signal_reviews",
@@ -52,6 +68,7 @@ def bootstrap() -> dict[str, int]:
                 "created_at": review.created_at.isoformat(),
             }
             for review in bundle.signal_reviews
+            if review.id not in existing_review_ids
         ],
     )
 
@@ -103,7 +120,10 @@ def bootstrap() -> dict[str, int]:
                     "organization_id": "org_demo",
                     "operation": "briefing",
                     "idempotency_key": f"bootstrap-{briefing.briefing_id}",
-                    "request_hash": f"bootstrap:{briefing.briefing_id}",
+                    "request_hash": (
+                        "sha256:"
+                        + sha256(briefing.briefing_id.encode("utf-8")).hexdigest()
+                    ),
                     "response_status": 200,
                     "response_body": briefing.model_dump(mode="json", by_alias=True),
                     "expires_at": repository.fixture_clock.isoformat(),
@@ -133,22 +153,26 @@ def bootstrap() -> dict[str, int]:
             for run in bundle.agent_runs
         ],
     )
-    _upsert(
+    existing_snapshot_links = _existing_pairs(
         client,
         "agent_run_source_snapshots",
-        [
-            {
-                "run_id": run.id,
-                "snapshot_id": snapshot_id,
-                "snapshot_kind": (
-                    "market" if snapshot_id.startswith("mkt_") else "raw_source"
-                ),
-            }
-            for run in bundle.agent_runs
-            for snapshot_id in run.source_snapshot_ids
-        ],
-        conflict="run_id,snapshot_id",
+        "run_id",
+        "snapshot_id",
     )
+    snapshot_rows = [
+        {
+            "run_id": run.id,
+            "snapshot_id": snapshot_id,
+            "snapshot_kind": (
+                "market" if snapshot_id.startswith("mkt_") else "raw_source"
+            ),
+        }
+        for run in bundle.agent_runs
+        for snapshot_id in run.source_snapshot_ids
+        if (run.id, snapshot_id) not in existing_snapshot_links
+    ]
+    if snapshot_rows:
+        client.table("agent_run_source_snapshots").insert(snapshot_rows).execute()
 
     return {
         "reviews": len(bundle.signal_reviews),

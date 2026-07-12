@@ -70,7 +70,7 @@ def main() -> int:
 
     analysis_request = AnalysisRequest.model_validate(
         {
-            "eventId": "evt_wti_inventory_20260708",
+            "eventId": "evt_wti_supply_20260710",
             "assetIds": ["ast_wti"],
         }
     )
