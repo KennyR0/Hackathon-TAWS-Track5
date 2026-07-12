@@ -13,7 +13,7 @@ phase_7: pendiente
 phase_8: pendiente
 phase_9: pendiente
 phase_10: pendiente
-last_updated: 2026-07-11
+last_updated: 2026-07-12
 ---
 
 # Plan de implementación por fases — NexoMercado AI
@@ -87,6 +87,16 @@ Reglas:
 | 8 | pendiente | Auth, roles y RLS |
 | 9 | pendiente | Workers y operación |
 | 10 | pendiente | Diferenciadores |
+
+Estado operativo actual del repositorio:
+
+- `main` ya contiene un backend funcional `fixtures-first` con API, workflow, pruebas offline y validación de fases.
+- La prioridad activa del equipo es cerrar la persistencia real server-side con Supabase sin romper el baseline offline.
+- El orden de trabajo recomendado es:
+  1. `main` estable;
+  2. persistencia durable;
+  3. frontend/demo visible;
+  4. despliegue y entregables finales.
 
 ## 5. Arquitectura e interfaces aprobadas
 
