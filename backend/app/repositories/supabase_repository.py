@@ -159,17 +159,59 @@ class SupabaseRepository(FixtureRepository):
         payload: dict[str, Any],
         created_at: datetime,
     ) -> None:
-        self._supabase.table("audit_events").upsert(
-            {
-                "id": audit_id,
-                "organization_id": "org_demo",
-                "entity_type": entity_type,
-                "entity_id": entity_id,
-                "event_type": event_type,
-                "payload": payload,
-                "created_at": created_at.isoformat(),
-            }
-        ).execute()
+        primary_payload = {
+            "id": audit_id,
+            "organization_id": "org_demo",
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "event_type": event_type,
+            "payload": payload,
+            "created_at": created_at.isoformat(),
+        }
+        try:
+            self._supabase.table("audit_events").upsert(primary_payload).execute()
+            return
+        except Exception as exc:
+            message = str(exc)
+            if "event_type" not in message and "payload" not in message:
+                raise
+
+        actor_user_id = self._resolve_legacy_audit_actor_id()
+        legacy_payload = {
+            "id": audit_id,
+            "organization_id": "org_demo",
+            "entity_type": self._map_legacy_entity_type(entity_type),
+            "entity_id": entity_id,
+            "action": event_type,
+            "metadata": payload,
+            "created_at": created_at.isoformat(),
+        }
+        if actor_user_id is not None:
+            legacy_payload["actor_user_id"] = actor_user_id
+        self._supabase.table("audit_events").upsert(legacy_payload).execute()
+
+    def _resolve_legacy_audit_actor_id(self) -> str | None:
+        rows = (
+            self._supabase.table("app_users")
+            .select("id")
+            .eq("organization_id", "org_demo")
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            return None
+        return rows[0]["id"]
+
+    @staticmethod
+    def _map_legacy_entity_type(entity_type: str) -> str:
+        legacy_aliases = {
+            "signal_review": "signal",
+            "agent_run_step": "analysis_step",
+            "agent_run": "analysis_run",
+        }
+        return legacy_aliases.get(entity_type, entity_type)
 
     def _get_idempotency(
         self,
