@@ -44,6 +44,7 @@ from app.contracts.entities import (
 )
 from app.contracts.fixtures import canonical_json_bytes, sha256_digest
 from app.providers.fixture_provider import FixtureProvider
+from app.providers.live_market import MarketDataRuntimeService
 from app.repositories.base import BackendRepository
 
 
@@ -61,8 +62,13 @@ SOURCE_TIER_SCORES = {
 class FixtureRepository(BackendRepository):
     """Read the canonical fixture bundle and keep mutable state in memory."""
 
-    def __init__(self, provider: FixtureProvider) -> None:
+    def __init__(
+        self,
+        provider: FixtureProvider,
+        market_runtime: MarketDataRuntimeService | None = None,
+    ) -> None:
         self._provider = provider
+        self._market_runtime = market_runtime
         self._bundle = provider.load_bundle()
         self._sources = {item.id: item for item in self._bundle.sources}
         self._articles = {item.id: item for item in self._bundle.articles}
@@ -90,6 +96,8 @@ class FixtureRepository(BackendRepository):
 
     def get_meta(self) -> DataProvenance:
         clock = self._bundle.manifest.fixture_clock
+        if self._market_runtime is not None:
+            return self._market_runtime.repository_provenance(clock)
         with allow_internal_field_names():
             freshness = Freshness(
                 evaluated_at=clock,
@@ -584,6 +592,7 @@ class FixtureRepository(BackendRepository):
                 has_single_source=len(self._independent_original_publisher_groups(sources)) < 2,
                 has_material_contradiction=self._has_material_contradiction(evidence),
                 has_incomplete_history=self._has_incomplete_history(signal, price_reaction),
+                has_old_fallback=self.get_meta().data_mode == DataMode.FALLBACK,
                 has_indirect_relation=relation.relationship == "indirect",
             )
             impact, analysis_status = derive_safe_status(signal.impact, confidence)

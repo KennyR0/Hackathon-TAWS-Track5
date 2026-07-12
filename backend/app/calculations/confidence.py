@@ -11,6 +11,7 @@ def apply_confidence_penalties(
     has_single_source: bool = False,
     has_material_contradiction: bool = False,
     has_incomplete_history: bool = False,
+    has_old_fallback: bool = False,
     has_indirect_relation: bool = False,
 ) -> float:
     confidence = base_confidence
@@ -20,6 +21,8 @@ def apply_confidence_penalties(
         confidence -= 0.20
     if has_incomplete_history:
         confidence -= 0.15
+    if has_old_fallback:
+        confidence -= 0.10
     if has_indirect_relation:
         confidence -= 0.10
     return max(0.0, min(1.0, confidence))

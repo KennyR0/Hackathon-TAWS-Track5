@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from app.config import get_runtime_config, get_supabase_config
+from app.config import get_market_provider_config, get_runtime_config, get_supabase_config
 from app.llm.base import LLMAdapter
 from app.llm.fixture_adapter import FixtureLLMAdapter
 from app.llm.openai_responses import OpenAIResponsesAdapter
 from app.providers.fixture_provider import FixtureProvider
+from app.providers.live_market import MarketDataRuntimeService
 from app.repositories.fixture_repository import FixtureRepository
 from app.repositories.supabase_repository import SupabaseRepository
 from app.services.analysis_service import AnalysisService
@@ -32,13 +33,25 @@ def get_repository() -> FixtureRepository:
         return SupabaseRepository(
             get_fixture_provider(),
             get_supabase_client(),
+            get_market_data_runtime_service(),
         )
-    return FixtureRepository(get_fixture_provider())
+    return FixtureRepository(
+        get_fixture_provider(),
+        market_runtime=get_market_data_runtime_service(),
+    )
 
 
 @lru_cache
 def get_supabase_client():
     return create_supabase_client(get_supabase_config())
+
+
+@lru_cache
+def get_market_data_runtime_service() -> MarketDataRuntimeService:
+    return MarketDataRuntimeService(
+        get_market_provider_config(),
+        get_fixture_provider(),
+    )
 
 
 @lru_cache

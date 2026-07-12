@@ -13,15 +13,21 @@ from app.contracts.api import AgentRunStep, AnalysisRequest, BriefingRequest, Re
 from app.contracts.entities import AgentRun, Briefing, Reviewer, SignalReview, allow_internal_field_names
 from app.contracts.fixtures import canonical_json_bytes
 from app.providers.fixture_provider import FixtureProvider
+from app.providers.live_market import MarketDataRuntimeService
 from app.repositories.fixture_repository import REVIEWER, FixtureRepository
 
 
 class SupabaseRepository(FixtureRepository):
     """Keep deterministic reads while persisting mutable workflow state."""
 
-    def __init__(self, provider: FixtureProvider, client: Client) -> None:
+    def __init__(
+        self,
+        provider: FixtureProvider,
+        client: Client,
+        market_runtime: MarketDataRuntimeService | None = None,
+    ) -> None:
         self._supabase = client
-        super().__init__(provider)
+        super().__init__(provider, market_runtime=market_runtime)
         self._hydrate_mutable_state()
 
     def _hydrate_mutable_state(self) -> None:

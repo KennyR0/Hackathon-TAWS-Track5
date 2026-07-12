@@ -14,16 +14,19 @@ DEFAULT_OPENAI_MODEL = "gpt-5.4"
 DEFAULT_OPENAI_REASONING_EFFORT = "medium"
 DEFAULT_LLM_PROVIDER = "fixture"
 DEFAULT_REPOSITORY_BACKEND = "fixture"
+DEFAULT_MARKET_DATA_MODE = "fixture"
 DEFAULT_FIXTURE_BUNDLE_PATH = "data/fixtures/v1/phase0_bundle.json"
 VALID_REASONING_EFFORTS = {"minimal", "low", "medium", "high", "xhigh"}
 VALID_LLM_PROVIDERS = {"fixture", "openai"}
 VALID_REPOSITORY_BACKENDS = {"fixture", "supabase"}
+VALID_MARKET_DATA_MODES = {"fixture", "hybrid", "live"}
 
 
 @dataclass(frozen=True)
 class RuntimeConfig:
     llm_provider: str = DEFAULT_LLM_PROVIDER
     repository_backend: str = DEFAULT_REPOSITORY_BACKEND
+    market_data_mode: str = DEFAULT_MARKET_DATA_MODE
     fixture_bundle_path: Path = Path(DEFAULT_FIXTURE_BUNDLE_PATH)
 
 
@@ -38,6 +41,16 @@ class OpenAIConfig:
 class SupabaseConfig:
     url: str
     service_role_key: str
+
+
+@dataclass(frozen=True)
+class MarketProviderConfig:
+    mode: str = DEFAULT_MARKET_DATA_MODE
+    gdelt_api_key: str | None = None
+    finnhub_api_key: str | None = None
+    twelve_data_api_key: str | None = None
+    coingecko_api_key: str | None = None
+    fred_api_key: str | None = None
 
 
 def get_openai_config() -> OpenAIConfig:
@@ -88,6 +101,17 @@ def get_runtime_config() -> RuntimeConfig:
             f"{valid_values}. Received: {repository_backend}"
         )
 
+    market_data_mode = getenv(
+        "MARKET_DATA_MODE",
+        DEFAULT_MARKET_DATA_MODE,
+    ).strip().lower()
+    if market_data_mode not in VALID_MARKET_DATA_MODES:
+        valid_values = ", ".join(sorted(VALID_MARKET_DATA_MODES))
+        raise RuntimeError(
+            "MARKET_DATA_MODE must be one of: "
+            f"{valid_values}. Received: {market_data_mode}"
+        )
+
     fixture_bundle_path = Path(
         getenv("FIXTURE_BUNDLE_PATH", DEFAULT_FIXTURE_BUNDLE_PATH).strip()
         or DEFAULT_FIXTURE_BUNDLE_PATH
@@ -98,6 +122,7 @@ def get_runtime_config() -> RuntimeConfig:
     return RuntimeConfig(
         llm_provider=llm_provider,
         repository_backend=repository_backend,
+        market_data_mode=market_data_mode,
         fixture_bundle_path=fixture_bundle_path.resolve(),
     )
 
@@ -118,4 +143,16 @@ def get_supabase_config() -> SupabaseConfig:
     return SupabaseConfig(
         url=url,
         service_role_key=service_role_key,
+    )
+
+
+def get_market_provider_config() -> MarketProviderConfig:
+    runtime_config = get_runtime_config()
+    return MarketProviderConfig(
+        mode=runtime_config.market_data_mode,
+        gdelt_api_key=getenv("GDELT_API_KEY", "").strip() or None,
+        finnhub_api_key=getenv("FINNHUB_API_KEY", "").strip() or None,
+        twelve_data_api_key=getenv("TWELVE_DATA_API_KEY", "").strip() or None,
+        coingecko_api_key=getenv("COINGECKO_API_KEY", "").strip() or None,
+        fred_api_key=getenv("FRED_API_KEY", "").strip() or None,
     )

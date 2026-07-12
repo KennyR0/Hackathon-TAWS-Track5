@@ -25,8 +25,10 @@ Variables esperadas:
 - `OPENAI_REASONING_EFFORT` con uno de `minimal`, `low`, `medium` o `high`
 - `LLM_PROVIDER` con `fixture` o `openai`
 - `REPOSITORY_BACKEND` con `fixture` o `supabase`
+- `MARKET_DATA_MODE` con `fixture`, `hybrid` o `live`
 - `FIXTURE_BUNDLE_PATH` para seleccionar el bundle offline
 - `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` solo para persistencia real
+- `GDELT_API_KEY`, `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` para sourcing live opcional
 
 Ejemplo rapido:
 
@@ -37,6 +39,7 @@ export OPENAI_MODEL="gpt-5.4"
 export OPENAI_REASONING_EFFORT="medium"
 export LLM_PROVIDER="fixture"
 export REPOSITORY_BACKEND="fixture"
+export MARKET_DATA_MODE="fixture"
 export FIXTURE_BUNDLE_PATH="data/fixtures/v1/phase0_bundle.json"
 ```
 
@@ -78,3 +81,26 @@ backend/.venv314/bin/python backend/scripts/check_supabase_connection.py --env-f
 backend/.venv314/bin/python backend/scripts/bootstrap_supabase.py --env-file .env --apply
 backend/.venv314/bin/python backend/scripts/check_supabase_persistence.py --env-file .env
 ```
+
+### Modo hybrid o live
+
+El backend mantiene el contrato actual, pero puede intentar providers reales para el recorrido del track.
+
+- `fixture`: todo offline y reproducible
+- `hybrid`: intenta live y cae a `fallback`
+- `live`: intenta live primero; si falla, responde con `fallback` y warnings
+
+Probe operativo del runtime de mercado:
+
+```bash
+backend/.venv314/bin/python backend/scripts/check_market_data_pipeline.py --env-file .env
+```
+
+Variables live esperadas:
+
+- `MARKET_DATA_MODE=hybrid` o `MARKET_DATA_MODE=live`
+- `FINNHUB_API_KEY`
+- `TWELVE_DATA_API_KEY`
+- `FRED_API_KEY`
+- `COINGECKO_API_KEY` opcional
+- `GDELT_API_KEY` solo si el proveedor configurado lo requiere
