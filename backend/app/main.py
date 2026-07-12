@@ -16,6 +16,7 @@ from app.api.v1.differentiators import router as differentiators_router
 from app.api.v1.events import router as events_router
 from app.api.v1.market import router as market_router
 from app.api.v1.reviews import router as reviews_router
+from app.api.v1.runtime import router as runtime_router
 from app.api.v1.signals import router as signals_router
 from app.config import get_backend_cors_origins
 from app.contracts.api import ApiError
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(events_router, prefix="/api/v1", dependencies=protected)
     app.include_router(differentiators_router, prefix="/api/v1", dependencies=protected)
     app.include_router(market_router, prefix="/api/v1", dependencies=protected)
+    app.include_router(runtime_router, prefix="/api/v1", dependencies=protected)
     app.include_router(signals_router, prefix="/api/v1", dependencies=protected)
     app.include_router(reviews_router, prefix="/api/v1", dependencies=protected)
     app.include_router(briefings_router, prefix="/api/v1", dependencies=protected)

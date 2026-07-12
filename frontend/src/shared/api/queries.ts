@@ -11,6 +11,7 @@ export const queryKeys = {
   ecuadorSnapshots: () => ['ecuador-snapshots'] as const,
   signals: () => ['signals'] as const,
   marketSnapshots: (filters?: { asset?: string; interval?: '1h' | '1d' }) => ['market-snapshots', filters] as const,
+  providerRuntime: () => ['runtime', 'providers'] as const,
   signal: (signalId: string) => ['signal', signalId] as const,
   signalEvidence: (signalId: string) => ['signal', signalId, 'evidence'] as const,
   signalReviews: (signalId: string) => ['signal', signalId, 'reviews'] as const,
@@ -98,6 +99,22 @@ export function useMarketSnapshotsQuery(filters?: { asset?: string; interval?: '
       }
     },
     enabled: options?.enabled ?? true,
+  })
+}
+
+export function useProviderRuntimeQuery() {
+  return useQuery({
+    queryKey: queryKeys.providerRuntime(),
+    queryFn: async () => {
+      const payload = await apiClient.getProviderRuntimeStatus()
+      return {
+        status: payload.data,
+        meta: payload.meta,
+      }
+    },
+    enabled: false,
+    retry: false,
+    refetchOnWindowFocus: false,
   })
 }
 

@@ -11,7 +11,7 @@ Mostrar que NexoMercado AI transforma eventos verificables en senales explicable
 Backend:
 
 ```powershell
-MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
+$env:MARKET_DATA_MODE='fixture'; .\.venv312\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
 ```
 
 Frontend:
@@ -24,8 +24,44 @@ corepack pnpm dev
 Smoke previo:
 
 ```powershell
-MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py
+$env:MARKET_DATA_MODE='fixture'; .\.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py
 ```
+
+## Demostración real híbrida
+
+Este recorrido usa `backend/.env.local`, crea registros auditables `DEMO_E2E` en
+Supabase y consume OpenAI. No modifica el esquema ni presenta los fixtures de
+señales como datos live.
+
+Backend:
+
+```powershell
+.\.venv312\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --env-file backend/.env.local --host 127.0.0.1 --port 8000
+```
+
+Frontend, en otra terminal:
+
+```powershell
+Set-Location frontend
+corepack pnpm dev --host 127.0.0.1 --port 5173
+```
+
+Smoke HTTP real, con el backend activo:
+
+```powershell
+.\.venv312\Scripts\python.exe backend\scripts\check_live_demo_flow.py --base-url http://127.0.0.1:8000 --analysis-timeout 180
+```
+
+Recorrido visual:
+
+1. Abrir `http://127.0.0.1:5173/assistant` o elegir **Demo IA**.
+2. Pulsar **Consultar APIs ahora** y mostrar cada proveedor `live` o `fallback`.
+3. Guardar un mensaje con marcador `DEMO_E2E:<id>` y confirmar que reaparece.
+4. Pulsar **Iniciar análisis contextual** y esperar el estado terminal en Auditoría.
+5. Mostrar los nodos `analyst_agent`, `advisor_agent` y `audit_writer`.
+
+La demo híbrida es válida si existe al menos un proveedor live y cada caída se
+explica. Supabase u OpenAI fallidos invalidan el recorrido.
 
 ## Recorrido recomendado
 
@@ -59,4 +95,6 @@ MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe backend\scripts\check_dem
 - No hay trading automatico ni recomendacion personalizada.
 - El frontend no contiene secretos ni llama proveedores financieros directamente.
 - El backend puede degradar a fallback y baja confianza cuando corresponde.
+- La verificación live es una capa separada: radar, señales y evidencia histórica
+  conservan su etiqueta fixture/fallback hasta implementar ingesta live completa.
 - La demo deploy-ready ya tiene Vercel/Render configurados, pero no se hizo despliegue cloud real.

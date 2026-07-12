@@ -32,6 +32,7 @@ from app.services.conversation_service import ConversationService
 from app.services.differentiator_service import DifferentiatorService
 from app.services.event_service import EventService
 from app.services.market_service import MarketService
+from app.services.provider_demo_service import ProviderDemoService
 from app.services.provider_runtime_service import (
     build_in_memory_provider_runtime,
     build_supabase_provider_runtime,
@@ -102,6 +103,13 @@ CurrentUserDep = Annotated[AppUserContext, Depends(get_current_app_user)]
 def get_scoped_repository(user: AppUserContext) -> FixtureRepository:
     runtime_config = get_runtime_config()
     if runtime_config.repository_backend == "supabase":
+        auth_config = get_auth_config()
+        if not auth_config.enabled:
+            return SupabaseRepository(
+                get_fixture_provider(),
+                get_supabase_client(),
+                get_market_data_runtime_service(),
+            )
         return SupabaseRepository(
             get_fixture_provider(),
             get_supabase_client(),
@@ -127,6 +135,10 @@ def get_market_data_runtime_service() -> MarketDataRuntimeService:
         get_fixture_provider(),
         provider_runtime=provider_runtime,
     )
+
+
+def get_provider_demo_service() -> ProviderDemoService:
+    return ProviderDemoService(get_market_data_runtime_service())
 
 
 @lru_cache

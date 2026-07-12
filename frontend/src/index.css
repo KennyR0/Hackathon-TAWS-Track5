@@ -688,6 +688,64 @@ button {
   color: var(--text-secondary);
 }
 
+.provider-runtime-copy {
+  margin-bottom: 14px;
+}
+
+.provider-runtime {
+  display: grid;
+  gap: 14px;
+}
+
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.provider-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(8, 15, 27, 0.5);
+  padding: 14px;
+}
+
+.provider-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.provider-card__heading div,
+.provider-card__heading strong {
+  display: grid;
+  gap: 3px;
+}
+
+.provider-card__heading span,
+.provider-card small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.provider-card__value {
+  margin: 14px 0 8px !important;
+  color: var(--text-primary) !important;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.provider-card .warning-list {
+  margin-top: 12px;
+  padding: 10px;
+}
+
+.provider-card .warning-list li {
+  overflow-wrap: anywhere;
+}
+
 .chart-panel {
   padding: 18px;
 }
@@ -1251,6 +1309,16 @@ button {
 }
 
 @media (max-width: 760px) {
+  .surface-card__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .surface-card__action,
+  .surface-card__action button {
+    width: 100%;
+  }
+
   .app-shell {
     grid-template-columns: 1fr;
   }

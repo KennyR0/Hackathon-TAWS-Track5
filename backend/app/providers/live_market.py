@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from time import sleep
-from typing import Callable
 
 import httpx
 
@@ -168,7 +168,11 @@ class CoinGeckoPriceProvider(PriceProvider):
         payload = response.json().get("bitcoin", {})
         return _live_result(
             "coingecko",
-            {"symbol": symbol, "usd": payload.get("usd"), "lastUpdatedAt": payload.get("last_updated_at")},
+            {
+                "symbol": symbol,
+                "usd": payload.get("usd"),
+                "lastUpdatedAt": payload.get("last_updated_at"),
+            },
         )
 
 
@@ -324,10 +328,30 @@ class MarketDataRuntimeService:
                     cache_ttl_seconds=self._config.gdelt_cache_ttl_seconds,
                 ),
             ),
-            ("aapl", lambda: self._safe_probe(lambda: self._equity_price_provider.probe("AAPL"), "twelve_data")),
-            ("spy", lambda: self._safe_probe(lambda: self._metadata_provider.probe("SPY"), "finnhub")),
-            ("btc", lambda: self._safe_probe(lambda: self._crypto_price_provider.probe("BTC-USD"), "coingecko")),
-            ("wti", lambda: self._safe_probe(lambda: self._macro_provider.probe("DCOILWTICO"), "fred")),
+            (
+                "aapl",
+                lambda: self._safe_probe(
+                    lambda: self._equity_price_provider.probe("AAPL"), "twelve_data"
+                ),
+            ),
+            (
+                "spy",
+                lambda: self._safe_probe(
+                    lambda: self._metadata_provider.probe("SPY"), "finnhub"
+                ),
+            ),
+            (
+                "btc",
+                lambda: self._safe_probe(
+                    lambda: self._crypto_price_provider.probe("BTC-USD"), "coingecko"
+                ),
+            ),
+            (
+                "wti",
+                lambda: self._safe_probe(
+                    lambda: self._macro_provider.probe("DCOILWTICO"), "fred"
+                ),
+            ),
         ):
             result = provider_call()
             checks[key] = result
@@ -424,8 +448,12 @@ class MarketDataRuntimeService:
                     provider=provider,
                     data_mode=cached.data_mode,
                     ok=cached.status_code < 400,
-                    warnings=(),
-                    payload=cached.response_json,
+                    warnings=(f"{provider.upper()}_CACHE_HIT",),
+                    payload={
+                        **cached.response_json,
+                        "servedFromCache": True,
+                        "cacheFetchedAt": cached.fetched_at.isoformat(),
+                    },
                 )
             if self._provider_runtime.health.is_circuit_open(provider):
                 return _fallback_result(
@@ -439,6 +467,7 @@ class MarketDataRuntimeService:
                     payload={"requestBudget": self._request_budget},
                     warning=f"{provider.upper()}_BUDGET_EXHAUSTED",
                 )
+            self._requests_used += 1
         elif self._is_circuit_open(provider):
             return _fallback_result(
                 provider,
@@ -448,7 +477,10 @@ class MarketDataRuntimeService:
         elif self._request_budget <= 0:
             return _fallback_result(
                 provider,
-                payload={"requestBudget": self._request_budget, "requestsUsed": self._requests_used},
+                payload={
+                    "requestBudget": self._request_budget,
+                    "requestsUsed": self._requests_used,
+                },
                 warning=f"{provider.upper()}_BUDGET_EXHAUSTED",
             )
 

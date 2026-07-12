@@ -242,6 +242,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runtime/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Probe configured providers with auditable fallback */
+        get: operations["getProviderRuntimeStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/signals": {
         parameters: {
             query?: never;
@@ -1132,6 +1149,70 @@ export interface components {
             /** Suggestedresearchactions */
             suggestedResearchActions: string[];
         };
+        /** ProviderRuntimeCheck */
+        ProviderRuntimeCheck: {
+            /**
+             * Dataasof
+             * @default null
+             */
+            dataAsOf: string | null;
+            dataMode: components["schemas"]["DataMode"];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "news" | "aapl" | "spy" | "btc" | "wti";
+            /** Metrics */
+            metrics: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Ok */
+            ok: boolean;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "gdelt" | "twelve_data" | "finnhub" | "coingecko" | "fred";
+            /** Resource */
+            resource: string;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
+        /** ProviderRuntimeResponse */
+        ProviderRuntimeResponse: {
+            data: components["schemas"]["ProviderRuntimeStatus"];
+            meta: components["schemas"]["DataProvenance"];
+        };
+        /** ProviderRuntimeStatus */
+        ProviderRuntimeStatus: {
+            /**
+             * Checkedat
+             * Format: date-time
+             */
+            checkedAt: string;
+            /** Checks */
+            checks: components["schemas"]["ProviderRuntimeCheck"][];
+            /**
+             * Configuredmode
+             * @enum {string}
+             */
+            configuredMode: "fixture" | "hybrid" | "live";
+            effectiveDataMode: components["schemas"]["DataMode"];
+            /** Provider */
+            provider: string;
+            /** Requestbudget */
+            requestBudget: number;
+            /** Requestsused */
+            requestsUsed: number;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
         /** ReviewListResponse */
         ReviewListResponse: {
             /** Data */
@@ -1870,6 +1951,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getProviderRuntimeStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRuntimeResponse"];
                 };
             };
         };

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -129,6 +129,13 @@ def _repository(client: FakeClient) -> SupabaseRepository:
     return SupabaseRepository(FixtureProvider(bundle), client)
 
 
+def test_unscoped_demo_repository_keeps_fixture_reads_without_organization_columns() -> None:
+    repository = _repository(FakeClient())
+
+    assert repository.list_events()
+    assert repository.list_signals()
+
+
 def test_authenticated_repository_hides_other_organization_resources() -> None:
     client = FakeClient()
     client.rows["signals"] = [
@@ -249,7 +256,7 @@ def test_analysis_run_and_steps_persist_after_restart() -> None:
             "runId": run.id,
             "node": "load_context",
             "status": "processing",
-            "timestamp": datetime(2026, 7, 12, 12, 0, tzinfo=timezone.utc),
+            "timestamp": datetime(2026, 7, 12, 12, 0, tzinfo=UTC),
             "payload": {"eventId": request.event_id},
         }
     )
@@ -307,7 +314,7 @@ def test_duplicate_run_step_is_not_reinserted_after_restart() -> None:
             "runId": run.id,
             "node": "verify_sources",
             "status": "completed",
-            "timestamp": datetime(2026, 7, 12, 12, 1, tzinfo=timezone.utc),
+            "timestamp": datetime(2026, 7, 12, 12, 1, tzinfo=UTC),
             "payload": {"warnings": []},
         }
     )
