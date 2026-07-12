@@ -12,6 +12,7 @@ from app.api.health import router as health_router
 from app.api.v1.analyses import router as analyses_router
 from app.api.v1.briefings import router as briefings_router
 from app.api.v1.events import router as events_router
+from app.api.v1.market import router as market_router
 from app.api.v1.reviews import router as reviews_router
 from app.api.v1.signals import router as signals_router
 from app.config import get_backend_cors_origins
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     protected = [Depends(get_current_app_user)]
     app.include_router(events_router, prefix="/api/v1", dependencies=protected)
+    app.include_router(market_router, prefix="/api/v1", dependencies=protected)
     app.include_router(signals_router, prefix="/api/v1", dependencies=protected)
     app.include_router(reviews_router, prefix="/api/v1", dependencies=protected)
     app.include_router(briefings_router, prefix="/api/v1", dependencies=protected)

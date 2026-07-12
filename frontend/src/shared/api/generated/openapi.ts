@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/market-snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List verifiable market snapshots */
+        get: operations["listMarketSnapshots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{runId}/steps": {
         parameters: {
             query?: never;
@@ -847,6 +864,12 @@ export interface components {
             /** Warnings */
             warnings: string[];
         };
+        /** MarketSnapshotListResponse */
+        MarketSnapshotListResponse: {
+            /** Data */
+            data: components["schemas"]["MarketSnapshot"][];
+            meta: components["schemas"]["DataProvenance"];
+        };
         /** PriceReaction */
         PriceReaction: {
             /**
@@ -1381,6 +1404,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMarketSnapshots: {
+        parameters: {
+            query?: {
+                asset?: string;
+                interval?: "1h" | "1d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketSnapshotListResponse"];
                 };
             };
         };

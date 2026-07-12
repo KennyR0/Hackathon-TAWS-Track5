@@ -25,6 +25,7 @@ from app.security.auth import (
 from app.services.analysis_service import AnalysisService
 from app.services.briefing_service import BriefingService
 from app.services.event_service import EventService
+from app.services.market_service import MarketService
 from app.services.provider_runtime_service import (
     build_in_memory_provider_runtime,
     build_supabase_provider_runtime,
@@ -137,6 +138,13 @@ def get_signal_service(
     user: CurrentUserDep,
 ) -> SignalService:
     return SignalService(get_scoped_repository(user))
+
+
+@lru_cache
+def get_market_service(
+    user: CurrentUserDep,
+) -> MarketService:
+    return MarketService(get_scoped_repository(user))
 
 
 @lru_cache

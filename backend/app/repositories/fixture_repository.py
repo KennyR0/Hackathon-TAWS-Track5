@@ -30,6 +30,7 @@ from app.contracts.entities import (
     Freshness,
     HumanReviewSummary,
     Impact,
+    MarketSnapshot,
     PrioritizedSignal,
     ReviewStatus,
     ReviewSummary,
@@ -155,6 +156,24 @@ class FixtureRepository(BackendRepository):
                 name=watchlist.name,
                 asset_ids=asset_ids,
             )
+
+    def list_market_snapshots(
+        self,
+        *,
+        asset: str | None = None,
+        interval: str | None = None,
+    ) -> tuple[MarketSnapshot, ...]:
+        with self._lock:
+            normalized_asset = asset.upper() if asset else None
+            result = []
+            for snapshot in self._bundle.market_snapshots:
+                snapshot_asset = self._assets[snapshot.asset_id]
+                if normalized_asset and snapshot_asset.symbol != normalized_asset:
+                    continue
+                if interval and snapshot.interval != interval:
+                    continue
+                result.append(snapshot)
+            return tuple(sorted(result, key=lambda snapshot: (snapshot.asset_id, snapshot.interval, snapshot.id)))
 
     def list_signals(
         self,

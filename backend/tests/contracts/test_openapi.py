@@ -15,6 +15,7 @@ EXPECTED_OPERATIONS = {
     ("/health", "get"),
     ("/api/v1/events", "get"),
     ("/api/v1/events/{eventId}", "get"),
+    ("/api/v1/market-snapshots", "get"),
     ("/api/v1/analyses", "post"),
     ("/api/v1/analyses/{runId}", "get"),
     ("/api/v1/analyses/{runId}/stream", "get"),

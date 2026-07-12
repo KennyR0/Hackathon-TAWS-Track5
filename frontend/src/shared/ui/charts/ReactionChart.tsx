@@ -1,13 +1,13 @@
 import { createChart, LineSeries } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
-import type { SignalViewModel } from '../../types/view-models'
-import { formatPercent } from '../../lib/format'
+import type { MarketSnapshotViewModel, SignalViewModel } from '../../types/view-models'
+import { formatDateTime, formatPercent } from '../../lib/format'
 
-export function ReactionChart({ signal }: { signal: SignalViewModel }) {
+export function ReactionChart({ signal, snapshot }: { signal: SignalViewModel; snapshot?: MarketSnapshotViewModel | null }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (!containerRef.current || !signal.priceReaction) return
+    if (!containerRef.current || !snapshot || snapshot.observations.length < 2) return
 
     const chart = createChart(containerRef.current, {
       autoSize: true,
@@ -22,34 +22,25 @@ export function ReactionChart({ signal }: { signal: SignalViewModel }) {
     })
 
     const assetSeries = chart.addSeries(LineSeries, { color: '#22c55e', lineWidth: 2 })
-    assetSeries.setData([
-      { time: '2026-07-09', value: 100 },
-      { time: '2026-07-10', value: 100 * (1 + signal.priceReaction.assetReturn) },
-    ])
-
-    if (signal.priceReaction.benchmarkReturn != null) {
-      const benchmarkSeries = chart.addSeries(LineSeries, { color: '#60a5fa', lineWidth: 2 })
-      benchmarkSeries.setData([
-        { time: '2026-07-09', value: 100 },
-        { time: '2026-07-10', value: 100 * (1 + signal.priceReaction.benchmarkReturn) },
-      ])
-    }
+    assetSeries.setData(snapshot.observations.map(point => ({ time: point.timestamp.slice(0, 10), value: point.close })))
 
     return () => chart.remove()
-  }, [signal])
+  }, [snapshot])
 
-  if (!signal.priceReaction) {
-    return <p className="chart-caption">La API actual no expone snapshots temporales suficientes para trazar una reaccion historica completa.</p>
+  if (!snapshot || snapshot.observations.length < 2) {
+    return <p className="chart-caption">La API actual no expone un historial verificable suficiente para este activo.</p>
   }
 
   return (
     <div className="chart-panel">
       <div className="chart-panel__header">
-        <h3>Reaccion normalizada del activo</h3>
-        <span>{formatPercent(signal.priceReaction.assetReturn)}</span>
+        <h3>Historial verificable del activo</h3>
+        <span>{signal.priceReaction ? formatPercent(signal.priceReaction.assetReturn) : 'Sin reaccion'}</span>
       </div>
       <div className="lightweight-chart" ref={containerRef} />
-      <p className="chart-caption">Serie derivada de la reaccion reportada por backend. No sustituye un historial OHLC completo.</p>
+      <p className="chart-caption">
+        Observaciones reales del snapshot {snapshot.id}. Datos al {formatDateTime(snapshot.dataAsOf)}.
+      </p>
     </div>
   )
 }

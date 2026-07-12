@@ -14,5 +14,6 @@ supabase/
 .temp/
 .tmp/
 migrations/
-.agents/skills/supabase-postgres-best-practices/
+.agents/skills/
 node_modules/
+.codex

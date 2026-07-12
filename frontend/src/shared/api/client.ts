@@ -6,6 +6,7 @@ import type {
   ApiError,
   ApiEventView,
   ApiEvidence,
+  ApiMarketSnapshot,
   ApiMeta,
   ApiReviewRequest,
   ApiSignal,
@@ -99,6 +100,13 @@ export const apiClient = {
   },
   listSignals() {
     return request<Envelope<ApiSignal[]>>('/signals')
+  },
+  listMarketSnapshots(filters?: { asset?: string; interval?: '1h' | '1d' }) {
+    const params = new URLSearchParams()
+    if (filters?.asset) params.set('asset', filters.asset)
+    if (filters?.interval) params.set('interval', filters.interval)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return request<Envelope<ApiMarketSnapshot[]>>(`/market-snapshots${query}`)
   },
   getSignal(signalId: string) {
     return request<Envelope<ApiSignal>>(`/signals/${signalId}`)

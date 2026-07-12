@@ -1,5 +1,6 @@
 import type { PropsWithChildren, ReactNode } from 'react'
-import { AlertTriangle, DatabaseZap, RefreshCw } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { AlertTriangle, ArrowLeft, DatabaseZap, RefreshCw } from 'lucide-react'
 
 export function SurfaceCard({
   title,
@@ -66,5 +67,14 @@ export function RefreshButton({ onClick, busy = false, label = 'Actualizar' }: {
       <RefreshCw size={16} className={busy ? 'spin' : ''} />
       {label}
     </button>
+  )
+}
+
+export function BackToHomeButton() {
+  return (
+    <Link className="back-home-button" to="/summary" aria-label="Volver al inicio">
+      <ArrowLeft size={16} />
+      <span>Volver al inicio</span>
+    </Link>
   )
 }

@@ -1,9 +1,9 @@
 import { useParams } from 'react-router-dom'
-import { useEventQuery, useSignalDetailQuery } from '../../shared/api/queries'
+import { useEventQuery, useMarketSnapshotsQuery, useSignalDetailQuery } from '../../shared/api/queries'
 import { ConfidenceBreakdown } from '../../shared/ui/charts/ConfidenceBreakdown'
 import { ReactionChart } from '../../shared/ui/charts/ReactionChart'
 import { AnalysisStatusBadge, ImpactBadge, ReviewStatusBadge, WarningList } from '../../shared/ui/badges'
-import { EmptyState, LoadingSkeleton, SurfaceCard } from '../../shared/ui/primitives'
+import { BackToHomeButton, EmptyState, LoadingSkeleton, SurfaceCard } from '../../shared/ui/primitives'
 import { formatDateTime } from '../../shared/lib/format'
 import { ReviewComposer } from '../reviews/ReviewComposer'
 
@@ -11,16 +11,22 @@ export function SignalDetailPage() {
   const { signalId = '' } = useParams()
   const signalQuery = useSignalDetailQuery(signalId)
   const eventQuery = useEventQuery(signalQuery.data?.signal.eventId ?? '')
+  const snapshotsQuery = useMarketSnapshotsQuery(
+    { asset: signalQuery.data?.signal.asset.symbol, interval: '1d' },
+    { enabled: Boolean(signalQuery.data?.signal.asset.symbol) },
+  )
 
   if (signalQuery.isLoading) return <LoadingSkeleton rows={12} />
   if (!signalQuery.data) return <EmptyState title="Senal no encontrada" description="No logramos cargar la senal solicitada." />
 
   const { signal, evidence, reviews } = signalQuery.data
+  const snapshot = snapshotsQuery.data?.items[0] ?? null
   const supportiveEvidence = evidence.filter(item => item.supportsSignal)
   const contradictoryEvidence = evidence.filter(item => !item.supportsSignal)
 
   return (
     <div className="page-stack">
+      <BackToHomeButton />
       <section className="content-grid content-grid--wide">
         <SurfaceCard eyebrow={signal.asset.symbol} title={signal.asset.name}>
           <div className="badge-row">
@@ -47,7 +53,7 @@ export function SignalDetailPage() {
       </section>
 
       <section className="content-grid content-grid--wide">
-        <ReactionChart signal={signal} />
+        <ReactionChart signal={signal} snapshot={snapshot} />
         <ConfidenceBreakdown signal={signal} />
       </section>
 

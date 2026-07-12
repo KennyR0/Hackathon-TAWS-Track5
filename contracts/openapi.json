@@ -1564,6 +1564,27 @@
         "title": "MarketSnapshot",
         "type": "object"
       },
+      "MarketSnapshotListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MarketSnapshot"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "MarketSnapshotListResponse",
+        "type": "object"
+      },
       "PriceReaction": {
         "additionalProperties": false,
         "properties": {
@@ -2702,6 +2723,46 @@
           }
         },
         "summary": "Read a normalized market event"
+      }
+    },
+    "/api/v1/market-snapshots": {
+      "get": {
+        "operationId": "listMarketSnapshots",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "asset",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1h",
+                "1d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketSnapshotListResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "summary": "List verifiable market snapshots"
       }
     },
     "/api/v1/runs/{runId}/steps": {

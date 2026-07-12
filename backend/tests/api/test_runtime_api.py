@@ -74,6 +74,32 @@ def test_watchlist_demo_global(api_client) -> None:
     assert payload["data"]["assetIds"] == ["ast_aapl", "ast_btc_usd", "ast_wti"]
 
 
+def test_market_snapshots_endpoint_exposes_verifiable_observations(api_client) -> None:
+    response = api_client.get("/api/v1/market-snapshots")
+
+    assert response.status_code == 200
+    payload = response.json()
+    symbols = {snapshot["assetId"] for snapshot in payload["data"]}
+    assert {"ast_aapl", "ast_spy", "ast_btc_usd", "ast_wti"} <= symbols
+    assert payload["meta"]["dataMode"] == "fixture"
+    assert all(len(snapshot["observations"]) >= 2 for snapshot in payload["data"])
+    assert all(snapshot["contentHash"].startswith("sha256:") for snapshot in payload["data"])
+
+
+def test_market_snapshots_endpoint_filters_by_asset_and_interval(api_client) -> None:
+    response = api_client.get(
+        "/api/v1/market-snapshots",
+        params={"asset": "AAPL", "interval": "1d"},
+    )
+
+    assert response.status_code == 200
+    snapshots = response.json()["data"]
+    assert len(snapshots) == 1
+    assert snapshots[0]["assetId"] == "ast_aapl"
+    assert snapshots[0]["interval"] == "1d"
+    assert snapshots[0]["observations"][0]["timestamp"] < snapshots[0]["observations"][-1]["timestamp"]
+
+
 def test_get_signal_and_evidence_uses_runtime_metrics(api_client) -> None:
     signal_response = api_client.get("/api/v1/signals/sig_aapl_negative")
     evidence_response = api_client.get("/api/v1/signals/sig_aapl_negative/evidence")

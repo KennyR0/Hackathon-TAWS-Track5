@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys, useRunQuery } from '../../shared/api/queries'
 import { subscribeToAnalysisStream } from '../../shared/api/sse'
 import { AnalysisStatusBadge, WarningList } from '../../shared/ui/badges'
-import { EmptyState, LoadingSkeleton, SurfaceCard } from '../../shared/ui/primitives'
+import { BackToHomeButton, EmptyState, LoadingSkeleton, SurfaceCard } from '../../shared/ui/primitives'
 import { compactId, formatDateTime } from '../../shared/lib/format'
 import type { ApiSseEvent } from '../../shared/api/contracts'
 
@@ -42,6 +42,7 @@ export function AuditDetailPage() {
 
   return (
     <div className="page-stack">
+      <BackToHomeButton />
       <SurfaceCard eyebrow={`Run ${compactId(run.id)}`} title={run.currentNode}>
         <div className="badge-row">
           <AnalysisStatusBadge status={run.status} />

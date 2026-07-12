@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useBriefingQuery, useSignalsQuery } from '../../shared/api/queries'
 import { ReviewStatusBadge, WarningList } from '../../shared/ui/badges'
-import { EmptyState, LoadingSkeleton, SurfaceCard } from '../../shared/ui/primitives'
+import { BackToHomeButton, EmptyState, LoadingSkeleton, SurfaceCard } from '../../shared/ui/primitives'
 import { formatDateTime } from '../../shared/lib/format'
 
 export function BriefingDetailPage() {
@@ -17,6 +17,7 @@ export function BriefingDetailPage() {
 
   return (
     <div className="page-stack">
+      <BackToHomeButton />
       <SurfaceCard eyebrow={briefing.watchlist.name} title={`Briefing ${briefing.status}`}>
         <p className="hero-copy">{briefing.executiveSummary}</p>
         <div className="data-points">

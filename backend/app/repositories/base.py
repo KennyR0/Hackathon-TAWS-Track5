@@ -11,6 +11,7 @@ from app.contracts.entities import (
     DataProvenance,
     Event,
     Evidence,
+    MarketSnapshot,
     Signal,
     SignalReview,
 )
@@ -30,6 +31,13 @@ class BackendRepository(Protocol):
     def get_event(self, event_id: str) -> tuple[Event, tuple[str, ...]]: ...
 
     def get_watchlist(self) -> Watchlist: ...
+
+    def list_market_snapshots(
+        self,
+        *,
+        asset: str | None = None,
+        interval: str | None = None,
+    ) -> tuple[MarketSnapshot, ...]: ...
 
     def list_signals(
         self,

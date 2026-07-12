@@ -47,6 +47,7 @@ def reset_backend_singletons(monkeypatch: pytest.MonkeyPatch) -> None:
     dependencies.get_repository.cache_clear()
     dependencies.get_llm_adapter.cache_clear()
     dependencies.get_event_service.cache_clear()
+    dependencies.get_market_service.cache_clear()
     dependencies.get_signal_service.cache_clear()
     dependencies.get_review_service.cache_clear()
     dependencies.get_briefing_service.cache_clear()

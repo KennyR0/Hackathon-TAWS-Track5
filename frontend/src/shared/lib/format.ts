@@ -37,6 +37,16 @@ export function formatNumber(value: number | null | undefined, digits = 2): stri
   }).format(value)
 }
 
+export function formatCurrency(value: number | null | undefined, currency = 'USD'): string {
+  if (value == null || Number.isNaN(value)) return 'No disponible'
+  return new Intl.NumberFormat('es-EC', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: value >= 1000 ? 0 : 2,
+    minimumFractionDigits: value >= 1000 ? 0 : 2,
+  }).format(value)
+}
+
 export function formatConfidence(value: number): string {
   return `${Math.round(value * 100)}%`
 }

@@ -9,6 +9,7 @@ import type {
   ApiEventView,
   ApiEvidence,
   ApiImpact,
+  ApiMarketSnapshot,
   ApiReviewStatus,
   ApiSignal,
   ApiSignalReview,
@@ -113,6 +114,42 @@ export interface AssetSummaryViewModel {
   latestSignal: SignalViewModel | null
   signals: SignalViewModel[]
   relatedEvents: EventViewModel[]
+}
+
+export interface MarketPointViewModel {
+  timestamp: string
+  close: number
+  volume: number | null
+}
+
+export interface MarketSnapshotViewModel {
+  id: string
+  assetId: string
+  interval: ApiMarketSnapshot['interval']
+  currency: ApiMarketSnapshot['currency']
+  dataAsOf: string
+  retrievedAt: string
+  sourceUrl: string
+  observations: MarketPointViewModel[]
+  meta: DataMetaViewModel
+  raw: ApiMarketSnapshot
+}
+
+export interface MarketAssetViewModel {
+  assetId: string
+  symbol: string
+  name: string
+  instrumentType: SignalViewModel['asset']['instrumentType']
+  signalCount: number
+  eventCount: number
+  latestSignal: SignalViewModel | null
+  latestEvent: EventViewModel | null
+  snapshot: MarketSnapshotViewModel | null
+  price: number | null
+  currency: string
+  changeAbsolute: number | null
+  changePercent: number | null
+  status: SignalViewModel['impact']
 }
 
 export interface RunStepViewModel extends ApiAgentRunStep {}

@@ -138,6 +138,11 @@ class AgentRunStepsResponse(ContractModel):
     meta: DataProvenance
 
 
+class MarketSnapshotListResponse(ContractModel):
+    data: tuple[MarketSnapshot, ...]
+    meta: DataProvenance
+
+
 PUBLIC_API_MODELS: tuple[type[ContractModel], ...] = (
     Source,
     Article,
@@ -171,6 +176,7 @@ PUBLIC_API_MODELS: tuple[type[ContractModel], ...] = (
     BriefingResponse,
     WatchlistResponse,
     AgentRunStepsResponse,
+    MarketSnapshotListResponse,
 )
 
 
@@ -244,6 +250,23 @@ def _list_filters() -> list[dict[str, object]]:
     ]
 
 
+def _market_snapshot_filters() -> list[dict[str, object]]:
+    return [
+        {
+            "name": "asset",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string"},
+        },
+        {
+            "name": "interval",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string", "enum": ["1h", "1d"]},
+        },
+    ]
+
+
 def _merge_model_schemas(models: Iterable[type[ContractModel]]) -> dict[str, object]:
     schemas: dict[str, object] = {}
     for model in models:
@@ -293,6 +316,14 @@ def build_openapi_document() -> dict[str, object]:
                     "200": _json_response(EventResponse),
                     **_error_responses("404"),
                 },
+            }
+        },
+        "/api/v1/market-snapshots": {
+            "get": {
+                "operationId": "listMarketSnapshots",
+                "summary": "List verifiable market snapshots",
+                "parameters": _market_snapshot_filters(),
+                "responses": {"200": _json_response(MarketSnapshotListResponse)},
             }
         },
         "/api/v1/analyses": {
@@ -469,6 +500,7 @@ __all__ = [
     "EventResponse",
     "EventView",
     "HealthResponse",
+    "MarketSnapshotListResponse",
     "ReviewRequest",
     "SseEvent",
     "SignalListResponse",

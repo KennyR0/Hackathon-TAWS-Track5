@@ -1,6 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from './client'
-import { mapBriefing, mapEventView, mapEvidence, mapRun, mapSignal, mapWatchlist } from './mappers'
+import { mapBriefing, mapEventView, mapEvidence, mapMarketSnapshot, mapRun, mapSignal, mapWatchlist } from './mappers'
 import { recentBriefingsStorage, recentRunsStorage } from './storage'
 import type { ApiReviewRequest } from './contracts'
 
@@ -8,6 +8,7 @@ export const queryKeys = {
   events: (filters?: { instrumentType?: string; asset?: string; publishedAfter?: string }) => ['events', filters] as const,
   event: (eventId: string) => ['event', eventId] as const,
   signals: () => ['signals'] as const,
+  marketSnapshots: (filters?: { asset?: string; interval?: '1h' | '1d' }) => ['market-snapshots', filters] as const,
   signal: (signalId: string) => ['signal', signalId] as const,
   signalEvidence: (signalId: string) => ['signal', signalId, 'evidence'] as const,
   signalReviews: (signalId: string) => ['signal', signalId, 'reviews'] as const,
@@ -53,6 +54,20 @@ export function useSignalsQuery() {
         meta: payload.meta,
       }
     },
+  })
+}
+
+export function useMarketSnapshotsQuery(filters?: { asset?: string; interval?: '1h' | '1d' }, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.marketSnapshots(filters),
+    queryFn: async () => {
+      const payload = await apiClient.listMarketSnapshots(filters)
+      return {
+        items: payload.data.map(item => mapMarketSnapshot(item, payload.meta)),
+        meta: payload.meta,
+      }
+    },
+    enabled: options?.enabled ?? true,
   })
 }
 

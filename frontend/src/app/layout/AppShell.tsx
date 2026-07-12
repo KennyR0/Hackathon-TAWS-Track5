@@ -1,4 +1,4 @@
-import { Menu, Search, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Menu, Search, Sparkles } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { navigationItems } from './navigation'
@@ -38,10 +38,16 @@ export function AppShell() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${collapsed ? 'app-shell--collapsed' : ''}`}>
       <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
         <div className="sidebar__brand">
-          <button className="icon-button" type="button" aria-label="Colapsar navegacion" onClick={() => setCollapsed(current => !current)}>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label={collapsed ? 'Expandir navegacion' : 'Colapsar navegacion'}
+            aria-expanded={!collapsed}
+            onClick={() => setCollapsed(current => !current)}
+          >
             <Menu size={18} />
           </button>
           {!collapsed ? (
@@ -52,11 +58,16 @@ export function AppShell() {
           ) : null}
         </div>
 
-        <nav className="sidebar__nav">
+        <nav className="sidebar__nav" aria-label="Navegacion principal">
           {navigationItems.map(item => {
             const Icon = item.icon
             return (
-              <NavLink key={item.to} className={({ isActive }) => `nav-link ${isActive ? 'nav-link--active' : ''}`} to={item.to}>
+              <NavLink
+                key={item.to}
+                className={({ isActive }) => `nav-link ${isActive ? 'nav-link--active' : ''}`}
+                to={item.to}
+                title={collapsed ? item.label : undefined}
+              >
                 <Icon size={18} />
                 {!collapsed ? <span>{item.label}</span> : null}
               </NavLink>
@@ -67,7 +78,13 @@ export function AppShell() {
 
       <div className="app-shell__main">
         <header className="topbar">
-          <div className="topbar__search">
+          <form
+            className="topbar__search"
+            onSubmit={event => {
+              event.preventDefault()
+              handleSearch()
+            }}
+          >
             <Search size={16} />
             <input
               aria-label="Buscar activo o senal"
@@ -78,7 +95,10 @@ export function AppShell() {
               }}
               placeholder="Buscar simbolo o signalId"
             />
-          </div>
+            <button className="icon-button topbar__search-button" type="submit" aria-label="Buscar">
+              <ArrowUpRight size={15} />
+            </button>
+          </form>
 
           <div className="topbar__meta">
             {signalsQuery.data ? <DataModeBadge mode={signalsQuery.data.meta.dataMode} /> : null}

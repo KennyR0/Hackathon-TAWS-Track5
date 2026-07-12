@@ -4,6 +4,8 @@ import type {
   ApiBriefing,
   ApiEventView,
   ApiEvidence,
+  ApiInstrumentType,
+  ApiMarketSnapshot,
   ApiMeta,
   ApiSignal,
   ApiSignalReview,
@@ -15,6 +17,8 @@ import type {
   DataMetaViewModel,
   EventViewModel,
   EvidenceViewModel,
+  MarketAssetViewModel,
+  MarketSnapshotViewModel,
   ReviewQueueItemViewModel,
   RunViewModel,
   SignalViewModel,
@@ -29,6 +33,22 @@ export function mapMeta(meta?: ApiMeta): DataMetaViewModel {
     dataAsOf: meta?.dataAsOf ?? new Date().toISOString(),
     warnings: meta?.warnings ?? [],
   }
+}
+
+function symbolFromAssetId(assetId: string): string {
+  return assetId
+    .replace(/^ast_/, '')
+    .replace(/_usd$/i, '-USD')
+    .replaceAll('_', '-')
+    .toUpperCase()
+}
+
+function instrumentTypeFromRelationship(relationship: string | undefined): ApiInstrumentType {
+  if (relationship === 'commodity') return 'commodity'
+  if (relationship === 'macro') return 'macro'
+  if (relationship === 'credit') return 'credit'
+  if (relationship === 'direct' || relationship === 'sector' || relationship === 'competitor' || relationship === 'supply_chain') return 'equity'
+  return 'other'
 }
 
 export function mapEventView(view: ApiEventView, meta?: ApiMeta): EventViewModel {
@@ -51,6 +71,25 @@ export function mapEventView(view: ApiEventView, meta?: ApiMeta): EventViewModel
     warnings: [...view.event.warnings, ...mapMeta(meta).warnings],
     meta: mapMeta(meta),
     raw: view,
+  }
+}
+
+export function mapMarketSnapshot(snapshot: ApiMarketSnapshot, meta?: ApiMeta): MarketSnapshotViewModel {
+  return {
+    id: snapshot.id,
+    assetId: snapshot.assetId,
+    interval: snapshot.interval,
+    currency: snapshot.currency,
+    dataAsOf: snapshot.dataAsOf,
+    retrievedAt: snapshot.retrievedAt,
+    sourceUrl: snapshot.sourceUrl,
+    observations: snapshot.observations.map(point => ({
+      timestamp: point.timestamp,
+      close: point.close,
+      volume: point.volume ?? null,
+    })),
+    meta: mapMeta(meta),
+    raw: snapshot,
   }
 }
 
@@ -84,6 +123,58 @@ export function mapSignal(signal: ApiSignal, meta?: ApiMeta): SignalViewModel {
     meta: mapMeta(meta),
     raw: signal,
   }
+}
+
+export function deriveMarketAssets(
+  snapshots: MarketSnapshotViewModel[],
+  signals: SignalViewModel[],
+  events: EventViewModel[],
+): MarketAssetViewModel[] {
+  const eventRelations = events.flatMap(event => event.relatedAssets.map(relation => ({ event, relation })))
+  const signalBySymbol = new Map<string, SignalViewModel[]>()
+  for (const signal of signals) {
+    const bucket = signalBySymbol.get(signal.asset.symbol) ?? []
+    bucket.push(signal)
+    signalBySymbol.set(signal.asset.symbol, bucket)
+  }
+
+  return snapshots
+    .map(snapshot => {
+      const relation = eventRelations.find(item => item.relation.assetId === snapshot.assetId)
+      const symbol = relation?.relation.symbol ?? symbolFromAssetId(snapshot.assetId)
+      const matchingSignals = (signalBySymbol.get(symbol) ?? []).toSorted((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      const latestSignal = matchingSignals[0] ?? null
+      const relatedEvents = eventRelations.filter(item => item.relation.assetId === snapshot.assetId).map(item => item.event)
+      const observations = snapshot.observations
+      const first = observations[0]?.close ?? null
+      const last = observations.at(-1)?.close ?? null
+      const changeAbsolute = first != null && last != null ? last - first : null
+      const changePercent = first != null && first !== 0 && last != null ? (last - first) / first : null
+      const status =
+        latestSignal?.impact ??
+        (changeAbsolute == null ? 'uncertain' : changeAbsolute > 0 ? 'positive' : changeAbsolute < 0 ? 'negative' : 'neutral')
+
+      return {
+        assetId: snapshot.assetId,
+        symbol,
+        name: latestSignal?.asset.name ?? relation?.relation.reason ?? symbol,
+        instrumentType: latestSignal?.asset.instrumentType ?? instrumentTypeFromRelationship(relation?.relation.relationship),
+        signalCount: matchingSignals.length,
+        eventCount: relatedEvents.length,
+        latestSignal,
+        latestEvent: relatedEvents.toSorted((left, right) => right.eventAt.localeCompare(left.eventAt))[0] ?? null,
+        snapshot,
+        price: last,
+        currency: snapshot.currency,
+        changeAbsolute,
+        changePercent,
+        status,
+      }
+    })
+    .toSorted((left, right) => {
+      if (left.signalCount !== right.signalCount) return right.signalCount - left.signalCount
+      return left.symbol.localeCompare(right.symbol)
+    })
 }
 
 export function mapEvidence(evidence: ApiEvidence): EvidenceViewModel {
