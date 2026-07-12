@@ -7,6 +7,7 @@ Plataforma de inteligencia de mercado que transforma noticias y datos verificabl
 - [Plan de implementación por fases](docs/PLAN_IMPLEMENTACION_POR_FASES.md)
 - [Matriz de aceptación de la Fase 0](docs/FASE_0_MATRIZ_ACEPTACION.md)
 - [Estado técnico y prioridades](docs/ESTADO_TECNICO_Y_PRIORIDADES.md)
+- [Estructura del repositorio](docs/ESTRUCTURA_REPO.md)
 - [Contrato OpenAPI](contracts/openapi.json)
 - [Fixtures reproducibles](data/fixtures/v1/phase0_bundle.json)
 - [Arquitectura general](docs/referencias/ARQUITECTURA_GENERAL_NexoMercado_AI.md)
@@ -15,6 +16,22 @@ Plataforma de inteligencia de mercado que transforma noticias y datos verificabl
 - [Guion de demo](docs/demo-script.md)
 
 El repositorio trabaja por fases gobernadas en `docs/PLAN_IMPLEMENTACION_POR_FASES.md`. Ninguna fase se acepta o avanza automaticamente.
+
+## Estructura rápida del repo
+
+```text
+backend/app/         runtime principal del producto
+backend/scripts/     scripts operativos del backend
+backend/tests/       pruebas automatizadas
+contracts/           openapi y contratos exportados
+data/fixtures/       datos reproducibles del MVP
+docs/                documentación viva del equipo
+docs/referencias/    referencias base del proyecto
+scripts/             scripts de gobernanza del repositorio
+supabase/            esquema SQL y soporte de persistencia
+```
+
+La guía ampliada está en [docs/ESTRUCTURA_REPO.md](docs/ESTRUCTURA_REPO.md).
 
 ## Configuracion de OpenAI
 
