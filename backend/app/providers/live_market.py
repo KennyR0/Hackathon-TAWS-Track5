@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from time import sleep
 from typing import Callable
 
@@ -11,7 +11,15 @@ import httpx
 
 from app.config import MarketProviderConfig
 from app.contracts.entities import DataMode, DataProvenance, Freshness, allow_internal_field_names
-from app.providers.base import FixtureDataProvider, MacroProvider, NewsProvider, PriceProvider, ProviderProbeResult
+from app.providers.base import (
+    CachedProviderProbe,
+    FixtureDataProvider,
+    MacroProvider,
+    NewsProvider,
+    PriceProvider,
+    ProviderCacheStore,
+    ProviderProbeResult,
+)
 
 FIXTURE_WARNINGS: tuple[str, ...] = ("FIXTURE_DATA", "NOT_REAL_TIME")
 DEFAULT_REQUEST_BUDGET = 8
@@ -28,13 +36,14 @@ def _fallback_result(
     provider: str,
     *,
     payload: dict[str, object],
-    warning: str,
+    warning: str | tuple[str, ...],
 ) -> ProviderProbeResult:
+    warnings = (warning,) if isinstance(warning, str) else warning
     return ProviderProbeResult(
         provider=provider,
         data_mode=DataMode.FALLBACK.value,
         ok=False,
-        warnings=(warning,),
+        warnings=warnings,
         payload=payload,
     )
 
@@ -238,12 +247,14 @@ class MarketDataRuntimeService:
         crypto_price_provider: PriceProvider | None = None,
         macro_provider: MacroProvider | None = None,
         metadata_provider: PriceProvider | None = None,
+        provider_cache: ProviderCacheStore | None = None,
         request_budget: int = DEFAULT_REQUEST_BUDGET,
         retry_limit: int = DEFAULT_RETRY_LIMIT,
         circuit_breaker_failure_threshold: int = DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
     ) -> None:
         self._config = config
         self._fixture_provider = fixture_provider
+        self._provider_cache = provider_cache
         self._request_budget = max(0, request_budget)
         self._retry_limit = max(0, retry_limit)
         self._circuit_breaker_failure_threshold = max(1, circuit_breaker_failure_threshold)
@@ -300,7 +311,16 @@ class MarketDataRuntimeService:
         self._requests_used = 0
 
         for key, provider_call in (
-            ("news", lambda: self._safe_probe(self._news_provider.probe, "gdelt")),
+            (
+                "news",
+                lambda: self._safe_probe(
+                    self._news_provider.probe,
+                    "gdelt",
+                    cache_key="news_probe:gdelt:apple",
+                    resource_type="news_probe",
+                    cache_ttl_seconds=self._config.gdelt_cache_ttl_seconds,
+                ),
+            ),
             ("aapl", lambda: self._safe_probe(lambda: self._equity_price_provider.probe("AAPL"), "twelve_data")),
             ("spy", lambda: self._safe_probe(lambda: self._metadata_provider.probe("SPY"), "finnhub")),
             ("btc", lambda: self._safe_probe(lambda: self._crypto_price_provider.probe("BTC-USD"), "coingecko")),
@@ -331,7 +351,62 @@ class MarketDataRuntimeService:
             requests_used=self._requests_used,
         )
 
-    def _safe_probe(self, probe: Callable[[], ProviderProbeResult], provider: str) -> ProviderProbeResult:
+    def _cache_probe_result(
+        self,
+        *,
+        cache_key: str,
+        provider: str,
+        resource_type: str,
+        result: ProviderProbeResult,
+        cache_ttl_seconds: int,
+    ) -> None:
+        if self._provider_cache is None or not result.ok:
+            return
+        captured_at = _utc_now()
+        self._provider_cache.write(
+            CachedProviderProbe(
+                cache_key=cache_key,
+                provider=provider,
+                resource_type=resource_type,
+                probe=result,
+                retrieved_at=captured_at,
+                data_as_of=captured_at,
+                expires_at=captured_at + timedelta(seconds=cache_ttl_seconds),
+            )
+        )
+
+    def _build_cached_fallback(
+        self,
+        *,
+        provider: str,
+        cache_entry: CachedProviderProbe,
+        failure_warning: str,
+        failure_payload: dict[str, object],
+    ) -> ProviderProbeResult:
+        return _fallback_result(
+            provider,
+            payload={
+                **cache_entry.probe.payload,
+                "servedFromCache": True,
+                "cache": {
+                    "retrievedAt": cache_entry.retrieved_at.isoformat(),
+                    "dataAsOf": cache_entry.data_as_of.isoformat(),
+                    "expiresAt": cache_entry.expires_at.isoformat(),
+                },
+                "fallbackReason": failure_payload,
+            },
+            warning=(failure_warning, f"{provider.upper()}_CACHED_FALLBACK_ACTIVE"),
+        )
+
+    def _safe_probe(
+        self,
+        probe: Callable[[], ProviderProbeResult],
+        provider: str,
+        *,
+        cache_key: str | None = None,
+        resource_type: str | None = None,
+        cache_ttl_seconds: int | None = None,
+    ) -> ProviderProbeResult:
         if self._config.mode == DataMode.FIXTURE.value:
             return _fallback_result(
                 provider,
@@ -366,42 +441,61 @@ class MarketDataRuntimeService:
             self._requests_used += 1
             try:
                 result = probe()
-            except httpx.TimeoutException:
-                last_exc = httpx.TimeoutException("timeout")
-                if attempt >= self._retry_limit + 1:
-                    break
-                continue
-            except httpx.HTTPStatusError as exc:
-                last_exc = exc
-                status_code = exc.response.status_code
-                if status_code not in RETRYABLE_HTTP_STATUS_CODES or attempt >= self._retry_limit + 1:
-                    break
-                continue
-            except ValueError as exc:
-                last_exc = exc
-                break
             except Exception as exc:
                 last_exc = exc
-                if attempt >= self._retry_limit + 1:
-                    break
-                continue
+                if self._should_retry_exception(exc, attempt):
+                    continue
+                break
             if result.ok:
                 self._failed_provider_counts.pop(provider, None)
+                if (
+                    cache_key is not None
+                    and resource_type is not None
+                    and cache_ttl_seconds is not None
+                ):
+                    self._cache_probe_result(
+                        cache_key=cache_key,
+                        provider=provider,
+                        resource_type=resource_type,
+                        result=result,
+                        cache_ttl_seconds=cache_ttl_seconds,
+                    )
             return result
 
         self._record_provider_failure(provider)
-        return self._fallback_from_exception(provider, last_exc)
+        return self._fallback_from_exception(
+            provider,
+            last_exc,
+            cache_key=cache_key,
+        )
+
+    def _should_retry_exception(self, exc: Exception, attempt: int) -> bool:
+        if attempt >= self._retry_limit + 1:
+            return False
+        if isinstance(exc, httpx.TimeoutException):
+            return True
+        if isinstance(exc, httpx.HTTPStatusError):
+            return exc.response.status_code in RETRYABLE_HTTP_STATUS_CODES
+        return True
 
     def _fallback_from_exception(
         self,
         provider: str,
         exc: Exception | None,
+        *,
+        cache_key: str | None,
     ) -> ProviderProbeResult:
         if isinstance(exc, httpx.TimeoutException):
-            return _fallback_result(
+            failure_payload = {
+                "error": "TimeoutException",
+                "retryable": True,
+                "attempts": self._retry_limit + 1,
+            }
+            return self._fallback_from_cache_or_error(
                 provider,
-                payload={"error": "TimeoutException", "retryable": True},
-                warning=f"{provider.upper()}_TIMEOUT_FALLBACK_ACTIVE",
+                cache_key=cache_key,
+                failure_warning=f"{provider.upper()}_TIMEOUT_FALLBACK_ACTIVE",
+                failure_payload=failure_payload,
             )
         if isinstance(exc, httpx.HTTPStatusError):
             status_code = exc.response.status_code
@@ -410,30 +504,59 @@ class MarketDataRuntimeService:
                 warning = f"{provider.upper()}_RATE_LIMIT_FALLBACK_ACTIVE"
             elif status_code >= 500:
                 warning = f"{provider.upper()}_UPSTREAM_FALLBACK_ACTIVE"
-            return _fallback_result(
+            failure_payload = {
+                "error": "HTTPStatusError",
+                "statusCode": status_code,
+                "retryable": status_code in RETRYABLE_HTTP_STATUS_CODES,
+                "attempts": self._retry_limit + 1,
+            }
+            return self._fallback_from_cache_or_error(
                 provider,
-                payload={
-                    "error": "HTTPStatusError",
-                    "statusCode": status_code,
-                    "retryable": status_code in RETRYABLE_HTTP_STATUS_CODES,
-                    "attempts": self._retry_limit + 1,
-                },
-                warning=warning,
+                cache_key=cache_key,
+                failure_warning=warning,
+                failure_payload=failure_payload,
             )
         if isinstance(exc, ValueError):
-            return _fallback_result(
+            failure_payload = {"error": type(exc).__name__, "retryable": False}
+            return self._fallback_from_cache_or_error(
                 provider,
-                payload={"error": type(exc).__name__, "retryable": False},
-                warning=f"{provider.upper()}_PAYLOAD_INVALID_FALLBACK_ACTIVE",
+                cache_key=cache_key,
+                failure_warning=f"{provider.upper()}_PAYLOAD_INVALID_FALLBACK_ACTIVE",
+                failure_payload=failure_payload,
             )
+        failure_payload = {
+            "error": type(exc).__name__ if exc is not None else "UnknownError",
+            "attempts": self._retry_limit + 1,
+            "retryable": False,
+        }
+        return self._fallback_from_cache_or_error(
+            provider,
+            cache_key=cache_key,
+            failure_warning=f"{provider.upper()}_FALLBACK_ACTIVE",
+            failure_payload=failure_payload,
+        )
+
+    def _fallback_from_cache_or_error(
+        self,
+        provider: str,
+        *,
+        cache_key: str | None,
+        failure_warning: str,
+        failure_payload: dict[str, object],
+    ) -> ProviderProbeResult:
+        if cache_key is not None and self._provider_cache is not None:
+            cache_entry = self._provider_cache.read(cache_key)
+            if cache_entry is not None:
+                return self._build_cached_fallback(
+                    provider=provider,
+                    cache_entry=cache_entry,
+                    failure_warning=failure_warning,
+                    failure_payload=failure_payload,
+                )
         return _fallback_result(
             provider,
-            payload={
-                "error": type(exc).__name__ if exc is not None else "UnknownError",
-                "attempts": self._retry_limit + 1,
-                "retryable": False,
-            },
-            warning=f"{provider.upper()}_FALLBACK_ACTIVE",
+            payload=failure_payload,
+            warning=failure_warning,
         )
 
     def _is_circuit_open(self, provider: str) -> bool:

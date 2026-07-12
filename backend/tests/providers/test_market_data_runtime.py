@@ -10,6 +10,7 @@ from app.config import DEFAULT_MARKET_DATA_MODE, MarketProviderConfig, get_marke
 from app.contracts.entities import DataMode
 from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import GDELTNewsProvider, MarketDataRuntimeService, _live_result
+from app.providers.provider_cache import InMemoryProviderCacheStore
 from app.repositories.fixture_repository import FixtureRepository
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -73,6 +74,7 @@ def test_market_provider_config_reads_optional_keys(
     monkeypatch.setenv("SEC_USER_AGENT", "NexoMercadoAI test@example.com")
     monkeypatch.setenv("GDELT_TIMEOUT_SECONDS", "4.5")
     monkeypatch.setenv("GDELT_MAX_ATTEMPTS", "3")
+    monkeypatch.setenv("GDELT_CACHE_TTL_SECONDS", "600")
 
     config = get_market_provider_config()
 
@@ -83,6 +85,7 @@ def test_market_provider_config_reads_optional_keys(
     assert config.gdelt_user_agent == "NexoMercadoAI test@example.com"
     assert config.gdelt_timeout_seconds == 4.5
     assert config.gdelt_max_attempts == 3
+    assert config.gdelt_cache_ttl_seconds == 600
     assert config.fred_api_key is None
 
 
@@ -243,6 +246,47 @@ def test_collect_demo_snapshot_classifies_gdelt_rate_limit_fallback() -> None:
     assert snapshot.checks["news"].ok is False
     assert "GDELT_RATE_LIMIT_FALLBACK_ACTIVE" in snapshot.checks["news"].warnings
     assert snapshot.checks["news"].payload["statusCode"] == 429
+
+
+class _TimeoutNewsProvider:
+    def probe(self):
+        raise httpx.TimeoutException("timeout")
+
+
+def test_collect_demo_snapshot_uses_cached_gdelt_payload_on_timeout() -> None:
+    cache_store = InMemoryProviderCacheStore()
+    warm_service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid", gdelt_cache_ttl_seconds=900),
+        _StubFixtureProvider(),
+        news_provider=_NewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        metadata_provider=_PriceProvider(),
+        provider_cache=cache_store,
+    )
+    warm_snapshot = warm_service.collect_demo_snapshot()
+    assert warm_snapshot.checks["news"].ok is True
+
+    cold_service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid", gdelt_cache_ttl_seconds=900),
+        _StubFixtureProvider(),
+        news_provider=_TimeoutNewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        metadata_provider=_PriceProvider(),
+        provider_cache=cache_store,
+    )
+
+    snapshot = cold_service.collect_demo_snapshot()
+
+    assert snapshot.data_mode == DataMode.FALLBACK
+    assert snapshot.checks["news"].ok is False
+    assert "GDELT_TIMEOUT_FALLBACK_ACTIVE" in snapshot.checks["news"].warnings
+    assert "GDELT_CACHED_FALLBACK_ACTIVE" in snapshot.checks["news"].warnings
+    assert snapshot.checks["news"].payload["servedFromCache"] is True
+    assert snapshot.checks["news"].payload["articleCount"] == 2
 
 
 def test_repository_fallback_mode_reduces_signal_confidence() -> None:

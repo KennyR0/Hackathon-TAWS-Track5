@@ -10,6 +10,7 @@ from app.llm.fixture_adapter import FixtureLLMAdapter
 from app.llm.openai_responses import OpenAIResponsesAdapter
 from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import MarketDataRuntimeService
+from app.providers.provider_cache import InMemoryProviderCacheStore, SupabaseProviderCacheStore
 from app.repositories.fixture_repository import FixtureRepository
 from app.repositories.supabase_repository import SupabaseRepository
 from app.services.analysis_service import AnalysisService
@@ -48,9 +49,14 @@ def get_supabase_client():
 
 @lru_cache
 def get_market_data_runtime_service() -> MarketDataRuntimeService:
+    runtime_config = get_runtime_config()
+    provider_cache = InMemoryProviderCacheStore()
+    if runtime_config.repository_backend == "supabase":
+        provider_cache = SupabaseProviderCacheStore(get_supabase_client())
     return MarketDataRuntimeService(
         get_market_provider_config(),
         get_fixture_provider(),
+        provider_cache=provider_cache,
     )
 
 

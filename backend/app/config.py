@@ -52,6 +52,7 @@ class MarketProviderConfig:
     gdelt_user_agent: str = "NexoMercadoAI/1.0"
     gdelt_timeout_seconds: float = 6.0
     gdelt_max_attempts: int = 2
+    gdelt_cache_ttl_seconds: int = 900
     finnhub_api_key: str | None = None
     twelve_data_api_key: str | None = None
     coingecko_api_key: str | None = None
@@ -208,6 +209,7 @@ def get_market_provider_config() -> MarketProviderConfig:
         ),
         gdelt_timeout_seconds=_get_env_float("GDELT_TIMEOUT_SECONDS", 6.0),
         gdelt_max_attempts=_get_env_int("GDELT_MAX_ATTEMPTS", 2),
+        gdelt_cache_ttl_seconds=_get_env_int("GDELT_CACHE_TTL_SECONDS", 900),
         finnhub_api_key=getenv("FINNHUB_API_KEY", "").strip() or None,
         twelve_data_api_key=getenv("TWELVE_DATA_API_KEY", "").strip() or None,
         coingecko_api_key=getenv("COINGECKO_API_KEY", "").strip() or None,
