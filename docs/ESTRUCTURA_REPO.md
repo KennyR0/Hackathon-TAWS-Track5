@@ -57,7 +57,7 @@ Este documento fija la organizacion operativa actual de **NexoMercado AI** para 
 | LLM | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, `LLM_PROVIDER` |
 | Runtime | `REPOSITORY_BACKEND`, `MARKET_DATA_MODE`, `FIXTURE_BUNDLE_PATH` |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
-| Market providers | `GDELT_API_KEY`, `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` |
+| Market providers | `GDELT_API_KEY`, `GDELT_BASE_URL`, `GDELT_TIMEOUT_SECONDS`, `GDELT_MAX_ATTEMPTS`, `SEC_USER_AGENT`, `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` |
 
 ## Variables no usadas por el backend actual
 
@@ -67,8 +67,6 @@ Estas variables pueden existir en un `.env` local por conveniencia del equipo o 
 - `SUPABASE_DB_PASSWORD`
 - `SUPABASE_DB_URL`
 - `SUPABASE_SECRET_KEY`
-- `SEC_USER_AGENT`
-- `GDELT_BASE_URL`
 
 Si alguna de estas pasa a ser usada por el producto, debe agregarse explicitamente en `backend/app/config.py` y documentarse en `README.md` y `.env.example`.
 

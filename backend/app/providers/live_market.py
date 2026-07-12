@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from time import sleep
 from typing import Callable
 
 import httpx
@@ -16,6 +17,7 @@ FIXTURE_WARNINGS: tuple[str, ...] = ("FIXTURE_DATA", "NOT_REAL_TIME")
 DEFAULT_REQUEST_BUDGET = 8
 DEFAULT_RETRY_LIMIT = 1
 DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD = 1
+RETRYABLE_HTTP_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
 def _utc_now() -> datetime:
@@ -48,24 +50,64 @@ def _live_result(provider: str, payload: dict[str, object]) -> ProviderProbeResu
 
 
 class GDELTNewsProvider(NewsProvider):
-    def __init__(self, client: httpx.Client | None = None) -> None:
-        self._client = client or httpx.Client(timeout=10.0)
-
-    def probe(self) -> ProviderProbeResult:
-        response = self._client.get(
-            "https://api.gdeltproject.org/api/v2/doc/doc",
-            params={
-                "query": '"Apple" OR Bitcoin OR crude',
-                "mode": "ArtList",
-                "maxrecords": 3,
-                "format": "json",
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        user_agent: str,
+        timeout_seconds: float,
+        max_attempts: int,
+        client: httpx.Client | None = None,
+        sleep_fn=sleep,
+    ) -> None:
+        self._base_url = base_url
+        self._max_attempts = max_attempts
+        self._sleep = sleep_fn
+        self._client = client or httpx.Client(
+            timeout=timeout_seconds,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": user_agent,
             },
         )
-        response.raise_for_status()
-        articles = response.json().get("articles", [])
+
+    def probe(self) -> ProviderProbeResult:
+        request_params = {
+            "query": "Apple",
+            "mode": "ArtList",
+            "maxrecords": 1,
+            "format": "json",
+            "sort": "datedesc",
+            "timespan": "1day",
+        }
+        response: httpx.Response | None = None
+        for attempt in range(1, self._max_attempts + 1):
+            try:
+                response = self._client.get(self._base_url, params=request_params)
+                response.raise_for_status()
+                break
+            except httpx.TimeoutException:
+                if attempt >= self._max_attempts:
+                    raise
+                self._sleep(0.2 * attempt)
+            except httpx.HTTPStatusError as exc:
+                status_code = exc.response.status_code
+                if status_code not in RETRYABLE_HTTP_STATUS_CODES or attempt >= self._max_attempts:
+                    raise
+                self._sleep(0.2 * attempt)
+        if response is None:
+            raise RuntimeError("GDELT probe failed to produce a response")
+        payload = response.json()
+        articles = payload.get("articles", [])
+        if not isinstance(articles, list):
+            raise ValueError("GDELT response did not include a valid articles list")
         return _live_result(
             "gdelt",
-            {"articleCount": len(articles), "titles": [item.get("title") for item in articles[:3]]},
+            {
+                "articleCount": len(articles),
+                "titles": [item.get("title") for item in articles[:3]],
+                "query": request_params["query"],
+            },
         )
 
 
@@ -207,7 +249,12 @@ class MarketDataRuntimeService:
         self._circuit_breaker_failure_threshold = max(1, circuit_breaker_failure_threshold)
         self._failed_provider_counts: dict[str, int] = {}
         self._requests_used = 0
-        self._news_provider = news_provider or GDELTNewsProvider()
+        self._news_provider = news_provider or GDELTNewsProvider(
+            base_url=config.gdelt_base_url,
+            user_agent=config.gdelt_user_agent,
+            timeout_seconds=config.gdelt_timeout_seconds,
+            max_attempts=config.gdelt_max_attempts,
+        )
         self._equity_price_provider = equity_price_provider or TwelveDataPriceProvider(
             config.twelve_data_api_key
         )
@@ -319,19 +366,72 @@ class MarketDataRuntimeService:
             self._requests_used += 1
             try:
                 result = probe()
+            except httpx.TimeoutException:
+                last_exc = httpx.TimeoutException("timeout")
+                if attempt >= self._retry_limit + 1:
+                    break
+                continue
+            except httpx.HTTPStatusError as exc:
+                last_exc = exc
+                status_code = exc.response.status_code
+                if status_code not in RETRYABLE_HTTP_STATUS_CODES or attempt >= self._retry_limit + 1:
+                    break
+                continue
+            except ValueError as exc:
+                last_exc = exc
+                break
             except Exception as exc:
                 last_exc = exc
+                if attempt >= self._retry_limit + 1:
+                    break
                 continue
             if result.ok:
                 self._failed_provider_counts.pop(provider, None)
             return result
 
         self._record_provider_failure(provider)
+        return self._fallback_from_exception(provider, last_exc)
+
+    def _fallback_from_exception(
+        self,
+        provider: str,
+        exc: Exception | None,
+    ) -> ProviderProbeResult:
+        if isinstance(exc, httpx.TimeoutException):
+            return _fallback_result(
+                provider,
+                payload={"error": "TimeoutException", "retryable": True},
+                warning=f"{provider.upper()}_TIMEOUT_FALLBACK_ACTIVE",
+            )
+        if isinstance(exc, httpx.HTTPStatusError):
+            status_code = exc.response.status_code
+            warning = f"{provider.upper()}_HTTP_ERROR_FALLBACK_ACTIVE"
+            if status_code == 429:
+                warning = f"{provider.upper()}_RATE_LIMIT_FALLBACK_ACTIVE"
+            elif status_code >= 500:
+                warning = f"{provider.upper()}_UPSTREAM_FALLBACK_ACTIVE"
+            return _fallback_result(
+                provider,
+                payload={
+                    "error": "HTTPStatusError",
+                    "statusCode": status_code,
+                    "retryable": status_code in RETRYABLE_HTTP_STATUS_CODES,
+                    "attempts": self._retry_limit + 1,
+                },
+                warning=warning,
+            )
+        if isinstance(exc, ValueError):
+            return _fallback_result(
+                provider,
+                payload={"error": type(exc).__name__, "retryable": False},
+                warning=f"{provider.upper()}_PAYLOAD_INVALID_FALLBACK_ACTIVE",
+            )
         return _fallback_result(
             provider,
             payload={
-                "error": type(last_exc).__name__ if last_exc is not None else "UnknownError",
+                "error": type(exc).__name__ if exc is not None else "UnknownError",
                 "attempts": self._retry_limit + 1,
+                "retryable": False,
             },
             warning=f"{provider.upper()}_FALLBACK_ACTIVE",
         )

@@ -48,6 +48,10 @@ class SupabaseConfig:
 class MarketProviderConfig:
     mode: str = DEFAULT_MARKET_DATA_MODE
     gdelt_api_key: str | None = None
+    gdelt_base_url: str = "https://api.gdeltproject.org/api/v2/doc/doc"
+    gdelt_user_agent: str = "NexoMercadoAI/1.0"
+    gdelt_timeout_seconds: float = 6.0
+    gdelt_max_attempts: int = 2
     finnhub_api_key: str | None = None
     twelve_data_api_key: str | None = None
     coingecko_api_key: str | None = None
@@ -56,6 +60,32 @@ class MarketProviderConfig:
 
 def _parse_csv_env(value: str) -> tuple[str, ...]:
     return tuple(item.strip().rstrip("/") for item in value.split(",") if item.strip())
+
+
+def _get_env_int(name: str, default: int) -> int:
+    raw = getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be an integer. Received: {raw}") from exc
+    if value < 1:
+        raise RuntimeError(f"{name} must be >= 1. Received: {value}")
+    return value
+
+
+def _get_env_float(name: str, default: float) -> float:
+    raw = getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a number. Received: {raw}") from exc
+    if value <= 0:
+        raise RuntimeError(f"{name} must be > 0. Received: {value}")
+    return value
 
 
 def get_openai_config() -> OpenAIConfig:
@@ -168,6 +198,16 @@ def get_market_provider_config() -> MarketProviderConfig:
     return MarketProviderConfig(
         mode=runtime_config.market_data_mode,
         gdelt_api_key=getenv("GDELT_API_KEY", "").strip() or None,
+        gdelt_base_url=(
+            getenv("GDELT_BASE_URL", "").strip()
+            or "https://api.gdeltproject.org/api/v2/doc/doc"
+        ),
+        gdelt_user_agent=(
+            getenv("SEC_USER_AGENT", "").strip()
+            or "NexoMercadoAI/1.0"
+        ),
+        gdelt_timeout_seconds=_get_env_float("GDELT_TIMEOUT_SECONDS", 6.0),
+        gdelt_max_attempts=_get_env_int("GDELT_MAX_ATTEMPTS", 2),
         finnhub_api_key=getenv("FINNHUB_API_KEY", "").strip() or None,
         twelve_data_api_key=getenv("TWELVE_DATA_API_KEY", "").strip() or None,
         coingecko_api_key=getenv("COINGECKO_API_KEY", "").strip() or None,

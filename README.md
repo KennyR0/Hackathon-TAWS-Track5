@@ -48,6 +48,7 @@ Variables esperadas:
 - `FIXTURE_BUNDLE_PATH` para seleccionar el bundle offline
 - `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` solo para persistencia real
 - `GDELT_API_KEY`, `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` para sourcing live opcional
+- `GDELT_BASE_URL`, `GDELT_TIMEOUT_SECONDS`, `GDELT_MAX_ATTEMPTS` y `SEC_USER_AGENT` para endurecer el probe de noticias
 
 Ejemplo rapido:
 
@@ -119,6 +120,10 @@ Probe operativo del runtime de mercado:
 Variables live esperadas:
 
 - `MARKET_DATA_MODE=hybrid` o `MARKET_DATA_MODE=live`
+- `GDELT_BASE_URL` opcional
+- `GDELT_TIMEOUT_SECONDS` opcional
+- `GDELT_MAX_ATTEMPTS` opcional
+- `SEC_USER_AGENT` opcional
 - `FINNHUB_API_KEY`
 - `TWELVE_DATA_API_KEY`
 - `FRED_API_KEY`

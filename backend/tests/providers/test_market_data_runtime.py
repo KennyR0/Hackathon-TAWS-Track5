@@ -3,12 +3,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
 import pytest
 
 from app.config import DEFAULT_MARKET_DATA_MODE, MarketProviderConfig, get_market_provider_config, get_runtime_config
 from app.contracts.entities import DataMode
 from app.providers.fixture_provider import FixtureProvider
-from app.providers.live_market import MarketDataRuntimeService, _live_result
+from app.providers.live_market import GDELTNewsProvider, MarketDataRuntimeService, _live_result
 from app.repositories.fixture_repository import FixtureRepository
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -68,12 +69,20 @@ def test_market_provider_config_reads_optional_keys(
     monkeypatch.setenv("MARKET_DATA_MODE", "hybrid")
     monkeypatch.setenv("FINNHUB_API_KEY", "fh-key")
     monkeypatch.setenv("TWELVE_DATA_API_KEY", "td-key")
+    monkeypatch.setenv("GDELT_BASE_URL", "https://example.test/gdelt")
+    monkeypatch.setenv("SEC_USER_AGENT", "NexoMercadoAI test@example.com")
+    monkeypatch.setenv("GDELT_TIMEOUT_SECONDS", "4.5")
+    monkeypatch.setenv("GDELT_MAX_ATTEMPTS", "3")
 
     config = get_market_provider_config()
 
     assert config.mode == "hybrid"
     assert config.finnhub_api_key == "fh-key"
     assert config.twelve_data_api_key == "td-key"
+    assert config.gdelt_base_url == "https://example.test/gdelt"
+    assert config.gdelt_user_agent == "NexoMercadoAI test@example.com"
+    assert config.gdelt_timeout_seconds == 4.5
+    assert config.gdelt_max_attempts == 3
     assert config.fred_api_key is None
 
 
@@ -173,6 +182,67 @@ def test_collect_demo_snapshot_respects_request_budget() -> None:
     assert snapshot.requests_used == 2
     assert snapshot.checks["spy"].warnings == ("FINNHUB_BUDGET_EXHAUSTED",)
     assert snapshot.checks["btc"].warnings == ("COINGECKO_BUDGET_EXHAUSTED",)
+
+
+class _RetryingGDELTClient:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def get(self, *_args, **_kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            raise httpx.TimeoutException("timeout")
+        request = httpx.Request("GET", "https://example.test/gdelt")
+        return httpx.Response(
+            200,
+            request=request,
+            json={"articles": [{"title": "Apple extends gains"}]},
+        )
+
+
+def test_gdelt_provider_retries_timeout_and_succeeds() -> None:
+    client = _RetryingGDELTClient()
+    provider = GDELTNewsProvider(
+        base_url="https://example.test/gdelt",
+        user_agent="NexoMercadoAI test@example.com",
+        timeout_seconds=2.0,
+        max_attempts=2,
+        client=client,
+        sleep_fn=lambda _seconds: None,
+    )
+
+    result = provider.probe()
+
+    assert result.ok is True
+    assert result.provider == "gdelt"
+    assert result.payload["articleCount"] == 1
+    assert client.calls == 2
+
+
+class _RateLimitedNewsProvider:
+    def probe(self):
+        request = httpx.Request("GET", "https://example.test/gdelt")
+        response = httpx.Response(429, request=request)
+        raise httpx.HTTPStatusError("rate limited", request=request, response=response)
+
+
+def test_collect_demo_snapshot_classifies_gdelt_rate_limit_fallback() -> None:
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        news_provider=_RateLimitedNewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        metadata_provider=_PriceProvider(),
+    )
+
+    snapshot = service.collect_demo_snapshot()
+
+    assert snapshot.data_mode == DataMode.FALLBACK
+    assert snapshot.checks["news"].ok is False
+    assert "GDELT_RATE_LIMIT_FALLBACK_ACTIVE" in snapshot.checks["news"].warnings
+    assert snapshot.checks["news"].payload["statusCode"] == 429
 
 
 def test_repository_fallback_mode_reduces_signal_confidence() -> None:
