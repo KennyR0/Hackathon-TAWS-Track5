@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import HTTPException
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.health import router as health_router
@@ -13,6 +13,7 @@ from app.api.v1.briefings import router as briefings_router
 from app.api.v1.events import router as events_router
 from app.api.v1.reviews import router as reviews_router
 from app.api.v1.signals import router as signals_router
+from app.config import get_backend_cors_origins
 from app.contracts.api import ApiError
 
 
@@ -44,6 +45,21 @@ def create_app() -> FastAPI:
         version="0.1.0",
         description="Backend runtime para el MVP fixtures-first del Track 5.",
     )
+    cors_origins = get_backend_cors_origins()
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(cors_origins),
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=[
+                "Accept",
+                "Content-Type",
+                "Idempotency-Key",
+                "Last-Event-ID",
+                "X-Request-ID",
+            ],
+        )
     app.include_router(health_router)
     app.include_router(events_router, prefix="/api/v1")
     app.include_router(signals_router, prefix="/api/v1")

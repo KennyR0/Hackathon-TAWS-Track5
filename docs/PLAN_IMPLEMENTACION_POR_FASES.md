@@ -9,7 +9,7 @@ phase_3: aceptada
 phase_4: aceptada
 phase_5: aceptada
 phase_6: aceptada
-phase_7: pendiente
+phase_7: lista_para_revision
 phase_8: pendiente
 phase_9: pendiente
 phase_10: pendiente
@@ -70,7 +70,8 @@ Reglas:
 - No se hace commit, push, despliegue ni cambio cloud sin autorización explícita.
 - Una alternativa rechazada no modifica el último baseline aceptado.
 - Los cambios preexistentes del usuario se preservan; si se solapan con una fase, la ejecución se detiene y reporta el conflicto.
-- Excepcion autorizada: Fase 6 ejecutada en `main` por autorizacion explicita del usuario. Esta excepcion no aplica a fases futuras.
+- Excepcion autorizada: Fase 6 ejecutada en `main` por autorizacion explicita del usuario.
+- Excepcion autorizada: Fase 7 ejecutada en `main` por autorizacion explicita del usuario.
 
 ## 4. Estado
 
@@ -83,8 +84,8 @@ Reglas:
 | 3 | aceptada | Señal explicable |
 | 4 | aceptada | Supabase, revisión y briefing |
 | 5 | aceptada | Dos agentes y LangGraph |
-| 6 | lista_para_revision | Proveedores live y fallback |
-| 7 | pendiente | Despliegue y demo |
+| 6 | aceptada | Proveedores live y fallback |
+| 7 | lista_para_revision | Despliegue y demo |
 | 8 | pendiente | Auth, roles y RLS |
 | 9 | pendiente | Workers y operación |
 | 10 | pendiente | Diferenciadores |
@@ -450,6 +451,27 @@ Entregables:
 
 Gate: flujo `radar → señal → evidencia → revisión → briefing`, fallback visible y criterios del Track 5 aprobados.
 
+Decision de ejecucion:
+
+- Fase 7 ejecutada en `main` por autorizacion explicita del usuario.
+- No se hizo commit, push ni despliegue cloud real.
+- Vercel y Render quedan configurados para Dashboard/CLI con URLs y secretos reales fuera del repositorio.
+
+Evidencia de cierre local:
+
+- `.venv312\Scripts\python.exe scripts\validate_phase.py implement 7 --repo .`: aprobado en `main` usando excepcion documentada.
+- `.venv312\Scripts\python.exe -m pytest backend\tests --basetemp .tmp\pytest -p no:cacheprovider`: `146 passed`, `2 warnings`.
+- `.venv312\Scripts\python.exe backend\scripts\export_openapi.py --check`: OpenAPI vigente.
+- `.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py`: recorrido `radar -> senal -> evidencia -> revision -> briefing` aprobado con `dataMode=fixture`.
+- `corepack pnpm lint`: aprobado.
+- `corepack pnpm build`: aprobado.
+- `MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe backend\scripts\check_backend_runtime.py`: `effectiveDataMode=fixture`, `requestsUsed=0`.
+- `MARKET_DATA_MODE=hybrid .\.venv312\Scripts\python.exe backend\scripts\check_market_data_pipeline.py`: `effectiveDataMode=fallback` con warnings de proveedores/claves.
+- `render.yaml`: sintaxis YAML inspeccionada y servicio web FastAPI presente.
+- Backend agrega CORS restringido por `BACKEND_CORS_ORIGINS` y dependencia runtime `uvicorn`.
+- Frontend acepta `VITE_API_BASE_URL` y `VITE_API_URL`, normaliza `/api`, y muestra `dataMode`/warnings en detalle, briefing y auditoria.
+- Resultado del gate: aprobado; Fase 7 queda `lista_para_revision` y espera decision del usuario.
+
 ## 7. Evolución posterior
 
 ### Fase 8 — Auth, roles y RLS
@@ -527,6 +549,8 @@ Producto:
 | 2026-07-12 | 1 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario |
 | 2026-07-12 | 6 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para implementar proveedores live/fallback |
 | 2026-07-12 | 6 | Cerrar live sin claves obligatorias | El gate acepta mocks, caida simulada y script live opcional para no exponer secretos |
+| 2026-07-12 | 7 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para preparar demo deploy-ready |
+| 2026-07-12 | 7 | No desplegar cloud real | Alcance elegido: configuracion versionada, smokes locales y guia de demo |
 
 ## 12. Registro de cambios
 
@@ -537,3 +561,4 @@ Producto:
 | 2026-07-12 | 2 | Fase 1 conectada localmente entre React/Vite y FastAPI; queda lista para revision |
 | 2026-07-12 | 2 | Auditoria S0-Fase 5 registrada; Fase 6 iniciada en main por autorizacion explicita |
 | 2026-07-12 | 2 | Fase 6 live/fallback implementada y lista para revision |
+| 2026-07-12 | 2 | Fase 7 deploy-ready implementada y lista para revision |

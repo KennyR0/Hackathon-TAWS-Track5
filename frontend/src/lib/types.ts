@@ -1,5 +1,6 @@
 export type InstrumentType = 'equity' | 'etf' | 'crypto' | 'commodity' | 'macro' | 'credit' | 'other';
 export type SourceTier = 'A' | 'B' | 'C' | 'D';
+export type DataMode = 'fixture' | 'live' | 'fallback';
 
 export interface Asset {
   id: string;
@@ -80,6 +81,8 @@ export interface Signal {
   assumptions: string[];
   invalidations: string[];
   suggestedResearchActions: string[];
+  dataMode: DataMode;
+  warnings: string[];
 }
 
 export interface ReviewDecisionResult {
@@ -104,10 +107,11 @@ export interface Briefing {
   status: BriefingStatus;
   summary: string;
   signals: Signal[];
+  dataMode: DataMode;
+  warnings: string[];
 }
 
 // NUEVOS TIPOS: Auditoría (AgentRun)
-export type DataMode = 'fixture' | 'live' | 'fallback';
 export type AgentRunStatus = 'running' | 'completed' | 'failed';
 export type StepStatus = 'pending' | 'running' | 'success' | 'error';
 
@@ -129,4 +133,5 @@ export interface AgentRun {
   startedAt: string;
   completedAt?: string;
   steps: AgentRunStep[];
+  warnings: string[];
 }

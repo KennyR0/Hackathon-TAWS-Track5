@@ -3,6 +3,9 @@ from __future__ import annotations
 from time import sleep
 
 import pytest
+from fastapi.testclient import TestClient
+
+from app.main import create_app
 
 
 def _wait_for_terminal_run(api_client, run_id: str) -> dict[str, object]:
@@ -25,6 +28,27 @@ def test_health_endpoint(api_client) -> None:
         "service": "nexomercado-api",
         "contractVersion": "0.1.0",
     }
+
+
+def test_cors_allows_configured_vercel_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(
+        "BACKEND_CORS_ORIGINS",
+        "https://nexomercado-demo.vercel.app,http://localhost:5173",
+    )
+
+    with TestClient(create_app()) as client:
+        response = client.options(
+            "/api/v1/events",
+            headers={
+                "Origin": "https://nexomercado-demo.vercel.app",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == (
+        "https://nexomercado-demo.vercel.app"
+    )
 
 
 def test_list_events_supports_filters(api_client) -> None:

@@ -121,6 +121,16 @@ export function Briefing() {
                   {inconsistentSignals.length}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span>{TRANSLATIONS.runtime.dataMode.toUpperCase()}:</span>
+                <span className={`font-bold ${
+                  briefing.dataMode === 'live' ? 'text-status-positive-text' :
+                  briefing.dataMode === 'fallback' ? 'text-status-negative-text' :
+                  'text-status-uncertain-text'
+                }`}>
+                  {TRANSLATIONS.dataModes[briefing.dataMode]}
+                </span>
+              </div>
             </div>
           </div>
           
@@ -129,6 +139,20 @@ export function Briefing() {
           </div>
         </div>
       </div>
+
+      {briefing.warnings.length > 0 && (
+        <div className="bg-status-uncertain-bg/10 border border-status-uncertain-text/30 p-4 rounded-sm flex items-start gap-3">
+          <AlertTriangle size={15} className="text-status-uncertain-text shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-[11px] font-mono font-bold text-status-uncertain-text uppercase tracking-wider">{TRANSLATIONS.runtime.warnings}</h4>
+            <div className="text-[12px] text-status-uncertain-text/90 mt-1 leading-relaxed font-mono space-y-1">
+              {briefing.warnings.map(warning => (
+                <div key={warning}>- {warning}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tablero Resumen de Señales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -21,9 +21,10 @@ VALID_STATUSES = {
     "bloqueada",
 }
 ACTIVE_STATUSES = {"en_curso", "lista_para_revision"}
-MAIN_BRANCH_PHASE6_EXCEPTION = (
-    "Fase 6 ejecutada en `main` por autorizacion explicita del usuario"
-)
+MAIN_BRANCH_EXCEPTIONS = {
+    "6": "Fase 6 ejecutada en `main` por autorizacion explicita del usuario",
+    "7": "Fase 7 ejecutada en `main` por autorizacion explicita del usuario",
+}
 
 
 class ValidationError(RuntimeError):
@@ -86,13 +87,14 @@ def git_output(repo_root: Path, *args: str) -> str:
     return completed.stdout.strip()
 
 
-def allows_main_branch_phase6_exception(
+def allows_main_branch_exception(
     *,
     phase: str,
     branch: str,
     plan_text: str,
 ) -> bool:
-    return phase == "6" and branch == "main" and MAIN_BRANCH_PHASE6_EXCEPTION in plan_text
+    exception_text = MAIN_BRANCH_EXCEPTIONS.get(phase)
+    return branch == "main" and exception_text is not None and exception_text in plan_text
 
 
 def validate(args: argparse.Namespace) -> dict[str, object]:
@@ -154,7 +156,7 @@ def validate(args: argparse.Namespace) -> dict[str, object]:
 
         phase_slug = args.phase.lower()
         branch_pattern = re.compile(rf"^codex/fase-{re.escape(phase_slug)}(?:-|$)")
-        if not branch_pattern.match(branch) and not allows_main_branch_phase6_exception(
+        if not branch_pattern.match(branch) and not allows_main_branch_exception(
             phase=args.phase,
             branch=branch,
             plan_text=plan_text,

@@ -1,20 +1,19 @@
-# Conexiones frontend-backend locales
+# Conexiones frontend-backend
 
 Fecha: 2026-07-12
 
-## Alcance
+## Alcance Fase 7
 
-Esta integracion conecta el frontend React/Vite con el backend FastAPI local usando datos `fixture`. No incluye despliegue en Vercel/Render ni credenciales live.
+La Fase 7 deja el proyecto listo para demo desplegable con frontend en Vercel y backend en Render, pero no ejecuta commit, push ni despliegue cloud real. Las URL publicas reales y los secretos se cargan fuera del repositorio.
 
-Excepcion autorizada: el trabajo se hizo sobre `main` sin crear una rama `codex/fase-1-*`, por autorizacion explicita del usuario para esta fase local.
+Excepcion autorizada: Fase 7 ejecutada en `main` por autorizacion explicita del usuario.
 
 ## Configuracion local
 
 Backend:
 
 ```powershell
-cd backend
-..\.venv312\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+.\.venv312\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
 ```
 
 Frontend:
@@ -24,7 +23,7 @@ cd frontend
 corepack pnpm dev
 ```
 
-Variable publica del frontend:
+Variable publica local:
 
 ```text
 VITE_API_BASE_URL=/api
@@ -32,39 +31,48 @@ VITE_API_BASE_URL=/api
 
 En desarrollo, Vite proxifica `/api` hacia `http://127.0.0.1:8000`. Las claves privilegiadas de OpenAI, Supabase y proveedores de mercado siguen siendo solo del backend.
 
+## Configuracion Vercel y Render
+
+Frontend:
+
+- `frontend/vercel.json` define fallback SPA a `/index.html`.
+- `frontend/.env.example` documenta `VITE_API_BASE_URL=https://<render-service>/api`.
+- El cliente tambien acepta `VITE_API_URL` por compatibilidad y normaliza siempre al prefijo `/api`.
+
+Backend:
+
+- `render.yaml` define el servicio FastAPI con `uvicorn app.main:app --app-dir backend`.
+- `BACKEND_CORS_ORIGINS` lista origenes exactos permitidos, separados por coma.
+- `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` y claves de proveedores live quedan como variables backend con `sync: false`.
+- El modo fixture sigue siendo el default offline.
+
+Ejemplo de CORS para demo:
+
+```text
+BACKEND_CORS_ORIGINS=https://<vercel-app>.vercel.app,http://localhost:5173,http://127.0.0.1:5173
+```
+
 ## Pantallas conectadas
 
-| Pantalla | Endpoint local | Conexion |
+| Pantalla | Endpoint | Conexion |
 |---|---|---|
-| Radar | `GET /api/v1/events` | Lista eventos reales del fixture y usa filtros `instrumentType`, `asset` y `publishedAfter`. |
-| Detalle de senal | `GET /api/v1/signals/{signalId}` y `GET /api/v1/signals/{signalId}/evidence` | Muestra impacto, confianza, revision, evidencia, supuestos, invalidaciones y acciones desde el contrato backend. |
-| Revision humana | `POST /api/v1/signals/{signalId}/reviews` | Guarda `reviewed`, `escalated` o `discarded` con justificacion obligatoria e `Idempotency-Key`. |
-| Briefing | `POST /api/v1/briefings` | Crea un briefing `draft` local para `watchlist_demo_global` usando las senales disponibles. |
-| Auditoria | `POST /api/v1/analyses`, `GET /api/v1/analyses/{runId}`, `GET /api/v1/runs/{runId}/steps` | Crea una ejecucion fixture, espera estado terminal y renderiza pasos reales del run. |
+| Radar | `GET /api/v1/events` | Lista eventos y filtros `instrumentType`, `asset`, `publishedAfter`. |
+| Detalle de senal | `GET /api/v1/signals/{signalId}` y `GET /api/v1/signals/{signalId}/evidence` | Muestra impacto, confianza, revision, evidencia, `dataMode` y warnings. |
+| Revision humana | `POST /api/v1/signals/{signalId}/reviews` | Guarda `reviewed`, `escalated` o `discarded` con justificacion e `Idempotency-Key`. |
+| Briefing | `POST /api/v1/briefings` | Crea briefing `draft`, hidrata senales y expone warnings agregados. |
+| Auditoria | `POST /api/v1/analyses`, `GET /api/v1/analyses/{runId}`, `GET /api/v1/runs/{runId}/steps` | Crea una ejecucion, espera terminal y renderiza pasos, modo de datos y warnings. |
 
-## Mapeo de campos
+## Smoke local de demo
 
-| UI | Contrato backend |
-|---|---|
-| `Event.headline` | `EventView.event.title` |
-| `Event.mainArticle` | Primer `EventView.articles[]` + `EventView.sources[]` por `sourceId` |
-| `Event.assets[]` | `EventView.event.relatedAssets[]` |
-| `Signal.status` | `Signal.analysisStatus` |
-| `Signal.reviewStatus` | `Signal.review.status` |
-| `Signal.confidenceScore` | `Signal.confidence` |
-| `Signal.marketSnapshot.change24h` | `Signal.priceReaction.assetReturn * 100` |
-| `Signal.marketSnapshot.benchmarkChange24h` | `Signal.priceReaction.benchmarkReturn * 100` cuando existe |
-| `Signal.claims[]` | `Signal.thesis` + `Evidence.claim` |
-| `Signal.evidences[]` | `Evidence[]` del endpoint de evidencia |
-| `Briefing.summary` | `Briefing.executiveSummary` |
-| `Briefing.signals[]` | `Briefing.prioritizedSignals[].signalId` hidratado con `GET /signals/{id}` |
-| `AgentRun.steps[]` | `AgentRunStep[]` desde `/runs/{runId}/steps` |
+```powershell
+MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py
+```
 
-## Conexiones no cerradas
+Este smoke recorre `radar -> senal -> evidencia -> revision -> briefing` usando `TestClient`, sin red ni secretos.
 
-- Despliegue Vercel/Render: fuera del alcance elegido; falta configurar URLs publicas y ejecutar smoke remoto.
-- CORS productivo: no se agrego porque el flujo local usa proxy de Vite; debe restringirse al dominio del frontend cuando exista.
-- Proveedores live: no se conectaron credenciales GDELT, Finnhub, Twelve Data, CoinGecko ni FRED.
-- Supabase/Auth/RLS productivo: no se expuso al frontend ni se agrego login; sigue pendiente para fases posteriores.
-- SSE visual en auditoria: se usa polling hasta estado terminal y luego `GET /runs/{runId}/steps`; el endpoint SSE queda disponible para una mejora posterior sin redisenar la vista.
-- Generacion automatica de tipos TypeScript desde OpenAPI: el cliente mantiene una capa minima manual de contratos de transporte; la fuente de verdad sigue siendo Pydantic/OpenAPI.
+## Limitaciones pendientes
+
+- No se ejecuto despliegue real en Vercel ni Render.
+- No se validaron URLs publicas reales porque aun no existen en el repo.
+- Auth, roles y RLS productivo quedan para fases posteriores.
+- La auditoria visual usa polling mas lectura de pasos; el endpoint SSE sigue disponible para una mejora posterior.

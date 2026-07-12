@@ -39,6 +39,7 @@ def reset_backend_singletons(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("TWELVE_DATA_API_KEY", raising=False)
     monkeypatch.delenv("COINGECKO_API_KEY", raising=False)
     monkeypatch.delenv("FRED_API_KEY", raising=False)
+    monkeypatch.delenv("BACKEND_CORS_ORIGINS", raising=False)
     dependencies.get_fixture_provider.cache_clear()
     dependencies.get_market_data_runtime_service.cache_clear()
     dependencies.get_supabase_client.cache_clear()

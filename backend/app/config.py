@@ -16,6 +16,7 @@ DEFAULT_LLM_PROVIDER = "fixture"
 DEFAULT_REPOSITORY_BACKEND = "fixture"
 DEFAULT_MARKET_DATA_MODE = "fixture"
 DEFAULT_FIXTURE_BUNDLE_PATH = "data/fixtures/v1/phase0_bundle.json"
+DEFAULT_BACKEND_CORS_ORIGINS = ("http://127.0.0.1:5173", "http://localhost:5173")
 VALID_REASONING_EFFORTS = {"minimal", "low", "medium", "high", "xhigh"}
 VALID_LLM_PROVIDERS = {"fixture", "openai"}
 VALID_REPOSITORY_BACKENDS = {"fixture", "supabase"}
@@ -51,6 +52,10 @@ class MarketProviderConfig:
     twelve_data_api_key: str | None = None
     coingecko_api_key: str | None = None
     fred_api_key: str | None = None
+
+
+def _parse_csv_env(value: str) -> tuple[str, ...]:
+    return tuple(item.strip().rstrip("/") for item in value.split(",") if item.strip())
 
 
 def get_openai_config() -> OpenAIConfig:
@@ -144,6 +149,18 @@ def get_supabase_config() -> SupabaseConfig:
         url=url,
         service_role_key=service_role_key,
     )
+
+
+def get_backend_cors_origins() -> tuple[str, ...]:
+    """Load explicit browser origins allowed to call the backend."""
+
+    raw_origins = getenv("BACKEND_CORS_ORIGINS", "").strip()
+    if not raw_origins:
+        return DEFAULT_BACKEND_CORS_ORIGINS
+    origins = _parse_csv_env(raw_origins)
+    if "*" in origins:
+        raise RuntimeError("BACKEND_CORS_ORIGINS must list explicit origins; wildcard is not allowed")
+    return origins
 
 
 def get_market_provider_config() -> MarketProviderConfig:

@@ -26,6 +26,11 @@ export const TRANSLATIONS = {
     fallback: 'Modo de Contingencia',
   } as Record<DataMode, string>,
 
+  runtime: {
+    dataMode: 'Modo de datos',
+    warnings: 'Advertencias de datos',
+  },
+
   impacts: {
     positive: 'Positivo',
     negative: 'Negativo',

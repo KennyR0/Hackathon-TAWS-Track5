@@ -127,7 +127,9 @@ export async function getSignal(_id: string): Promise<Signal | null> {
     suggestedResearchActions: [
       'Revisar el transcript de la llamada de ganancias de TSMC sobre proyecciones de empaquetado CoWoS',
       'Correr análisis transversal del sector sobre infraestructura térmica y cooling líquido'
-    ]
+    ],
+    dataMode: 'fixture',
+    warnings: ['FIXTURE_DATA']
   };
 }
 
@@ -164,7 +166,9 @@ export async function getBriefing(_id: string): Promise<Briefing | null> {
     claims: [],
     assumptions: ['La volatilidad se mantendrá en rangos históricos'],
     invalidations: ['Nuevas regulaciones SEC'],
-    suggestedResearchActions: ['Verificar correlación con flujos de ETF en T-1']
+    suggestedResearchActions: ['Verificar correlación con flujos de ETF en T-1'],
+    dataMode: 'fixture',
+    warnings: ['FIXTURE_DATA']
   };
 
   return {
@@ -173,7 +177,9 @@ export async function getBriefing(_id: string): Promise<Briefing | null> {
     generatedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     status: 'shareable', // Intentamos compartir esto pero contiene una señal descartada
     summary: 'El mercado de tecnología ha mostrado volatilidad en la última semana. Recomendamos monitorear los activos de infraestructura. Además, los ETFs de Bitcoin ven demanda histórica.',
-    signals: [nvdaSignal!, btcSignal]
+    signals: [nvdaSignal!, btcSignal],
+    dataMode: 'fixture',
+    warnings: ['FIXTURE_DATA']
   };
 }
 
@@ -189,6 +195,7 @@ export async function getAgentRun(_id: string): Promise<AgentRun | null> {
     status: 'completed',
     startedAt: new Date(baseTime).toISOString(),
     completedAt: new Date(baseTime + 1200).toISOString(),
+    warnings: ['FIXTURE_DATA'],
     steps: [
       {
         id: 'step_1',

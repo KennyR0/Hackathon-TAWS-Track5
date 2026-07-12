@@ -15,7 +15,23 @@ import type {
   StepStatus,
 } from './types';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
+function normalizeApiBaseUrl(rawValue?: string): string {
+  const value = (rawValue?.trim() || '/api').replace(/\/$/, '');
+  if (!value) {
+    return '/api';
+  }
+  if (value.endsWith('/api')) {
+    return value;
+  }
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return `${value}/api`;
+  }
+  return value;
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(
+  import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL,
+);
 const API_V1_URL = `${API_BASE_URL}/v1`;
 const DEFAULT_SIGNAL_ID = 'sig_btc_uncertain';
 const DEFAULT_EVENT_ID = 'evt_aapl_outlook_20260709';
@@ -288,7 +304,7 @@ export async function createDraftBriefing(): Promise<Briefing> {
   });
 
   const hydratedSignals = await Promise.all(signalIds.map(signalId => getSignal(signalId)));
-  return mapBriefing(briefingPayload.data, hydratedSignals);
+  return mapBriefing(briefingPayload.data, hydratedSignals, briefingPayload.meta ?? signalsPayload.meta);
 }
 
 export async function createAgentRun(): Promise<AgentRun> {
@@ -303,7 +319,7 @@ export async function createAgentRun(): Promise<AgentRun> {
 
   const run = await waitForTerminalRun(runPayload.data.id);
   const stepsPayload = await request<ApiEnvelope<ApiAgentRunStep[]>>(`/runs/${run.id}/steps`);
-  return mapAgentRun(run, stepsPayload.data);
+  return mapAgentRun(run, stepsPayload.data, runPayload.meta ?? stepsPayload.meta);
 }
 
 async function waitForTerminalRun(runId: string): Promise<ApiAgentRun> {
@@ -400,10 +416,14 @@ function mapSignal(apiSignal: ApiSignal, evidence: ApiEvidence[], meta?: ApiMeta
     assumptions: apiSignal.assumptions,
     invalidations: apiSignal.invalidationConditions,
     suggestedResearchActions: apiSignal.suggestedResearchActions,
+    dataMode: meta?.dataMode ?? 'fixture',
+    warnings: meta?.warnings ?? [],
   };
 }
 
-function mapBriefing(apiBriefing: ApiBriefing, signals: Signal[]): Briefing {
+function mapBriefing(apiBriefing: ApiBriefing, signals: Signal[], meta?: ApiMeta): Briefing {
+  const signalWarnings = signals.flatMap(signal => signal.warnings);
+  const warnings = Array.from(new Set([...(meta?.warnings ?? []), ...signalWarnings]));
   const signalById = new Map(signals.map(signal => [signal.id, signal]));
   return {
     id: apiBriefing.briefingId,
@@ -414,18 +434,21 @@ function mapBriefing(apiBriefing: ApiBriefing, signals: Signal[]): Briefing {
     signals: apiBriefing.prioritizedSignals
       .map(item => signalById.get(item.signalId))
       .filter((signal): signal is Signal => Boolean(signal)),
+    dataMode: meta?.dataMode ?? signals[0]?.dataMode ?? 'fixture',
+    warnings,
   };
 }
 
-function mapAgentRun(run: ApiAgentRun, steps: ApiAgentRunStep[]): AgentRun {
+function mapAgentRun(run: ApiAgentRun, steps: ApiAgentRunStep[], meta?: ApiMeta): AgentRun {
   return {
     id: run.id,
     signalId: run.currentNode,
-    dataMode: 'fixture',
+    dataMode: meta?.dataMode ?? 'fixture',
     status: mapRunStatus(run.status),
     startedAt: run.startedAt,
     completedAt: run.finishedAt ?? undefined,
     steps: steps.map(mapAgentRunStep),
+    warnings: meta?.warnings ?? [],
   };
 }
 

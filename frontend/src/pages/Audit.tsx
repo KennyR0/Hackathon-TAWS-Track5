@@ -95,6 +95,17 @@ export function Audit() {
         </div>
       </div>
 
+      {run.warnings.length > 0 && (
+        <div className="bg-status-uncertain-bg/10 border-x border-status-uncertain-text/30 px-4 py-3 text-[11px] text-status-uncertain-text">
+          <div className="font-bold uppercase mb-1">{TRANSLATIONS.runtime.warnings}</div>
+          <div className="space-y-1">
+            {run.warnings.map(warning => (
+              <div key={warning}>- {warning}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* TIMELINE / LOG DE PASOS */}
       <div className="flex-1 overflow-auto bg-surface border-x border-b border-border rounded-b-sm p-4 md:p-6 text-[12px] space-y-4">
         

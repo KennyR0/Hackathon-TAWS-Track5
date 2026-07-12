@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: nexomercado-api
+    runtime: python
+    plan: free
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -e backend
+    startCommand: uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.12
+      - key: LLM_PROVIDER
+        value: fixture
+      - key: REPOSITORY_BACKEND
+        value: fixture
+      - key: MARKET_DATA_MODE
+        value: fixture
+      - key: FIXTURE_BUNDLE_PATH
+        value: data/fixtures/v1/phase0_bundle.json
+      - key: BACKEND_CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.4
+      - key: OPENAI_REASONING_EFFORT
+        value: medium
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GDELT_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: TWELVE_DATA_API_KEY
+        sync: false
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: FRED_API_KEY
+        sync: false

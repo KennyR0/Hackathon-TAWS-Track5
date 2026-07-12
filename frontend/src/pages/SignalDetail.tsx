@@ -309,9 +309,26 @@ export function SignalDetail() {
 
       {/* 3. CONTEXTO DE MERCADO (MARKET SNAPSHOT) */}
       <section className="bg-surface border border-border rounded-sm p-5">
-        <h2 className="text-[11px] font-mono font-bold text-accent-signal uppercase tracking-wider mb-4 flex items-center gap-2">
-          <TrendingUp size={12} /> {t.marketSnapshot}
-        </h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-[11px] font-mono font-bold text-accent-signal uppercase tracking-wider flex items-center gap-2">
+            <TrendingUp size={12} /> {t.marketSnapshot}
+          </h2>
+          <span className={`text-[10px] font-mono font-bold uppercase border border-current rounded-sm px-2 py-0.5 ${
+            signal.dataMode === 'live' ? 'text-status-positive-text' :
+            signal.dataMode === 'fallback' ? 'text-status-negative-text' :
+            'text-status-uncertain-text'
+          }`}>
+            {TRANSLATIONS.runtime.dataMode}: {TRANSLATIONS.dataModes[signal.dataMode]}
+          </span>
+        </div>
+        {signal.warnings.length > 0 && (
+          <div className="mb-4 border border-status-uncertain-text/25 bg-status-uncertain-bg/10 rounded-sm px-3 py-2 text-[11px] text-status-uncertain-text font-mono">
+            <div className="font-bold uppercase mb-1">{TRANSLATIONS.runtime.warnings}</div>
+            {signal.warnings.map(warning => (
+              <div key={warning}>- {warning}</div>
+            ))}
+          </div>
+        )}
         
         <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
           {/* Cifra protagonista */}
