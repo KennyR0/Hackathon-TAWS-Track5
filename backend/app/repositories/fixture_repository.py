@@ -208,6 +208,7 @@ class FixtureRepository(BackendRepository):
         request: ReviewRequest,
         *,
         idempotency_key: str,
+        reviewer: Reviewer | None = None,
     ) -> tuple[SignalReview, ...]:
         with self._lock:
             signal = self.get_signal_seed(signal_id)
@@ -227,21 +228,21 @@ class FixtureRepository(BackendRepository):
             reviewed_at = self.fixture_clock + timedelta(minutes=review_index)
             created_at = reviewed_at + timedelta(seconds=30)
             with allow_internal_field_names():
-                reviewer = Reviewer(**REVIEWER)
+                effective_reviewer = reviewer or Reviewer(**REVIEWER)
                 review = SignalReview(
                     id=f"rev_{signal_id}_{review_index:03d}",
                     signal_id=signal_id,
                     previous_status=signal.review.status,
                     status=requested_status,
                     justification=request.justification,
-                    reviewed_by=reviewer,
+                    reviewed_by=effective_reviewer,
                     reviewed_at=reviewed_at,
                     created_at=created_at,
                 )
                 review_summary = ReviewSummary(
                     status=requested_status,
                     justification=request.justification,
-                    reviewed_by=reviewer,
+                    reviewed_by=effective_reviewer,
                     reviewed_at=reviewed_at,
                 )
 

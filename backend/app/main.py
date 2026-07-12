@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.dependencies import get_current_app_user
 from app.api.health import router as health_router
 from app.api.v1.analyses import router as analyses_router
 from app.api.v1.briefings import router as briefings_router
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
             allow_methods=["GET", "POST", "OPTIONS"],
             allow_headers=[
                 "Accept",
+                "Authorization",
                 "Content-Type",
                 "Idempotency-Key",
                 "Last-Event-ID",
@@ -61,11 +63,12 @@ def create_app() -> FastAPI:
             ],
         )
     app.include_router(health_router)
-    app.include_router(events_router, prefix="/api/v1")
-    app.include_router(signals_router, prefix="/api/v1")
-    app.include_router(reviews_router, prefix="/api/v1")
-    app.include_router(briefings_router, prefix="/api/v1")
-    app.include_router(analyses_router, prefix="/api/v1")
+    protected = [Depends(get_current_app_user)]
+    app.include_router(events_router, prefix="/api/v1", dependencies=protected)
+    app.include_router(signals_router, prefix="/api/v1", dependencies=protected)
+    app.include_router(reviews_router, prefix="/api/v1", dependencies=protected)
+    app.include_router(briefings_router, prefix="/api/v1", dependencies=protected)
+    app.include_router(analyses_router, prefix="/api/v1", dependencies=protected)
 
     @app.exception_handler(KeyError)
     async def handle_not_found(request: Request, exc: KeyError) -> JSONResponse:

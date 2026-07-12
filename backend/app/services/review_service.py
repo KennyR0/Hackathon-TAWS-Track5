@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from app.contracts.api import ReviewListResponse, ReviewRequest
-from app.contracts.entities import allow_internal_field_names
+from app.contracts.entities import Reviewer, allow_internal_field_names
 from app.repositories.fixture_repository import FixtureRepository
+from app.security.auth import AppUserContext
 
 
 class ReviewService:
@@ -24,13 +25,16 @@ class ReviewService:
         request: ReviewRequest,
         *,
         idempotency_key: str,
+        user: AppUserContext,
     ) -> ReviewListResponse:
         with allow_internal_field_names():
+            reviewer = Reviewer(id=user.id, name=user.display_name)
             return ReviewListResponse(
                 data=self._repository.create_signal_review(
                     signal_id,
                     request,
                     idempotency_key=idempotency_key,
+                    reviewer=reviewer,
                 ),
                 meta=self._repository.get_meta(),
             )

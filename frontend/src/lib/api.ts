@@ -14,6 +14,7 @@ import type {
   SourceTier,
   StepStatus,
 } from './types';
+import { getAccessToken, supabase } from './auth';
 
 function normalizeApiBaseUrl(rawValue?: string): string {
   const value = (rawValue?.trim() || '/api').replace(/\/$/, '');
@@ -213,16 +214,21 @@ export class ApiClientError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const accessToken = await getAccessToken();
   const response = await fetch(`${API_V1_URL}${path}`, {
     ...init,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
     },
   });
 
   if (!response.ok) {
+    if (response.status === 401 && supabase) {
+      await supabase.auth.signOut({ scope: 'local' });
+    }
     let message = `HTTP ${response.status}`;
     let code: string | undefined;
     try {

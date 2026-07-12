@@ -1,6 +1,6 @@
 ---
 plan_version: 2
-current_phase: 7
+current_phase: 9
 phase_S0: aceptada
 phase_0: aceptada
 phase_1: aceptada
@@ -9,9 +9,9 @@ phase_3: aceptada
 phase_4: aceptada
 phase_5: aceptada
 phase_6: aceptada
-phase_7: lista_para_revision
-phase_8: pendiente
-phase_9: pendiente
+phase_7: aceptada
+phase_8: aceptada
+phase_9: lista_para_revision
 phase_10: pendiente
 last_updated: 2026-07-12
 ---
@@ -72,6 +72,8 @@ Reglas:
 - Los cambios preexistentes del usuario se preservan; si se solapan con una fase, la ejecución se detiene y reporta el conflicto.
 - Excepcion autorizada: Fase 6 ejecutada en `main` por autorizacion explicita del usuario.
 - Excepcion autorizada: Fase 7 ejecutada en `main` por autorizacion explicita del usuario.
+- Excepcion autorizada: Fase 8 ejecutada en `main` por autorizacion explicita del usuario.
+- Excepcion autorizada: Fase 9 ejecutada en `main` por autorizacion explicita del usuario.
 
 ## 4. Estado
 
@@ -85,9 +87,9 @@ Reglas:
 | 4 | aceptada | Supabase, revisión y briefing |
 | 5 | aceptada | Dos agentes y LangGraph |
 | 6 | aceptada | Proveedores live y fallback |
-| 7 | lista_para_revision | Despliegue y demo |
-| 8 | pendiente | Auth, roles y RLS |
-| 9 | pendiente | Workers y operación |
+| 7 | aceptada | Despliegue y demo |
+| 8 | aceptada | Auth, roles y RLS |
+| 9 | lista_para_revision | Workers y operación |
 | 10 | pendiente | Diferenciadores |
 
 Estado operativo actual del repositorio:
@@ -483,10 +485,54 @@ Evidencia de cierre local:
 - Grants mínimos y RLS por organización.
 - La autorización nunca depende de `user_metadata`.
 
+Evidencia de cierre local:
+
+- Fase 8 ejecutada en `main` por autorizacion explicita del usuario.
+- No se requirieron migraciones nuevas: la base ya tenia `app_users.auth_user_id`, helpers `private.current_app_*`, grants minimos y politicas RLS por organizacion.
+- FastAPI valida bearer token con Supabase Auth cuando `AUTH_ENABLED=true` y resuelve rol/organizacion desde `app_users`, no desde `user_metadata`.
+- Revisiones y briefings inyectan `AppUserContext`; las revisiones persisten `reviewedBy` del usuario autenticado y los briefings `shareable` requieren `senior_analyst`, `advisor` o `admin`.
+- CORS permite `Authorization` para el frontend desplegado.
+- Validaciones ejecutadas:
+  - `.venv312\Scripts\python.exe -m pytest backend\tests --basetemp .tmp\pytest -p no:cacheprovider`: `163 passed`, `2 warnings`.
+  - `.venv312\Scripts\python.exe backend\scripts\export_openapi.py --check`: aprobado.
+  - `.venv312\Scripts\python.exe .agents\skills\run-nexomercado-phase\scripts\validate_phase.py validate 8 --repo .`: aprobado.
+- `ruff check backend` queda bloqueado por deuda previa de estilo en varios archivos no relacionada al cierre funcional; no se amplio el refactor.
+- Resultado: Fase 8 aceptada por autorizacion explicita del usuario para avanzar a Fase 9 sin cambios importantes de DB.
+
+Revision posterior autorizada de Fase 8:
+
+- Todas las rutas `/api/v1` exigen `AppUserContext` cuando `AUTH_ENABLED=true`; `/health` permanece publico.
+- Los servicios Supabase se construyen con organizacion y actor autenticados. El repositorio filtra hidratacion, lecturas, idempotencia, auditoria, briefings y runs por `organization_id`, evitando depender de RLS cuando se usa `service_role`.
+- El frontend integra `@supabase/supabase-js` solo con URL y publishable key, conserva/renueva sesion, adjunta bearer a REST y usa `fetch` streaming para SSE sin incluir tokens en la URL.
+- Un `401` limpia la sesion local; `403` conserva el error tipado para la interfaz. Auth desactivado mantiene el usuario demo y los flujos fixture.
+- No se agregaron migraciones: el esquema actual ya incluye ownership, RLS, idempotencia, auditoria y tablas operativas necesarias.
+- Pruebas agregadas: token ausente y valido, usuario inactivo, roles, persistencia del reviewer y ocultamiento de recursos de otra organizacion.
+
 ### Fase 9 — Workers y operación
 
 - Ingesta programada, precios, macro, reconciliación y limpieza.
 - Resiliencia completa, OpenTelemetry, métricas y alertas.
+
+Evidencia de cierre local:
+
+- Fase 9 ejecutada en `main` por autorizacion explicita del usuario.
+- Worker offline-first con ejecucion distinta e idempotente para `ingest`, `prices`, `macro`, `reconcile`, `cleanup`; `all` las ejecuta en orden.
+- Persistencia intercambiable in-memory/Supabase para snapshots crudos, articulos, snapshots/observaciones de mercado, relaciones evento-articulo y limpieza de idempotencia/cache expirada.
+- OpenTelemetry instrumenta run y tareas con resultado, modo, filas y duracion. Prometheus emite duracion, exito, filas, fallback, presupuesto, probes y circuit breaker con etiquetas escapadas.
+- Alertas distinguen fixture informativo, fallback parcial y fallo critico; el CLI retorna `0`, `1` o `2` respectivamente.
+- `render.yaml` declara cinco cron jobs para ingesta, precios, macro, reconciliacion y limpieza; solo se valido el Blueprint, no se desplego ni ejecuto en cloud.
+- Pruebas nuevas cubren tareas distintas, reintento idempotente, aislamiento organizacional, spans OpenTelemetry, escape Prometheus y fallback.
+- Validaciones ejecutadas:
+  - `.venv312\Scripts\python.exe -m pytest backend\tests --basetemp .tmp\pytest-final -p no:cacheprovider`: `171 passed`, `2 warnings`.
+  - `.venv312\Scripts\python.exe backend\scripts\run_operations_worker.py --task all --format json`: aprobado, `effectiveDataMode=fixture`, metricas y alertas emitidas.
+  - `.venv312\Scripts\python.exe backend\scripts\run_operations_worker.py --task reconcile --format prometheus`: aprobado.
+  - `.venv312\Scripts\python.exe -m ruff check` sobre archivos de F8/F9: aprobado.
+  - `corepack pnpm lint` y `corepack pnpm build` en `frontend`: aprobados; build mantiene un warning no bloqueante de chunk mayor a 500 kB.
+  - `.venv312\Scripts\python.exe backend\scripts\export_openapi.py --check`: aprobado.
+  - Parseo de `render.yaml`: aprobado con un servicio web y cinco cron jobs.
+  - Ruff global sigue reportando `75` incidencias preexistentes fuera del alcance focal; no se amplio el refactor.
+- No se hizo commit, push, despliegue ni cambio cloud.
+- Resultado del gate: aprobado; Fase 9 queda `lista_para_revision` y espera decision del usuario.
 
 ### Fase 10 — Diferenciadores
 
@@ -553,6 +599,9 @@ Producto:
 | 2026-07-12 | 6 | Cerrar live sin claves obligatorias | El gate acepta mocks, caida simulada y script live opcional para no exponer secretos |
 | 2026-07-12 | 7 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para preparar demo deploy-ready |
 | 2026-07-12 | 7 | No desplegar cloud real | Alcance elegido: configuracion versionada, smokes locales y guia de demo |
+| 2026-07-12 | 8 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para auth, roles y RLS |
+| 2026-07-12 | 8 | Avanzar a Fase 9 sin migraciones nuevas | La base ya tenia Auth/RLS; el cierre fue integracion FastAPI y permisos |
+| 2026-07-12 | 9 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para workers y operacion |
 
 ## 12. Registro de cambios
 
@@ -564,3 +613,4 @@ Producto:
 | 2026-07-12 | 2 | Auditoria S0-Fase 5 registrada; Fase 6 iniciada en main por autorizacion explicita |
 | 2026-07-12 | 2 | Fase 6 live/fallback implementada y lista para revision |
 | 2026-07-12 | 2 | Fase 7 deploy-ready implementada y lista para revision |
+| 2026-07-12 | 2 | Fase 8 auth/roles/RLS cerrada sin migraciones nuevas y Fase 9 workers/operacion lista para revision |

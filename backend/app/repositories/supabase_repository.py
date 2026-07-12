@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from hashlib import sha256
 from typing import Any
 
 from supabase import Client
 
 from app.contracts.api import AgentRunStep, AnalysisRequest, BriefingRequest, ReviewRequest
-from app.contracts.entities import AgentRun, Briefing, Reviewer, SignalReview, allow_internal_field_names
+from app.contracts.entities import (
+    AgentRun,
+    Briefing,
+    Event,
+    Evidence,
+    Reviewer,
+    Signal,
+    SignalReview,
+    allow_internal_field_names,
+)
 from app.contracts.fixtures import canonical_json_bytes
 from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import MarketDataRuntimeService
@@ -25,13 +33,32 @@ class SupabaseRepository(FixtureRepository):
         provider: FixtureProvider,
         client: Client,
         market_runtime: MarketDataRuntimeService | None = None,
+        *,
+        organization_id: str = "org_demo",
+        actor_user_id: str | None = None,
     ) -> None:
         self._supabase = client
+        self._organization_id = organization_id
+        self._actor_user_id = actor_user_id
+        self._enforce_ownership = actor_user_id is not None
         super().__init__(provider, market_runtime=market_runtime)
         self._hydrate_mutable_state()
 
     def _hydrate_mutable_state(self) -> None:
-        review_rows = self._supabase.table("signal_reviews").select("*").execute().data or []
+        signal_ids = self._owned_ids("signals") if self._enforce_ownership else ()
+        if self._enforce_ownership:
+            review_rows = []
+            if signal_ids:
+                review_rows = (
+                self._supabase.table("signal_reviews")
+                .select("*")
+                .in_("signal_id", signal_ids)
+                .execute()
+                .data
+                or []
+            )
+        else:
+            review_rows = self._supabase.table("signal_reviews").select("*").execute().data or []
         with allow_internal_field_names():
             reviewer = Reviewer(**REVIEWER)
         for row in review_rows:
@@ -61,13 +88,12 @@ class SupabaseRepository(FixtureRepository):
                     }
                 )
 
-        idempotency_rows = (
-            self._supabase.table("idempotency_keys")
-            .select("operation,idempotency_key,request_hash,response_body")
-            .execute()
-            .data
-            or []
+        idempotency_query = self._supabase.table("idempotency_keys").select(
+            "operation,idempotency_key,request_hash,response_body"
         )
+        if self._enforce_ownership:
+            idempotency_query = idempotency_query.eq("organization_id", self._organization_id)
+        idempotency_rows = idempotency_query.execute().data or []
         for row in idempotency_rows:
             body = row.get("response_body") or {}
             operation = row["operation"]
@@ -75,7 +101,10 @@ class SupabaseRepository(FixtureRepository):
                 briefing = Briefing.model_validate(body)
                 self._briefings[briefing.briefing_id] = briefing
 
-        run_rows = self._supabase.table("agent_runs").select("*").execute().data or []
+        run_query = self._supabase.table("agent_runs").select("*")
+        if self._enforce_ownership:
+            run_query = run_query.eq("organization_id", self._organization_id)
+        run_rows = run_query.execute().data or []
         link_rows = (
             self._supabase.table("agent_run_source_snapshots").select("*").execute().data or []
         )
@@ -116,6 +145,65 @@ class SupabaseRepository(FixtureRepository):
         for run_id, steps in self._run_steps.items():
             self._run_steps[run_id] = sorted(steps, key=lambda item: item.timestamp)
 
+    def _owned_ids(self, table: str) -> tuple[str, ...]:
+        rows = (
+            self._supabase.table(table)
+            .select("id")
+            .eq("organization_id", self._organization_id)
+            .execute()
+            .data
+            or []
+        )
+        return tuple(str(row["id"]) for row in rows)
+
+    def _assert_owned(self, table: str, resource_id: str) -> None:
+        if not self._enforce_ownership:
+            return
+        rows = (
+            self._supabase.table(table)
+            .select("id")
+            .eq("id", resource_id)
+            .eq("organization_id", self._organization_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            raise KeyError("Resource not found")
+
+    def list_events(self, **filters: str | None) -> tuple[tuple[Event, tuple[str, ...]], ...]:
+        owned = set(self._owned_ids("events"))
+        return tuple(item for item in super().list_events(**filters) if item[0].id in owned)
+
+    def get_event(self, event_id: str) -> tuple[Event, tuple[str, ...]]:
+        self._assert_owned("events", event_id)
+        return super().get_event(event_id)
+
+    def list_signals(self, **filters: str | None) -> tuple[Signal, ...]:
+        owned = set(self._owned_ids("signals"))
+        return tuple(item for item in super().list_signals(**filters) if item.id in owned)
+
+    def get_signal(self, signal_id: str) -> Signal:
+        self._assert_owned("signals", signal_id)
+        return super().get_signal(signal_id)
+
+    def get_signal_evidence(self, signal_id: str) -> tuple[Evidence, ...]:
+        self._assert_owned("signals", signal_id)
+        return super().get_signal_evidence(signal_id)
+
+    def list_signal_reviews(self, signal_id: str) -> tuple[SignalReview, ...]:
+        self._assert_owned("signals", signal_id)
+        return super().list_signal_reviews(signal_id)
+
+    def get_briefing(self, briefing_id: str) -> Briefing:
+        self._assert_owned("briefings", briefing_id)
+        return super().get_briefing(briefing_id)
+
+    def get_analysis_run(self, run_id: str) -> AgentRun:
+        self._assert_owned("agent_runs", run_id)
+        return super().get_analysis_run(run_id)
+
     @staticmethod
     def _review_summary(review: SignalReview):
         from app.contracts.entities import ReviewSummary
@@ -138,7 +226,7 @@ class SupabaseRepository(FixtureRepository):
     ) -> None:
         self._supabase.table("idempotency_keys").upsert(
             {
-                "organization_id": "org_demo",
+                "organization_id": self._organization_id,
                 "operation": operation,
                 "idempotency_key": key,
                 "request_hash": f"sha256:{sha256(payload).hexdigest()}",
@@ -163,8 +251,8 @@ class SupabaseRepository(FixtureRepository):
         self._supabase.table("audit_events").upsert(
             {
                 "id": audit_id,
-                "organization_id": "org_demo",
-                "actor_user_id": actor_user_id,
+                "organization_id": self._organization_id,
+                "actor_user_id": actor_user_id or self._actor_user_id,
                 "entity_type": entity_type,
                 "entity_id": entity_id,
                 "action": action,
@@ -182,7 +270,7 @@ class SupabaseRepository(FixtureRepository):
         rows = (
             self._supabase.table("idempotency_keys")
             .select("request_hash,response_body")
-            .eq("organization_id", "org_demo")
+            .eq("organization_id", self._organization_id)
             .eq("operation", operation)
             .eq("idempotency_key", key)
             .limit(1)
@@ -202,6 +290,7 @@ class SupabaseRepository(FixtureRepository):
         request: ReviewRequest,
         *,
         idempotency_key: str,
+        reviewer: Reviewer | None = None,
     ) -> tuple[SignalReview, ...]:
         payload = canonical_json_bytes(request.model_dump(mode="json", by_alias=True))
         previous = self._get_idempotency(
@@ -217,6 +306,7 @@ class SupabaseRepository(FixtureRepository):
             signal_id,
             request,
             idempotency_key=idempotency_key,
+            reviewer=reviewer,
         )
         created = next((item for item in reviews if item.id not in before), None)
         if created is not None:
@@ -278,7 +368,7 @@ class SupabaseRepository(FixtureRepository):
         self._supabase.table("briefings").upsert(
             {
                 "id": briefing.briefing_id,
-                "organization_id": "org_demo",
+                "organization_id": self._organization_id,
                 "watchlist_id": briefing.watchlist.id,
                 "status": briefing.status.value,
                 "executive_summary": briefing.executive_summary,
@@ -347,6 +437,8 @@ class SupabaseRepository(FixtureRepository):
             model_name=model_name,
             prompt_version=prompt_version,
         )
+        run = run.model_copy(update={"organization_id": self._organization_id})
+        self._runs[run.id] = run
         if is_created:
             self._persist_run(run)
             links = [

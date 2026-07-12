@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Annotated
+
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import get_market_provider_config, get_runtime_config, get_supabase_config
 from app.llm.base import LLMAdapter
@@ -12,6 +16,12 @@ from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import MarketDataRuntimeService
 from app.repositories.fixture_repository import FixtureRepository
 from app.repositories.supabase_repository import SupabaseRepository
+from app.security.auth import (
+    AppUserContext,
+    extract_auth_user_id,
+    get_auth_config,
+    resolve_app_user,
+)
 from app.services.analysis_service import AnalysisService
 from app.services.briefing_service import BriefingService
 from app.services.event_service import EventService
@@ -22,6 +32,9 @@ from app.services.provider_runtime_service import (
 from app.services.review_service import ReviewService
 from app.services.signal_service import SignalService
 from app.supabase_client import create_supabase_client
+
+_bearer = HTTPBearer(auto_error=False)
+BearerCredentials = Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)]
 
 
 @lru_cache
@@ -50,6 +63,43 @@ def get_supabase_client():
     return create_supabase_client(get_supabase_config())
 
 
+def get_current_app_user(
+    credentials: BearerCredentials,
+) -> AppUserContext:
+    config = get_auth_config()
+    if not config.enabled:
+        return AppUserContext(
+            id="usr_analista_demo",
+            organization_id="org_demo",
+            role="analyst",
+            display_name="Analista Demo",
+            is_active=True,
+        )
+    auth_user_id = extract_auth_user_id(
+        get_supabase_client(),
+        credentials,
+        config=config,
+    )
+    assert auth_user_id is not None
+    return resolve_app_user(get_supabase_client(), auth_user_id)
+
+
+CurrentUserDep = Annotated[AppUserContext, Depends(get_current_app_user)]
+
+
+def get_scoped_repository(user: AppUserContext) -> FixtureRepository:
+    runtime_config = get_runtime_config()
+    if runtime_config.repository_backend == "supabase":
+        return SupabaseRepository(
+            get_fixture_provider(),
+            get_supabase_client(),
+            get_market_data_runtime_service(),
+            organization_id=user.organization_id,
+            actor_user_id=user.id,
+        )
+    return get_repository()
+
+
 @lru_cache
 def get_market_data_runtime_service() -> MarketDataRuntimeService:
     runtime_config = get_runtime_config()
@@ -76,25 +126,35 @@ def get_llm_adapter() -> LLMAdapter:
 
 
 @lru_cache
-def get_event_service() -> EventService:
-    return EventService(get_repository())
+def get_event_service(
+    user: CurrentUserDep,
+) -> EventService:
+    return EventService(get_scoped_repository(user))
 
 
 @lru_cache
-def get_signal_service() -> SignalService:
-    return SignalService(get_repository())
+def get_signal_service(
+    user: CurrentUserDep,
+) -> SignalService:
+    return SignalService(get_scoped_repository(user))
 
 
 @lru_cache
-def get_review_service() -> ReviewService:
-    return ReviewService(get_repository())
+def get_review_service(
+    user: CurrentUserDep,
+) -> ReviewService:
+    return ReviewService(get_scoped_repository(user))
 
 
 @lru_cache
-def get_briefing_service() -> BriefingService:
-    return BriefingService(get_repository(), get_llm_adapter())
+def get_briefing_service(
+    user: CurrentUserDep,
+) -> BriefingService:
+    return BriefingService(get_scoped_repository(user), get_llm_adapter())
 
 
 @lru_cache
-def get_analysis_service() -> AnalysisService:
-    return AnalysisService(get_repository(), get_llm_adapter())
+def get_analysis_service(
+    user: CurrentUserDep,
+) -> AnalysisService:
+    return AnalysisService(get_scoped_repository(user), get_llm_adapter())

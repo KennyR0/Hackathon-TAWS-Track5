@@ -6,11 +6,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header
 
-from app.api.dependencies import get_review_service
+from app.api.dependencies import get_current_app_user, get_review_service
 from app.contracts.api import ReviewListResponse, ReviewRequest
+from app.security.auth import AppUserContext
+from app.security.permissions import assert_can_create_review
 from app.services.review_service import ReviewService
 
 router = APIRouter(tags=["reviews"])
+CurrentUser = Annotated[AppUserContext, Depends(get_current_app_user)]
+ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 
 
 @router.get(
@@ -20,8 +24,10 @@ router = APIRouter(tags=["reviews"])
 )
 def list_signal_reviews(
     signal_id: str,
-    service: ReviewService = Depends(get_review_service),
+    user: CurrentUser,
+    service: ReviewServiceDep,
 ) -> ReviewListResponse:
+    _ = user
     return service.list_reviews(signal_id)
 
 
@@ -35,10 +41,13 @@ def create_signal_review(
     signal_id: str,
     request: ReviewRequest,
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
-    service: ReviewService = Depends(get_review_service),
+    user: CurrentUser,
+    service: ReviewServiceDep,
 ) -> ReviewListResponse:
+    assert_can_create_review(user)
     return service.create_review(
         signal_id,
         request,
         idempotency_key=idempotency_key,
+        user=user,
     )

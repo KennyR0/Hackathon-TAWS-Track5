@@ -40,6 +40,10 @@ class FakeQuery:
         self.filters.append((column, value))
         return self
 
+    def in_(self, column: str, values: tuple[str, ...]) -> FakeQuery:
+        self.filters.append((column, set(values)))
+        return self
+
     def limit(self, count: int) -> FakeQuery:
         self.limit_count = count
         return self
@@ -65,7 +69,10 @@ class FakeQuery:
             selected = [
                 row
                 for row in rows
-                if all(row.get(column) == value for column, value in self.filters)
+                if all(
+                    row.get(column) in value if isinstance(value, set) else row.get(column) == value
+                    for column, value in self.filters
+                )
             ]
             if self.limit_count is not None:
                 selected = selected[: self.limit_count]
@@ -120,6 +127,27 @@ class FakeClient:
 def _repository(client: FakeClient) -> SupabaseRepository:
     bundle = Path(__file__).resolve().parents[3] / "data/fixtures/v1/phase0_bundle.json"
     return SupabaseRepository(FixtureProvider(bundle), client)
+
+
+def test_authenticated_repository_hides_other_organization_resources() -> None:
+    client = FakeClient()
+    client.rows["signals"] = [
+        {"id": "sig_wti_context", "organization_id": "org_other"},
+    ]
+    bundle = Path(__file__).resolve().parents[3] / "data/fixtures/v1/phase0_bundle.json"
+    repository = SupabaseRepository(
+        FixtureProvider(bundle),
+        client,
+        organization_id="org_demo",
+        actor_user_id="usr_demo",
+    )
+
+    try:
+        repository.get_signal("sig_wti_context")
+    except KeyError as exc:
+        assert str(exc.args[0]) == "Resource not found"
+    else:
+        raise AssertionError("Cross-organization signal must not be visible")
 
 
 def test_review_persists_and_rehydrates_after_repository_restart() -> None:

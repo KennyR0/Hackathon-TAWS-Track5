@@ -40,3 +40,63 @@ services:
         sync: false
       - key: FRED_API_KEY
         sync: false
+
+  - type: cron
+    name: nexomercado-ingest
+    runtime: python
+    schedule: "*/15 * * * *"
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -e backend
+    startCommand: python backend/scripts/run_operations_worker.py --task ingest --format json
+    envVars: &workerEnv
+      - key: PYTHON_VERSION
+        value: 3.12.12
+      - key: REPOSITORY_BACKEND
+        value: supabase
+      - key: MARKET_DATA_MODE
+        value: hybrid
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GDELT_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: TWELVE_DATA_API_KEY
+        sync: false
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: FRED_API_KEY
+        sync: false
+
+  - type: cron
+    name: nexomercado-prices
+    runtime: python
+    schedule: "*/15 * * * *"
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -e backend
+    startCommand: python backend/scripts/run_operations_worker.py --task prices --format json
+    envVars: *workerEnv
+
+  - type: cron
+    name: nexomercado-macro
+    runtime: python
+    schedule: "15 6 * * *"
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -e backend
+    startCommand: python backend/scripts/run_operations_worker.py --task macro --format json
+    envVars: *workerEnv
+
+  - type: cron
+    name: nexomercado-reconcile
+    runtime: python
+    schedule: "10 * * * *"
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -e backend
+    startCommand: python backend/scripts/run_operations_worker.py --task reconcile --format json
+    envVars: *workerEnv
+
+  - type: cron
+    name: nexomercado-cleanup
+    runtime: python
+    schedule: "40 5 * * *"
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -e backend
+    startCommand: python backend/scripts/run_operations_worker.py --task cleanup --format json
+    envVars: *workerEnv

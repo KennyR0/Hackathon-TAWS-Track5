@@ -671,3 +671,28 @@ button {
     padding-right: 16px;
   }
 }
+/* Auth is only rendered when Supabase browser configuration is present. */
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f4f6f8;
+  color: #17202a;
+}
+
+.auth-form {
+  width: min(100%, 360px);
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #d5dadd;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.auth-form h1 { margin: 0; font-size: 24px; }
+.auth-form label { display: grid; gap: 6px; font-weight: 600; }
+.auth-form input { min-height: 42px; padding: 8px 10px; border: 1px solid #9ca6ad; border-radius: 6px; }
+.auth-form button { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.auth-form [role='alert'] { margin: 0; color: #a2191f; }

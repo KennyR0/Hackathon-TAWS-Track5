@@ -5,7 +5,9 @@ from time import sleep
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_app_user
 from app.main import create_app
+from app.security.auth import AppUserContext
 
 
 def _wait_for_terminal_run(api_client, run_id: str) -> dict[str, object]:
@@ -101,6 +103,30 @@ def test_create_review_updates_signal_state(api_client) -> None:
     assert signal_response.json()["data"]["review"]["status"] == "escalated"
 
 
+def test_create_review_uses_authenticated_app_user() -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_app_user] = lambda: AppUserContext(
+        id="usr_senior",
+        organization_id="org_demo",
+        role="senior_analyst",
+        display_name="Senior Analyst",
+        is_active=True,
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/signals/sig_btc_uncertain/reviews",
+            headers={"Idempotency-Key": "review-auth-user-001"},
+            json={
+                "status": "escalated",
+                "justification": "Requiere validacion de un senior.",
+            },
+        )
+
+    assert response.status_code == 201
+    reviewer = response.json()["data"][-1]["reviewedBy"]
+    assert reviewer == {"id": "usr_senior", "name": "Senior Analyst"}
+
+
 def test_review_idempotency_replays_same_result(api_client) -> None:
     headers = {"Idempotency-Key": "review-idem-001"}
     payload = {
@@ -169,19 +195,43 @@ def test_create_draft_briefing_includes_review_tasks(api_client) -> None:
 
 
 def test_shareable_briefing_rejects_pending_reviews(api_client) -> None:
-    response = api_client.post(
-        "/api/v1/briefings",
-        headers={"Idempotency-Key": "briefing-shareable-001"},
-        json={
-            "watchlistId": "watchlist_demo_global",
-            "signalIds": ["sig_aapl_negative", "sig_wti_context"],
-            "status": "shareable",
-        },
+    app = create_app()
+    app.dependency_overrides[get_current_app_user] = lambda: AppUserContext(
+        id="usr_senior",
+        organization_id="org_demo",
+        role="senior_analyst",
+        display_name="Senior Analyst",
+        is_active=True,
     )
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/briefings",
+            headers={"Idempotency-Key": "briefing-shareable-001"},
+            json={
+                "watchlistId": "watchlist_demo_global",
+                "signalIds": ["sig_aapl_negative", "sig_wti_context"],
+                "status": "shareable",
+            },
+        )
 
     assert response.status_code == 409
     assert response.json()["code"] == "conflict"
     assert "reviewed signals only" in response.json()["message"]
+
+
+def test_analyst_cannot_create_shareable_briefing(api_client) -> None:
+    response = api_client.post(
+        "/api/v1/briefings",
+        headers={"Idempotency-Key": "briefing-shareable-role-001"},
+        json={
+            "watchlistId": "watchlist_demo_global",
+            "signalIds": ["sig_aapl_negative"],
+            "status": "shareable",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["message"] == "Shareable briefing not permitted"
 
 
 def test_create_analysis_returns_processing_and_streams_steps(api_client) -> None:
