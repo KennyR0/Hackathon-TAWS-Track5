@@ -2463,6 +2463,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Browser EventSource replay cursor when custom headers are unavailable.",
+            "in": "query",
+            "name": "lastEventId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

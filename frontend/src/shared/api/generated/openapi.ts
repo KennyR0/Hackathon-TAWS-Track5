@@ -1212,7 +1212,10 @@ export interface operations {
     };
     streamAnalysis: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Browser EventSource replay cursor when custom headers are unavailable. */
+                lastEventId?: string;
+            };
             header?: {
                 "Last-Event-ID"?: string;
             };

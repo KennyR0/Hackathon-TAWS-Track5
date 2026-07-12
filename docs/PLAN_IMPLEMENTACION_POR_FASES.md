@@ -460,8 +460,8 @@ Decision de ejecucion:
 Evidencia de cierre local:
 
 - `.venv312\Scripts\python.exe scripts\validate_phase.py implement 7 --repo .`: aprobado en `main` usando excepcion documentada.
-- `.venv312\Scripts\python.exe -m pytest backend\tests --basetemp .tmp\pytest -p no:cacheprovider`: `146 passed`, `2 warnings`.
-- `.venv312\Scripts\python.exe backend\scripts\export_openapi.py --check`: OpenAPI vigente.
+- `.venv312\Scripts\python.exe -m pytest backend\tests --basetemp .tmp\pytest -p no:cacheprovider`: `161 passed`, `2 warnings`.
+- `.venv312\Scripts\python.exe backend\scripts\export_openapi.py --check`: OpenAPI vigente y sincronizado con TypeScript generado.
 - `.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py`: recorrido `radar -> senal -> evidencia -> revision -> briefing` aprobado con `dataMode=fixture`.
 - `corepack pnpm lint`: aprobado.
 - `corepack pnpm build`: aprobado.
@@ -470,6 +470,8 @@ Evidencia de cierre local:
 - `render.yaml`: sintaxis YAML inspeccionada y servicio web FastAPI presente.
 - Backend agrega CORS restringido por `BACKEND_CORS_ORIGINS` y dependencia runtime `uvicorn`.
 - Frontend acepta `VITE_API_BASE_URL` y `VITE_API_URL`, normaliza `/api`, y muestra `dataMode`/warnings en detalle, briefing y auditoria.
+- SSE soporta replay desde navegador por `lastEventId` query ademas de `Last-Event-ID` header, con cobertura en tests.
+- Smoke local temporal backend+Vite: Uvicorn atendio `/health` y `/api/v1/events`, y Vite quedo listo en puerto aislado sin dejar procesos vivos.
 - Resultado del gate: aprobado; Fase 7 queda `lista_para_revision` y espera decision del usuario.
 
 ## 7. Evolución posterior

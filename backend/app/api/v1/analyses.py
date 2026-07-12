@@ -6,7 +6,7 @@ import json
 from time import sleep
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import get_analysis_service
@@ -46,9 +46,10 @@ def get_analysis(
 def stream_analysis(
     run_id: str,
     last_event_id: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
+    last_event_id_query: Annotated[str | None, Query(alias="lastEventId")] = None,
     service: AnalysisService = Depends(get_analysis_service),
 ) -> StreamingResponse:
-    start_index = service.resolve_sse_cursor(run_id, last_event_id)
+    start_index = service.resolve_sse_cursor(run_id, last_event_id or last_event_id_query)
 
     def iter_events():
         cursor = start_index

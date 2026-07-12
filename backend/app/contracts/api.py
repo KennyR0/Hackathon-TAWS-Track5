@@ -330,6 +330,13 @@ def build_openapi_document() -> dict[str, object]:
                         "required": False,
                         "schema": {"type": "string"},
                     },
+                    {
+                        "name": "lastEventId",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "string"},
+                        "description": "Browser EventSource replay cursor when custom headers are unavailable.",
+                    },
                 ],
                 "responses": {
                     "200": {

@@ -273,6 +273,28 @@ def test_analysis_stream_supports_last_event_id_replay(api_client) -> None:
     assert steps[5]["id"] in stream_response.text
 
 
+def test_analysis_stream_supports_eventsource_query_replay(api_client) -> None:
+    response = api_client.post(
+        "/api/v1/analyses",
+        headers={"Idempotency-Key": "analysis-003"},
+        json={
+            "eventId": "evt_btc_policy_20260710",
+            "assetIds": ["ast_btc_usd"],
+        },
+    )
+    run_id = response.json()["data"]["id"]
+    _wait_for_terminal_run(api_client, run_id)
+    steps = api_client.get(f"/api/v1/runs/{run_id}/steps").json()["data"]
+    stream_response = api_client.get(
+        f"/api/v1/analyses/{run_id}/stream",
+        params={"lastEventId": steps[4]["id"]},
+    )
+
+    assert stream_response.status_code == 200
+    assert steps[0]["id"] not in stream_response.text
+    assert steps[5]["id"] in stream_response.text
+
+
 def test_api_errors_follow_api_error_shape(api_client) -> None:
     response = api_client.get("/api/v1/signals/sig_missing")
 

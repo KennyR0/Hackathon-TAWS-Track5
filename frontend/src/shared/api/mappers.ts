@@ -208,7 +208,14 @@ export function deriveReviewQueue(
 }
 
 export function mapWatchlist(watchlist: ApiWatchlist, signals: SignalViewModel[], events: EventViewModel[]): WatchlistViewModel {
-  const matchingSignals = signals.filter(signal => watchlist.assetIds.includes(signal.asset.symbol) || watchlist.assetIds.includes(signal.eventId))
+  const matchingSignals = signals.filter(signal => {
+    const event = events.find(item => item.id === signal.eventId)
+    return (
+      watchlist.assetIds.includes(signal.asset.symbol) ||
+      watchlist.assetIds.includes(signal.eventId) ||
+      Boolean(event?.relatedAssets.some(asset => watchlist.assetIds.includes(asset.assetId)))
+    )
+  })
   const assets = deriveAssetSummaries(signals, events)
   return {
     ...watchlist,
