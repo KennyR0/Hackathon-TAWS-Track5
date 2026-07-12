@@ -25,7 +25,7 @@ export function SignalsPage() {
 
   return (
     <div className="page-stack">
-      <SurfaceCard eyebrow="Senales" title="Cola explicable y accionable">
+      <SurfaceCard eyebrow="Señales" title="Cola explicable y accionable">
         <div className="toolbar-grid">
           <label className="field">
             <span>Buscar</span>
@@ -47,7 +47,7 @@ export function SignalsPage() {
       </SurfaceCard>
 
       {!filteredSignals.length ? (
-        <EmptyState title="Sin resultados" description="No encontramos senales con ese filtro." />
+        <EmptyState title="Sin resultados" description="No encontramos señales con ese filtro." />
       ) : (
         <div className="stack-list">
           {filteredSignals.map(signal => (

@@ -28,7 +28,7 @@ export function ReviewsPage() {
 
   return (
     <div className="page-stack">
-      <SurfaceCard eyebrow="Centro de revision" title="Work queue para decisiones humanas">
+      <SurfaceCard eyebrow="Centro de revisión" title="Work queue para decisiones humanas">
         <div className="toolbar-grid">
           <label className="field">
             <span>Estado</span>
@@ -44,7 +44,7 @@ export function ReviewsPage() {
       </SurfaceCard>
 
       {!queue.length ? (
-        <EmptyState title="Sin trabajo en cola" description="No hay senales que coincidan con ese estado de revision." />
+        <EmptyState title="Sin trabajo en cola" description="No hay señales que coincidan con ese estado de revisión." />
       ) : (
         <div className="stack-list">
           {queue.map(({ signal, asset, event }) => (
@@ -59,11 +59,11 @@ export function ReviewsPage() {
               <div className="data-points">
                 <span>{event?.title ?? 'Sin evento resuelto'}</span>
                 <span>Confianza {formatConfidence(signal.confidence)}</span>
-                <span>{asset ? `${asset.signalCount} senales del activo` : 'Cobertura puntual'}</span>
+                <span>{asset ? `${asset.signalCount} señales del activo` : 'Cobertura puntual'}</span>
               </div>
               <div className="card-actions">
                 <Link className="text-link" to={`/signals/${signal.id}`}>
-                  Revisar senal
+                  Revisar señal
                 </Link>
               </div>
             </article>

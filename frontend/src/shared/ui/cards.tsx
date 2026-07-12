@@ -61,7 +61,7 @@ export function SignalCard({ signal }: { signal: SignalViewModel }) {
       </div>
       <div className="card-actions">
         <Link className="text-link" to={`/signals/${signal.id}`}>
-          Abrir senal
+          Abrir señal
         </Link>
         <Link className="text-link" to={`/assets/${signal.asset.symbol}`}>
           Ver activo
@@ -83,7 +83,7 @@ export function BriefingCard({ briefing }: { briefing: BriefingViewModel }) {
       </div>
       <p>{briefing.executiveSummary}</p>
       <div className="data-points">
-        <span>{briefing.prioritizedSignals.length} senales</span>
+        <span>{briefing.prioritizedSignals.length} señales</span>
         <span>{briefing.reviewTasks.filter(task => task.status === 'open').length} tareas abiertas</span>
         <span>{formatDateTime(briefing.updatedAt)}</span>
       </div>

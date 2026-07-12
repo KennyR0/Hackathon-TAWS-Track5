@@ -1,22 +1,10 @@
-import { Bot, Sparkles, XCircle } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import { useRecentRunsQuery, useSignalsQuery } from '../../shared/api/queries'
+import { ArrowUp, Mic, Plus, Sparkles } from 'lucide-react'
+import { useState } from 'react'
 import { useStartAnalysis } from '../../shared/api/useStartAnalysis'
-import { AnalysisStatusBadge } from '../../shared/ui/badges'
-import { EmptyState } from '../../shared/ui/primitives'
-import { compactId } from '../../shared/lib/format'
 
 export function AssistantPanel({ onNavigate }: { onNavigate?: () => void }) {
-  const navigate = useNavigate()
-  const signalsQuery = useSignalsQuery()
-  const latestRun = useRecentRunsQuery().map(item => item.data).find(Boolean)
+  const [draft, setDraft] = useState('')
   const analysis = useStartAnalysis()
-
-  const openLatestRun = () => {
-    if (!latestRun) return
-    navigate(`/audit/${latestRun.id}`)
-    onNavigate?.()
-  }
 
   const startContextualAnalysis = async () => {
     await analysis.startAnalysis()
@@ -28,18 +16,16 @@ export function AssistantPanel({ onNavigate }: { onNavigate?: () => void }) {
       <header className="assistant-panel__header">
         <div>
           <p className="section-eyebrow">Asistente financiero</p>
-          <h2 id="assistant-panel-title">Investigacion IA</h2>
+          <h2 id="assistant-panel-title">Investigación</h2>
         </div>
-        <Bot size={18} aria-hidden="true" />
       </header>
 
-      <p className="assistant-panel__copy">
-        Contexto activo y progreso real del workflow. Chat libre pendiente de soporte backend.
-      </p>
+      <div className="assistant-panel__body">
+        <p className="assistant-panel__greeting">Hola. Haz cualquier pregunta sobre finanzas.</p>
+        <p className="assistant-panel__copy">El chat libre esta preparado en interfaz y pendiente de endpoint conversacional.</p>
 
-      <div className="assistant-panel__actions">
         <button
-          className="primary-button"
+          className="primary-button assistant-panel__analysis-button"
           type="button"
           onClick={() => {
             void startContextualAnalysis()
@@ -47,77 +33,42 @@ export function AssistantPanel({ onNavigate }: { onNavigate?: () => void }) {
           disabled={analysis.isStarting || !analysis.canStart}
         >
           <Sparkles size={15} />
-          {analysis.isStarting ? 'Arrancando run' : 'Iniciar analisis'}
+          {analysis.isStarting ? 'Arrancando análisis' : 'Iniciar análisis'}
         </button>
-        {latestRun ? (
-          <button className="secondary-button" type="button" onClick={openLatestRun}>
-            Abrir ultimo run
-          </button>
-        ) : null}
       </div>
 
-      <section className="assistant-panel__section" aria-label="Estado operativo">
-        <div className="assistant-panel__section-header">
-          <span>Run</span>
-          {latestRun ? <AnalysisStatusBadge status={latestRun.status} /> : <span className="muted-pill">Sin ejecucion</span>}
-        </div>
-        {latestRun ? (
-          <div className="assistant-run-summary">
-            <span>Run {compactId(latestRun.id)}</span>
-            <span>{latestRun.steps.length} pasos</span>
-            <span>{latestRun.currentNode}</span>
-          </div>
-        ) : (
-          <p className="inline-hint">Inicia un analisis para ver progreso y auditoria del agente.</p>
-        )}
-      </section>
-
-      <section className="assistant-panel__section" aria-label="Contexto disponible">
-        <div className="assistant-panel__section-header">
-          <span>Contexto</span>
-        </div>
-        {signalsQuery.data?.items.length ? (
-          <ul className="assistant-context-list">
-            {signalsQuery.data.items.slice(0, 4).map(signal => (
-              <li key={signal.id}>
-                <strong>{signal.asset.symbol}</strong>
-                <span>{signal.thesis ?? 'Sin tesis sintetizada.'}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyState title="Sin contexto aun" description="Cargando senales verificables para alimentar el panel." />
-        )}
-      </section>
-
-      <section className="assistant-panel__section" aria-label="Prompts sugeridos">
-        <div className="assistant-panel__section-header">
-          <span>Prompts sugeridos</span>
-        </div>
-        <ul className="assistant-prompt-list">
-          <li>Explica la reaccion de AAPL frente al evento principal.</li>
-          <li>Resume por que una senal fue escalada.</li>
-          <li>Compara impacto del activo contra benchmark sin fabricar cifras.</li>
-        </ul>
-      </section>
-
-      <section className="assistant-panel__section" aria-label="Chat libre no disponible">
-        <div className="assistant-panel__section-header">
-          <span>Chat libre</span>
-          <XCircle size={15} aria-hidden="true" />
-        </div>
-        <div className="disabled-composer">
-          <textarea
-            rows={3}
-            disabled
-            readOnly
-            value="El backend aun no expone un endpoint conversacional libre para enviar mensajes desde esta pantalla."
-          />
-          <button className="primary-button" disabled type="button">
-            Enviar no disponible
+      <form
+        className="assistant-composer"
+        aria-label="Chat libre"
+        onSubmit={event => {
+          event.preventDefault()
+        }}
+      >
+        <label className="sr-only" htmlFor="assistant-message">
+          Hacer pregunta
+        </label>
+        <textarea
+          id="assistant-message"
+          value={draft}
+          onChange={event => setDraft(event.target.value)}
+          placeholder="Hacer pregunta"
+          rows={4}
+        />
+        <div className="assistant-composer__footer">
+          <button className="icon-button" type="button" aria-label="Adjuntar contexto" disabled>
+            <Plus size={17} />
           </button>
+          <div className="assistant-composer__actions">
+            <button className="icon-button" type="button" aria-label="Dictar pregunta" disabled>
+              <Mic size={17} />
+            </button>
+            <button className="icon-button assistant-composer__send" type="submit" aria-label="Enviar pregunta" disabled>
+              <ArrowUp size={17} />
+            </button>
+          </div>
         </div>
-      </section>
+        <p className="assistant-composer__status">Envío no disponible hasta conectar el endpoint de chat libre.</p>
+      </form>
     </section>
   )
 }

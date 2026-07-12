@@ -284,9 +284,9 @@ export function deriveReviewQueue(
     const event = events.find(item => item.id === signal.eventId) ?? null
     const blockingReason =
       signal.analysisStatus !== 'completed'
-        ? 'El analisis aun no esta completado.'
+        ? 'El análisis aún no está completado.'
         : signal.reviewStatus === 'discarded'
-          ? 'La senal ya fue descartada.'
+          ? 'La señal ya fue descartada.'
           : null
 
     return {

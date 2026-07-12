@@ -43,7 +43,7 @@ export function ReviewComposer({ signalId, currentStatus }: { signalId: string; 
       <div className="card-actions">
         <span className="inline-hint">Estado actual: {currentStatus}</span>
         <button className="primary-button" disabled={mutation.isPending} type="submit">
-          {mutation.isPending ? 'Guardando revision' : 'Guardar decision'}
+          {mutation.isPending ? 'Guardando revisión' : 'Guardar decisión'}
         </button>
       </div>
     </form>

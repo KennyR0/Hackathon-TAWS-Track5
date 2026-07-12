@@ -1,14 +1,21 @@
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 export function formatDateTime(value: string | null | undefined): string {
-  if (!value) return 'Sin registro'
+  const date = parseDate(value)
+  if (!date) return 'Sin registro'
   return new Intl.DateTimeFormat('es-EC', {
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(new Date(value))
+  }).format(date)
 }
 
 export function formatRelativeTime(value: string | null | undefined): string {
-  if (!value) return 'Sin registro'
-  const date = new Date(value)
+  const date = parseDate(value)
+  if (!date) return 'Sin registro'
   const diffMs = date.getTime() - Date.now()
   const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto' })
   const minutes = Math.round(diffMs / 60000)

@@ -22,14 +22,14 @@ export function BriefingDetailPage() {
         <p className="hero-copy">{briefing.executiveSummary}</p>
         <div className="data-points">
           <span>{formatDateTime(briefing.createdAt)}</span>
-          <span>{briefing.prioritizedSignals.length} senales priorizadas</span>
+          <span>{briefing.prioritizedSignals.length} señales priorizadas</span>
           <span>{briefing.reviewTasks.filter(task => task.status === 'open').length} tareas abiertas</span>
         </div>
         <WarningList warnings={briefing.meta.warnings} />
       </SurfaceCard>
 
       <section className="content-grid content-grid--wide">
-        <SurfaceCard eyebrow="Senales" title="Prioridades del briefing">
+        <SurfaceCard eyebrow="Señales" title="Prioridades del briefing">
           <div className="stack-list">
             {briefing.prioritizedSignals.map(item => {
               const signal = signals.find(signalCandidate => signalCandidate.id === item.signalId)

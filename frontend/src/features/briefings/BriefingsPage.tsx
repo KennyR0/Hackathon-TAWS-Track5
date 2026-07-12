@@ -29,7 +29,7 @@ export function BriefingsPage() {
 
   return (
     <div className="page-stack">
-      <SurfaceCard eyebrow="Briefings" title="Resumenes listos para revision y entrega">
+      <SurfaceCard eyebrow="Briefings" title="Resúmenes listos para revisión y entrega">
         <div className="card-actions">
           <button
             className="primary-button"
@@ -48,7 +48,7 @@ export function BriefingsPage() {
             Crear shareable
           </button>
         </div>
-        <p className="inline-hint">Shareable solo se habilita cuando todas las senales incluidas estan completadas y revisadas.</p>
+        <p className="inline-hint">Shareable solo se habilita cuando todas las señales incluidas están completadas y revisadas.</p>
       </SurfaceCard>
 
       {recentBriefings.some(item => item.isLoading) ? (

@@ -10,7 +10,7 @@ export function AuditPage() {
 
   return (
     <div className="page-stack">
-      <SurfaceCard eyebrow="Auditoria" title="Runs recientes y replay operativo">
+      <SurfaceCard eyebrow="Auditoría" title="Runs recientes y replay operativo">
         <p className="inline-hint">La lista se alimenta de runs disparados desde este navegador y se rehidrata desde el backend en cada visita.</p>
       </SurfaceCard>
       {hydratedRuns.length ? (

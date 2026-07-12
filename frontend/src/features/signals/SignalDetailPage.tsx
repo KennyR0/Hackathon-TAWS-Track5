@@ -17,7 +17,7 @@ export function SignalDetailPage() {
   )
 
   if (signalQuery.isLoading) return <LoadingSkeleton rows={12} />
-  if (!signalQuery.data) return <EmptyState title="Senal no encontrada" description="No logramos cargar la senal solicitada." />
+  if (!signalQuery.data) return <EmptyState title="Señal no encontrada" description="No logramos cargar la señal solicitada." />
 
   const { signal, evidence, reviews } = signalQuery.data
   const snapshot = snapshotsQuery.data?.items[0] ?? null
@@ -34,7 +34,7 @@ export function SignalDetailPage() {
             <ReviewStatusBadge status={signal.reviewStatus} />
             <AnalysisStatusBadge status={signal.analysisStatus} />
           </div>
-          <p className="hero-copy">{signal.thesis ?? 'La API todavia no devolvio una tesis sintetizada para esta senal.'}</p>
+          <p className="hero-copy">{signal.thesis ?? 'La API todavía no devolvió una tesis sintetizada para esta señal.'}</p>
           <div className="data-points">
             <span>{formatDateTime(signal.updatedAt)}</span>
             <span>{signal.evidenceIds.length} evidencias</span>
@@ -75,7 +75,7 @@ export function SignalDetailPage() {
           </div>
         </SurfaceCard>
 
-        <SurfaceCard eyebrow="Contraevidencia" title="Senales de abstencion y contradiccion">
+        <SurfaceCard eyebrow="Contraevidencia" title="Señales de abstención y contradicción">
           {contradictoryEvidence.length ? (
             <div className="stack-list">
               {contradictoryEvidence.map(item => (
@@ -92,13 +92,13 @@ export function SignalDetailPage() {
               ))}
             </div>
           ) : (
-            <EmptyState title="Sin contraevidencia explicita" description="El backend no devolvio evidencia que contradiga la hipotesis para esta senal." />
+            <EmptyState title="Sin contraevidencia explícita" description="El backend no devolvió evidencia que contradiga la hipótesis para esta señal." />
           )}
         </SurfaceCard>
       </section>
 
       <section className="content-grid content-grid--wide">
-        <SurfaceCard eyebrow="Revision humana" title="Decision y justificacion">
+        <SurfaceCard eyebrow="Revisión humana" title="Decisión y justificación">
           <ReviewComposer signalId={signal.id} currentStatus={signal.reviewStatus} />
           <div className="stack-list">
             {reviews.map(review => (

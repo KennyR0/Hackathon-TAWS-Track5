@@ -6,6 +6,7 @@ import { useStartAnalysis } from '../../shared/api/useStartAnalysis'
 import { DataFreshnessIndicator, DataModeBadge, WarningList } from '../../shared/ui/badges'
 import { EventCard } from '../../shared/ui/cards'
 import { EmptyState, LoadingSkeleton, RefreshButton, SurfaceCard } from '../../shared/ui/primitives'
+import { formatDateTime } from '../../shared/lib/format'
 
 const instrumentOptions = [
   { value: 'all', label: 'Todos' },
@@ -50,7 +51,7 @@ export function RadarPage() {
               disabled={analysis.isStarting || !analysis.canStart}
             >
               <Sparkles size={16} />
-              {analysis.isStarting ? 'Lanzando analisis' : 'Nuevo analisis'}
+              {analysis.isStarting ? 'Lanzando análisis' : 'Nuevo análisis'}
             </button>
           </div>
         }
@@ -151,7 +152,7 @@ export function RadarPage() {
                 {events.map(event => (
                   <tr key={event.id}>
                     <td>{event.title}</td>
-                    <td>{new Date(event.eventAt).toLocaleDateString('es-EC')}</td>
+                    <td>{formatDateTime(event.eventAt)}</td>
                     <td>{event.relatedAssets.map(asset => asset.symbol).join(', ')}</td>
                     <td>{event.independentSourceCount}</td>
                   </tr>

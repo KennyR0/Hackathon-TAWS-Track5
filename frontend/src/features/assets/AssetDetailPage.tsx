@@ -19,7 +19,7 @@ export function AssetDetailPage() {
     return (
       <EmptyState
         title="Activo no disponible"
-        description="El backend actual no expone un endpoint profundo por activo. Esta vista depende de senales y eventos ya vinculados."
+        description="El backend actual no expone un endpoint profundo por activo. Esta vista depende de señales y eventos ya vinculados."
       />
     )
   }
@@ -29,12 +29,12 @@ export function AssetDetailPage() {
       <BackToHomeButton />
       <SurfaceCard eyebrow={asset.instrumentType} title={`${asset.symbol} · ${asset.name}`}>
         <p className="hero-copy">
-          Esta vista se deriva de senales, eventos y snapshots embebidos en respuestas existentes. Cuando el backend exponga series historicas
+          Esta vista se deriva de señales, eventos y snapshots embebidos en respuestas existentes. Cuando el backend exponga series históricas
           dedicadas, aqui podremos ampliar profundidad sin cambiar la ruta.
         </p>
         <div className="metric-grid">
           <article className="metric-card">
-            <span>Senales</span>
+            <span>Señales</span>
             <strong>{asset.signalCount}</strong>
           </article>
           <article className="metric-card">
@@ -54,11 +54,11 @@ export function AssetDetailPage() {
         <ul className="text-list">
           <li>El endpoint actual expone snapshots verificables, no series profundas ilimitadas.</li>
           <li>No hay order book ni fundamentals detallados dentro del contrato actual.</li>
-          <li>La trazabilidad visible se construye a partir de senales y eventos confirmados por backend.</li>
+          <li>La trazabilidad visible se construye a partir de señales y eventos confirmados por backend.</li>
         </ul>
       </SurfaceCard>
 
-      <SurfaceCard eyebrow="Senales del activo" title="Contexto actual">
+      <SurfaceCard eyebrow="Señales del activo" title="Contexto actual">
         <div className="stack-list">
           {asset.signals.map(signal => (
             <SignalCard key={signal.id} signal={signal} />

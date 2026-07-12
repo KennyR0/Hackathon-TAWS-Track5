@@ -45,7 +45,7 @@ export function MarketOverview({
         <p className="section-eyebrow">Resumen</p>
         <h1 id="market-overview-title">Panorama del mercado</h1>
         <p>
-          Informacion construida desde senales, eventos y datos verificables del backend. No hay datos inventados ni
+          Información construida desde señales, eventos y datos verificables del backend. No hay datos inventados ni
           proveedores llamados desde React.
         </p>
         <div className="market-hero__meta">
@@ -65,7 +65,7 @@ export function MarketOverview({
         >
           <Search size={16} aria-hidden="true" />
           <input
-            aria-label="Buscar simbolo, activo o senal"
+            aria-label="Buscar símbolo, activo o señal"
             value={query}
             onChange={event => onQueryChange(event.target.value)}
             placeholder="Buscar AAPL, BTC-USD o signalId"
@@ -76,7 +76,7 @@ export function MarketOverview({
         </form>
         <button className="primary-button market-hero__button" type="button" onClick={onAnalyze} disabled={isAnalyzing || !canAnalyze}>
           <Sparkles size={16} />
-          {isAnalyzing ? 'Lanzando analisis' : 'Nuevo analisis'}
+          {isAnalyzing ? 'Lanzando análisis' : 'Nuevo análisis'}
         </button>
       </div>
     </section>
@@ -134,21 +134,21 @@ export function MarketAssetCard({ asset }: { asset: MarketAssetViewModel }) {
       <MarketSparkline snapshot={asset.snapshot} status={asset.status} />
       <div className="market-card__footer">
         <span>{asset.snapshot ? `Actualizado ${formatRelativeTime(asset.snapshot.retrievedAt)}` : 'Sin historial real'}</span>
-        {asset.latestSignal ? <span>Abrir senal</span> : <span>Sin senal disponible</span>}
+        {asset.latestSignal ? <span>Abrir señal</span> : <span>Sin señal disponible</span>}
       </div>
     </>
   )
 
   if (!asset.latestSignal) {
     return (
-      <article className="market-card market-card--disabled" aria-label={`${asset.symbol}: sin senal disponible`}>
+      <article className="market-card market-card--disabled" aria-label={`${asset.symbol}: sin señal disponible`}>
         {content}
       </article>
     )
   }
 
   return (
-    <Link className="market-card market-card--interactive" to={`/signals/${asset.latestSignal.id}`} aria-label={`Abrir senal de ${asset.symbol}`}>
+    <Link className="market-card market-card--interactive" to={`/signals/${asset.latestSignal.id}`} aria-label={`Abrir señal de ${asset.symbol}`}>
       {content}
     </Link>
   )
@@ -253,11 +253,11 @@ function MarketNewsCard({
             <strong>{formatConfidence(signal.confidence)}</strong>
             <span>confianza</span>
             <Link className="text-link" to={`/signals/${signal.id}`}>
-              Ver senal
+              Ver señal
             </Link>
           </>
         ) : (
-          <span>Sin senal asociada</span>
+          <span>Sin señal asociada</span>
         )}
       </div>
     </article>
@@ -288,13 +288,13 @@ export function WatchlistPanel({
           {assets.slice(0, 5).map(asset => (
             <Link key={asset.assetId} className="watchlist-row" to={asset.latestSignal ? `/signals/${asset.latestSignal.id}` : `/assets/${asset.symbol}`}>
               <span>{asset.symbol}</span>
-              <strong>{asset.signalCount} senales</strong>
+              <strong>{asset.signalCount} señales</strong>
             </Link>
           ))}
         </div>
       </section>
       <section className="market-side-card">
-        <p className="section-eyebrow">Revision</p>
+        <p className="section-eyebrow">Revisión</p>
         <h2>{pendingCount} pendientes</h2>
         <Link className="text-link" to="/reviews">
           Abrir cola
@@ -312,13 +312,13 @@ export function WatchlistPanel({
 
 export function PrioritySignalCard({ signal }: { signal: SignalViewModel | null }) {
   if (!signal) {
-    return <EmptyState title="Sin senal destacada" description="Cuando exista una senal con confianza disponible aparecera aqui." />
+    return <EmptyState title="Sin señal destacada" description="Cuando exista una señal con confianza disponible aparecerá aquí." />
   }
 
   return (
     <article className="priority-signal-card">
       <div>
-        <p className="section-eyebrow">Senal destacada</p>
+        <p className="section-eyebrow">Señal destacada</p>
         <h2>{signal.asset.symbol}</h2>
         <p>{signal.thesis ?? 'Tesis pendiente de sintesis.'}</p>
       </div>
@@ -328,7 +328,7 @@ export function PrioritySignalCard({ signal }: { signal: SignalViewModel | null 
         <span>{formatConfidence(signal.confidence)}</span>
       </div>
       <Link className="text-link" to={`/signals/${signal.id}`}>
-        Abrir senal
+        Abrir señal
       </Link>
     </article>
   )
