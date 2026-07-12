@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Inter:wght@100..900&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-bg: var(--bg);
+  
+  --color-surface: var(--surface-base);
+  --color-surface-elevated: var(--surface-elevated);
+
+  --color-border: var(--border);
+  --color-border-focus: var(--border-focus);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-status-positive-bg: var(--status-positive-bg);
+  --color-status-positive-text: var(--status-positive-text);
+  --color-status-negative-bg: var(--status-negative-bg);
+  --color-status-negative-text: var(--status-negative-text);
+  --color-status-neutral-bg: var(--status-neutral-bg);
+  --color-status-neutral-text: var(--status-neutral-text);
+  --color-status-uncertain-bg: var(--status-uncertain-bg);
+  --color-status-uncertain-text: var(--status-uncertain-text);
+
+  --color-action-accent: var(--action-accent);
+  --color-action-hover: var(--action-hover);
+
+  /* Section accents (unified editorial accents) */
+  --color-accent-radar: var(--accent-radar);
+  --color-accent-signal: var(--accent-signal);
+  --color-accent-briefing: var(--accent-briefing);
+  --color-accent-audit: var(--accent-audit);
+
+  --radius-sm: 1px; /* Sharp technical edges */
+  --radius-md: 2px;
+  --radius-lg: 3px;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', monospace;
+
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+}
+
+/*
+ * PALETA: "Warm Editorial & Copper Terminal"
+ * ──────────────────────────────────────────
+ * Base oscura cálida: Carbono vegetal (#121211)
+ * Fondos de superficie: Carbón medio (#1A1A19) y Carbón elevado (#242422)
+ * Texto principal: Marfil/Parchmento (#F5F4F0)
+ * Acento de marca: Cobre rústico (#D95D39)
+ * Acento secundario: Oro viejo (#C5A059)
+ *
+ * Secciones:
+ *   Radar     → Cobre rústico (scanning activo)
+ *   Señal     → Oro viejo / Latón (focalizado, atención)
+ *   Briefing  → Verde Pino / Salvia (comunicación formal)
+ *   Auditoría → Terracota / Ladrillo (consola de auditoría)
+ */
+
+@layer base {
+  :root {
+    --bg: #121211;
+    --surface-base: #1A1A19;
+    --surface-elevated: #242422;
+    --border: rgba(245, 244, 240, 0.08);
+    --border-focus: #C5A059;
+
+    --text-primary: #F5F4F0;
+    --text-secondary: #A5A29A;
+    --text-muted: #6E6B64;
+
+    /* Positivo: Sage Green suave */
+    --status-positive-bg: rgba(78, 120, 87, 0.15);
+    --status-positive-text: #81B29A;
+
+    /* Negativo: Terracota/Cálido */
+    --status-negative-bg: rgba(185, 74, 63, 0.15);
+    --status-negative-text: #E07A5F;
+
+    /* Neutro: Warm Slate */
+    --status-neutral-bg: rgba(110, 107, 100, 0.12);
+    --status-neutral-text: #A5A29A;
+
+    /* Incierto/Advertencia: Ámbar cálido */
+    --status-uncertain-bg: rgba(210, 135, 40, 0.15);
+    --status-uncertain-text: #F4A261;
+
+    /* Acciones */
+    --action-accent: #D95D39;
+    --action-hover: #E07A5F;
+
+    /* Acentos de sección */
+    --accent-radar: #D95D39;
+    --accent-signal: #C5A059;
+    --accent-briefing: #81B29A;
+    --accent-audit: #E07A5F;
+  }
+
+  body {
+    @apply bg-bg text-text-primary font-sans antialiased;
+    letter-spacing: -0.011em;
+  }
+}
+
