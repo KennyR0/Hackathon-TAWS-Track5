@@ -317,7 +317,7 @@ class SupabaseRepository(FixtureRepository):
         asset = filters.get("asset")
         published_after = filters.get("published_after")
         result: list[tuple[Event, tuple[str, ...]]] = []
-        for event in self._events.values():
+        for event in self._news_events_for_listing():
             if owned is not None and event.id not in owned:
                 continue
             symbols = tuple(relation.symbol for relation in event.related_assets)

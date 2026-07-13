@@ -114,6 +114,13 @@ class FixtureRepository(BackendRepository):
                 warnings=FIXTURE_WARNINGS,
             )
 
+    def _news_events_for_listing(self) -> tuple[Event, ...]:
+        events = tuple(self._events.values())
+        non_fixture = tuple(event for event in events if event.data_mode != DataMode.FIXTURE)
+        if non_fixture:
+            return non_fixture
+        return tuple(event for event in events if event.data_mode == DataMode.FIXTURE)
+
     def list_events(
         self,
         *,
@@ -123,7 +130,7 @@ class FixtureRepository(BackendRepository):
     ) -> tuple[tuple[Event, tuple[str, ...]], ...]:
         with self._lock:
             result: list[tuple[Event, tuple[str, ...]]] = []
-            for event in self._bundle.events:
+            for event in self._news_events_for_listing():
                 asset_symbols = tuple(relation.symbol for relation in event.related_assets)
                 if instrument_type and not any(
                     self._assets[relation.asset_id].instrument_type.value == instrument_type
@@ -135,7 +142,7 @@ class FixtureRepository(BackendRepository):
                 if published_after and event.event_at.isoformat().replace("+00:00", "Z") <= published_after:
                     continue
                 result.append((event, asset_symbols))
-            return tuple(result)
+            return tuple(sorted(result, key=lambda item: item[0].event_at, reverse=True))
 
     def get_event(self, event_id: str) -> tuple[Event, tuple[str, ...]]:
         with self._lock:

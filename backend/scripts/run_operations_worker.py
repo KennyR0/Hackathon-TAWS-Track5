@@ -17,13 +17,11 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from opentelemetry import trace  # noqa: E402
 from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
 
-from app.api.dependencies import get_supabase_client  # noqa: E402
-from app.config import get_market_provider_config, get_runtime_config  # noqa: E402
+from app.api.dependencies import get_market_data_runtime_service, get_supabase_client  # noqa: E402
+from app.config import get_runtime_config  # noqa: E402
 from app.operations.store import InMemoryOperationStore, SupabaseOperationStore  # noqa: E402
 from app.operations.worker import run_operations_worker  # noqa: E402
 from app.providers.fixture_provider import FixtureProvider  # noqa: E402
-from app.providers.live_market import MarketDataRuntimeService  # noqa: E402
-from app.services.provider_runtime_service import build_in_memory_provider_runtime  # noqa: E402
 
 
 def main() -> int:
@@ -40,15 +38,8 @@ def main() -> int:
         load_dotenv(args.env_file, override=False)
 
     fixture_provider = FixtureProvider(REPO_ROOT / "data/fixtures/v1/phase0_bundle.json")
-    provider_config = get_market_provider_config()
-    runtime = build_in_memory_provider_runtime(request_budget=provider_config.request_budget)
     trace.set_tracer_provider(TracerProvider())
-    market_service = MarketDataRuntimeService(
-        provider_config,
-        fixture_provider,
-        request_budget=provider_config.request_budget,
-        provider_runtime=runtime,
-    )
+    market_service = get_market_data_runtime_service()
     runtime_config = get_runtime_config()
     store = (
         SupabaseOperationStore(get_supabase_client())
@@ -59,7 +50,7 @@ def main() -> int:
         task=args.task,
         market_service=market_service,
         fixture_provider=fixture_provider,
-        provider_runtime=runtime,
+        provider_runtime=market_service.provider_runtime,
         store=store,
     )
     if args.format == "prometheus":

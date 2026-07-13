@@ -13,6 +13,7 @@ from app.llm.base import LLMAdapter
 from app.llm.fixture_adapter import FixtureLLMAdapter
 from app.llm.openai_responses import OpenAIResponsesAdapter
 from app.market_universe import load_market_universe
+from app.operations.store import SupabaseOperationStore
 from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import MarketDataRuntimeService
 from app.repositories.conversation_repository import (
@@ -132,16 +133,20 @@ def get_market_data_runtime_service() -> MarketDataRuntimeService:
             request_budget=provider_config.request_budget,
             provider_policies=provider_config.provider_budgets,
         )
+        operation_store = SupabaseOperationStore(get_supabase_client())
+        persisted_news_loader = operation_store.list_persisted_news_articles
     else:
         provider_runtime = build_in_memory_provider_runtime(
             request_budget=provider_config.request_budget,
             provider_policies=provider_config.provider_budgets,
         )
+        persisted_news_loader = None
     return MarketDataRuntimeService(
         provider_config,
         get_fixture_provider(),
         request_budget=provider_config.request_budget,
         provider_runtime=provider_runtime,
+        persisted_news_loader=persisted_news_loader,
     )
 
 

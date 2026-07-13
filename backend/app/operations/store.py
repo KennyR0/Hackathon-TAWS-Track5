@@ -14,6 +14,9 @@ from supabase import Client
 
 from app.contracts.fixtures import FixtureBundle
 from app.market_universe import MarketUniverse
+from app.news_clustering import ParsedNewsArticle, group_articles_for_events
+from app.news_links import extract_article_url, is_linkable_url
+from app.news_resolution import should_persist_news_result
 from app.providers.live_market import MarketRuntimeSnapshot
 
 
@@ -81,9 +84,11 @@ class InMemoryOperationStore:
     def ingest_runtime(
         self, snapshot: MarketRuntimeSnapshot, universe: MarketUniverse
     ) -> tuple[int, int]:
-        _ = universe
-        articles = _news_articles(snapshot)
-        ids = {_stable_id("article", _article_provider_id(item)) for item in articles}
+        articles = _persistable_news_articles(snapshot)
+        ids = {
+            _stable_id("art", f"{snapshot.checks['news'].provider}:{_article_provider_id(item)}")
+            for item in articles
+        }
         return self._upsert("articles_live", ids)
 
 
@@ -282,108 +287,98 @@ class SupabaseOperationStore:
         total = len(asset_rows) + len(snapshot_rows) + len(observation_rows)
         return total, total
 
+    def list_persisted_news_articles(self, *, limit: int = 50) -> list[dict[str, object]]:
+        rows = (
+            self._client.table("articles")
+            .select("*")
+            .eq("is_synthetic", False)
+            .in_("data_mode", ["live", "fallback"])
+            .order("retrieved_at", desc=True)
+            .limit(limit)
+            .execute()
+            .data
+            or []
+        )
+        articles: list[dict[str, object]] = []
+        for row in rows:
+            url = row.get("url")
+            if not isinstance(url, str) or not is_linkable_url(url):
+                continue
+            articles.append(
+                {
+                    "url": url,
+                    "title": row.get("headline"),
+                    "headline": row.get("headline"),
+                    "summary": row.get("summary"),
+                    "publishedAt": row.get("published_at"),
+                    "providerArticleId": row.get("provider_article_id"),
+                    "domain": row.get("provider"),
+                }
+            )
+        return articles
+
     def ingest_runtime(
         self, snapshot: MarketRuntimeSnapshot, universe: MarketUniverse
     ) -> tuple[int, int]:
-        articles = _news_articles(snapshot)
+        news_result = snapshot.checks.get("news")
+        if news_result is None or not should_persist_news_result(news_result):
+            return 0, 0
+        articles = _persistable_news_articles(snapshot)
         if not articles:
             return 0, 0
-        news_result = snapshot.checks["news"]
         now = datetime.now(UTC)
         by_symbol = {item.symbol: item for item in universe.instruments}
+        parsed_articles: list[ParsedNewsArticle] = []
+        for item in articles:
+            article_url = extract_article_url(item)
+            if article_url is None:
+                continue
+            title = _article_title(item)
+            summary = _article_summary(item, title)
+            symbol = _match_article_symbol(title, summary, universe) or "AAPL"
+            parsed_articles.append(
+                ParsedNewsArticle(
+                    payload=item,
+                    title=title,
+                    summary=summary,
+                    symbol=symbol,
+                    published_at=_article_published_at(item, now),
+                    url=article_url,
+                )
+            )
+        if not parsed_articles:
+            return 0, 0
         source_rows: dict[str, dict[str, object]] = {}
         raw_rows: list[dict[str, object]] = []
         article_rows: list[dict[str, object]] = []
         event_rows: list[dict[str, object]] = []
         event_article_rows: list[dict[str, object]] = []
         event_asset_rows: list[dict[str, object]] = []
-        for item in articles:
-            provider_id = _article_provider_id(item)
-            article_url = _article_url(item)
-            domain = _article_domain(item, article_url)
-            source_id = _stable_id("src", domain)
-            raw_id = _stable_id("raw", f"{news_result.provider}:{provider_id}")
-            article_id = _stable_id("art", f"{news_result.provider}:{provider_id}")
-            event_id = _stable_id("evt", f"{news_result.provider}:{provider_id}")
-            published_at = _article_published_at(item, now)
-            title = _article_title(item)
-            summary = _article_summary(item, title)
-            symbol = _match_article_symbol(title, summary, universe) or "AAPL"
-            instrument = by_symbol[symbol]
-            raw_hash = _content_hash(item)
-            source_rows[source_id] = {
-                "id": source_id,
-                "name": domain,
-                "domain": domain,
-                "tier": "B",
-                "publisher_group_id": _stable_id("grp", domain),
-                "is_original_publisher": True,
-                "is_aggregator": False,
-                "fixture_only": False,
-                "homepage_url": f"https://{domain}",
-                "country_code": "US",
-                "language": "en",
-            }
-            raw_rows.append(
-                {
-                    "id": raw_id,
-                    "source_id": source_id,
-                    "provider": news_result.provider,
-                    "provider_article_id": provider_id,
-                    "captured_at": now.isoformat(),
-                    "payload": item,
-                    "content_hash": raw_hash,
-                }
-            )
-            warnings = list(news_result.warnings)
-            article_rows.append(
-                {
-                    "id": article_id,
-                    "source_id": source_id,
-                    "provider_article_id": provider_id,
-                    "headline": title,
-                    "summary": summary,
-                    "published_at": published_at.isoformat(),
-                    "url": article_url,
-                    "language": "en",
-                    "source_snapshot_id": raw_id,
-                    "content_hash": raw_hash,
-                    "is_synthetic": False,
-                    "data_mode": news_result.data_mode,
-                    "provider": news_result.provider,
-                    "retrieved_at": now.isoformat(),
-                    "data_as_of": published_at.isoformat(),
-                    "freshness": {
-                        "evaluatedAt": now.isoformat(),
-                        "staleAfterSeconds": 86400,
-                        "isStale": (now - published_at).total_seconds() > 86400,
-                    },
-                    "warnings": warnings,
-                }
-            )
+        warnings = list(news_result.warnings)
+        for cluster in group_articles_for_events(parsed_articles):
+            lead = cluster.articles[0]
+            instrument = by_symbol[cluster.symbol]
+            event_id = _stable_id("evt", cluster.cluster_key)
             event_rows.append(
                 {
                     "id": event_id,
                     "organization_id": "org_demo",
-                    "title": title,
-                    "summary": summary,
-                    "event_at": published_at.isoformat(),
+                    "title": lead.title,
+                    "summary": lead.summary,
+                    "event_at": lead.published_at.isoformat(),
                     "data_mode": news_result.data_mode,
                     "provider": news_result.provider,
                     "retrieved_at": now.isoformat(),
-                    "data_as_of": published_at.isoformat(),
+                    "data_as_of": lead.published_at.isoformat(),
                     "freshness": {
                         "evaluatedAt": now.isoformat(),
                         "staleAfterSeconds": 86400,
-                        "isStale": (now - published_at).total_seconds() > 86400,
+                        "isStale": (now - lead.published_at).total_seconds() > 86400,
                     },
                     "warnings": warnings,
                     "created_at": now.isoformat(),
                     "updated_at": now.isoformat(),
                 }
-            )
-            event_article_rows.append(
-                {"event_id": event_id, "article_id": article_id, "position": 0}
             )
             event_asset_rows.append(
                 {
@@ -394,6 +389,68 @@ class SupabaseOperationStore:
                     "entity_match_score": 0.9,
                 }
             )
+            for position, parsed in enumerate(cluster.articles):
+                item = parsed.payload
+                provider = str(item.get("provider") or news_result.provider)
+                provider_id = _article_provider_id(item)
+                article_url = parsed.url
+                domain = _article_domain(item, article_url)
+                source_id = _stable_id("src", domain)
+                raw_id = _stable_id("raw", f"{provider}:{provider_id}")
+                article_id = _stable_id("art", f"{provider}:{provider_id}")
+                raw_hash = _content_hash(item)
+                source_rows[source_id] = {
+                    "id": source_id,
+                    "name": domain,
+                    "domain": domain,
+                    "tier": "B",
+                    "publisher_group_id": _stable_id("grp", domain),
+                    "is_original_publisher": True,
+                    "is_aggregator": False,
+                    "fixture_only": False,
+                    "homepage_url": f"https://{domain}",
+                    "country_code": "US",
+                    "language": "en",
+                }
+                raw_rows.append(
+                    {
+                        "id": raw_id,
+                        "source_id": source_id,
+                        "provider": provider,
+                        "provider_article_id": provider_id,
+                        "captured_at": now.isoformat(),
+                        "payload": item,
+                        "content_hash": raw_hash,
+                    }
+                )
+                article_rows.append(
+                    {
+                        "id": article_id,
+                        "source_id": source_id,
+                        "provider_article_id": provider_id,
+                        "headline": parsed.title,
+                        "summary": parsed.summary,
+                        "published_at": parsed.published_at.isoformat(),
+                        "url": article_url,
+                        "language": "en",
+                        "source_snapshot_id": raw_id,
+                        "content_hash": raw_hash,
+                        "is_synthetic": False,
+                        "data_mode": news_result.data_mode,
+                        "provider": provider,
+                        "retrieved_at": now.isoformat(),
+                        "data_as_of": parsed.published_at.isoformat(),
+                        "freshness": {
+                            "evaluatedAt": now.isoformat(),
+                            "staleAfterSeconds": 86400,
+                            "isStale": (now - parsed.published_at).total_seconds() > 86400,
+                        },
+                        "warnings": warnings,
+                    }
+                )
+                event_article_rows.append(
+                    {"event_id": event_id, "article_id": article_id, "position": position}
+                )
         self._client.table("sources").upsert(list(source_rows.values())).execute()
         self._client.table("raw_source_snapshots").upsert(
             raw_rows, on_conflict="provider,provider_article_id"
@@ -527,6 +584,14 @@ def _news_articles(snapshot: MarketRuntimeSnapshot) -> list[dict[str, object]]:
     return [item for item in articles if isinstance(item, dict)]
 
 
+def _persistable_news_articles(snapshot: MarketRuntimeSnapshot) -> list[dict[str, object]]:
+    return [
+        item
+        for item in _news_articles(snapshot)
+        if extract_article_url(item) is not None
+    ]
+
+
 def _article_provider_id(item: dict[str, object]) -> str:
     value = item.get("id") or item.get("url") or item.get("title") or item.get("headline")
     return str(value or _content_hash(item))[:250]
@@ -538,11 +603,6 @@ def _article_title(item: dict[str, object]) -> str:
 
 def _article_summary(item: dict[str, object], title: str) -> str:
     return str(item.get("summary") or item.get("description") or title)[:2000]
-
-
-def _article_url(item: dict[str, object]) -> str:
-    value = str(item.get("url") or "").strip()
-    return value if value.startswith("https://") else "https://www.reuters.com/markets/"
 
 
 def _article_domain(item: dict[str, object], url: str) -> str:
