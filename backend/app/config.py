@@ -35,6 +35,14 @@ VALID_MARKET_PROVIDER_NAMES = {
     "rapidapi_yh_finance",
     "fred",
     "eia",
+    "twelve_data_key_1",
+    "twelve_data_key_2",
+    "finnhub_key_1",
+    "finnhub_key_2",
+    "coingecko_key_1",
+    "coingecko_key_2",
+    "fred_key_1",
+    "fred_key_2",
 }
 
 
@@ -76,9 +84,13 @@ class MarketProviderConfig:
     gdelt_max_attempts: int = 2
     gdelt_cache_ttl_seconds: int = 900
     finnhub_api_key: str | None = None
+    finnhub_api_keys: tuple[str, ...] = ()
     twelve_data_api_key: str | None = None
+    twelve_data_api_keys: tuple[str, ...] = ()
     coingecko_api_key: str | None = None
+    coingecko_api_keys: tuple[str, ...] = ()
     fred_api_key: str | None = None
+    fred_api_keys: tuple[str, ...] = ()
     eia_api_key: str | None = None
     rapidapi_key: str | None = None
     yahoo_finance_api_host: str | None = None
@@ -118,6 +130,16 @@ def _get_env_float(name: str, default: float) -> float:
     if value <= 0:
         raise RuntimeError(f"{name} must be > 0. Received: {value}")
     return value
+
+
+def _get_provider_api_keys(name: str) -> tuple[str, ...]:
+    primary = getenv(f"{name}_API_KEY", "").strip()
+    secondary = getenv(f"{name}_API_KEY_2", "").strip()
+    if secondary and not primary:
+        raise RuntimeError(f"{name}_API_KEY_2 requires {name}_API_KEY")
+    if primary and secondary and primary == secondary:
+        raise RuntimeError(f"{name}_API_KEY_2 must differ from {name}_API_KEY")
+    return tuple(key for key in (primary, secondary) if key)
 
 
 def _get_provider_budget_policies() -> dict[str, ProviderBudgetPolicy]:
@@ -279,6 +301,10 @@ def get_backend_cors_origins() -> tuple[str, ...]:
 
 def get_market_provider_config() -> MarketProviderConfig:
     runtime_config = get_runtime_config()
+    finnhub_api_keys = _get_provider_api_keys("FINNHUB")
+    twelve_data_api_keys = _get_provider_api_keys("TWELVE_DATA")
+    coingecko_api_keys = _get_provider_api_keys("COINGECKO")
+    fred_api_keys = _get_provider_api_keys("FRED")
     rapidapi_key = getenv("RAPIDAPI_KEY", "").strip() or None
     yahoo_finance_api_host = getenv("YAHOO_FINANCE_API_HOST", "").strip() or None
     yahoo_finance_base_url = getenv("YAHOO_FINANCE_BASE_URL", "").strip().rstrip("/") or None
@@ -311,10 +337,14 @@ def get_market_provider_config() -> MarketProviderConfig:
         gdelt_timeout_seconds=_get_env_float("GDELT_TIMEOUT_SECONDS", 6.0),
         gdelt_max_attempts=_get_env_int("GDELT_MAX_ATTEMPTS", 2),
         gdelt_cache_ttl_seconds=_get_env_int("GDELT_CACHE_TTL_SECONDS", 900),
-        finnhub_api_key=getenv("FINNHUB_API_KEY", "").strip() or None,
-        twelve_data_api_key=getenv("TWELVE_DATA_API_KEY", "").strip() or None,
-        coingecko_api_key=getenv("COINGECKO_API_KEY", "").strip() or None,
-        fred_api_key=getenv("FRED_API_KEY", "").strip() or None,
+        finnhub_api_key=finnhub_api_keys[0] if finnhub_api_keys else None,
+        finnhub_api_keys=finnhub_api_keys,
+        twelve_data_api_key=twelve_data_api_keys[0] if twelve_data_api_keys else None,
+        twelve_data_api_keys=twelve_data_api_keys,
+        coingecko_api_key=coingecko_api_keys[0] if coingecko_api_keys else None,
+        coingecko_api_keys=coingecko_api_keys,
+        fred_api_key=fred_api_keys[0] if fred_api_keys else None,
+        fred_api_keys=fred_api_keys,
         eia_api_key=getenv("EIA_API_KEY", "").strip() or None,
         rapidapi_key=rapidapi_key,
         yahoo_finance_api_host=yahoo_finance_api_host,

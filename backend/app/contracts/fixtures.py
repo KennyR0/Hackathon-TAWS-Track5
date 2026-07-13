@@ -75,6 +75,7 @@ def market_snapshot_hash_payload(snapshot: MarketSnapshot) -> dict[str, JsonValu
         mode="json",
         by_alias=True,
         exclude={"content_hash"},
+        exclude_computed_fields=True,
     )
 
 
@@ -85,6 +86,7 @@ def calculation_evidence_hash_payload(
         mode="json",
         by_alias=True,
         exclude={"content_hash"},
+        exclude_computed_fields=True,
     )
     if claim is not None:
         payload["claimValue"] = {
@@ -471,7 +473,7 @@ class FixtureBundle(ContractModel):
         return self
 
 def build_fixture_hash(bundle: FixtureBundle) -> str:
-    payload = bundle.model_dump(mode="json", by_alias=True)
+    payload = bundle.model_dump(mode="json", by_alias=True, exclude_computed_fields=True)
     payload["manifest"]["fixtureHash"] = None
     return sha256_digest(payload)
 

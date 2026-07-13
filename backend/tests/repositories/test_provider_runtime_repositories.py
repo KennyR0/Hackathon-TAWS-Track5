@@ -93,6 +93,25 @@ def test_budget_uses_independent_provider_policies_and_resets_period() -> None:
     assert budget.try_consume("twelve_data") is True
 
 
+def test_credential_budgets_are_independent_and_inherit_provider_policy() -> None:
+    budget = InMemoryProviderBudgetRepository(
+        max_requests=10,
+        provider_policies={
+            "coingecko": ProviderBudgetPolicy(
+                period="day",
+                max_requests=2,
+                safety_reserve=1,
+            )
+        },
+    )
+
+    assert budget.try_consume("coingecko_key_1") is True
+    assert budget.try_consume("coingecko_key_1") is False
+    assert budget.try_consume("coingecko_key_2") is True
+    assert budget.requests_used("coingecko_key_1") == 1
+    assert budget.requests_used("coingecko_key_2") == 1
+
+
 class _FakeResponse:
     def __init__(self, data) -> None:
         self.data = data

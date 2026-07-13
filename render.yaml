@@ -42,11 +42,19 @@ services:
         sync: false
       - key: FINNHUB_API_KEY
         sync: false
+      - key: FINNHUB_API_KEY_2
+        sync: false
       - key: TWELVE_DATA_API_KEY
+        sync: false
+      - key: TWELVE_DATA_API_KEY_2
         sync: false
       - key: COINGECKO_API_KEY
         sync: false
+      - key: COINGECKO_API_KEY_2
+        sync: false
       - key: FRED_API_KEY
+        sync: false
+      - key: FRED_API_KEY_2
         sync: false
       - key: EIA_API_KEY
         sync: false
@@ -88,11 +96,19 @@ services:
         sync: false
       - key: FINNHUB_API_KEY
         sync: false
+      - key: FINNHUB_API_KEY_2
+        sync: false
       - key: TWELVE_DATA_API_KEY
+        sync: false
+      - key: TWELVE_DATA_API_KEY_2
         sync: false
       - key: COINGECKO_API_KEY
         sync: false
+      - key: COINGECKO_API_KEY_2
+        sync: false
       - key: FRED_API_KEY
+        sync: false
+      - key: FRED_API_KEY_2
         sync: false
       - key: EIA_API_KEY
         sync: false

@@ -19,6 +19,7 @@ from pydantic import (
     StrictInt,
     StrictStr,
     StringConstraints,
+    computed_field,
     field_validator,
     model_validator,
 )
@@ -232,6 +233,13 @@ class Article(DataProvenance):
             raise ValueError("publishedAt must not be later than dataAsOf")
         return self
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def linkable(self) -> bool:
+        from app.news_links import is_article_linkable
+
+        return is_article_linkable(self)
+
 
 class Asset(ContractModel):
     id: Identifier
@@ -428,6 +436,13 @@ class Evidence(ContractModel):
         if len(self.market_snapshot_ids) != len(set(self.market_snapshot_ids)):
             raise ValueError("marketSnapshotIds must be unique")
         return self
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def linkable(self) -> bool:
+        from app.news_links import is_evidence_linkable
+
+        return is_evidence_linkable(self)
 
 
 class Reviewer(ContractModel):

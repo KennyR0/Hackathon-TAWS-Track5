@@ -343,6 +343,11 @@
             "title": "Language",
             "type": "string"
           },
+          "linkable": {
+            "readOnly": true,
+            "title": "Linkable",
+            "type": "boolean"
+          },
           "provider": {
             "minLength": 1,
             "title": "Provider",
@@ -415,7 +420,8 @@
           "language",
           "sourceSnapshotId",
           "contentHash",
-          "isSynthetic"
+          "isSynthetic",
+          "linkable"
         ],
         "title": "Article",
         "type": "object"
@@ -1590,6 +1596,11 @@
             "title": "Id",
             "type": "string"
           },
+          "linkable": {
+            "readOnly": true,
+            "title": "Linkable",
+            "type": "boolean"
+          },
           "marketSnapshotIds": {
             "default": [],
             "items": {
@@ -1678,7 +1689,8 @@
           "sourceUrl",
           "retrievedAt",
           "dataAsOf",
-          "contentHash"
+          "contentHash",
+          "linkable"
         ],
         "title": "Evidence",
         "type": "object"

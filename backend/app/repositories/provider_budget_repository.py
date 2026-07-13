@@ -12,6 +12,11 @@ from supabase import Client
 from app.config import ProviderBudgetPolicy
 
 
+def _base_provider_name(provider: str) -> str:
+    prefix, separator, suffix = provider.rpartition("_key_")
+    return prefix if separator and suffix.isdigit() else provider
+
+
 @dataclass(frozen=True)
 class ProviderBudget:
     provider: str
@@ -85,7 +90,10 @@ class InMemoryProviderBudgetRepository:
         self._reset_at: dict[tuple[str, str], datetime] = {}
 
     def _policy(self, provider: str) -> ProviderBudgetPolicy:
-        return self._provider_policies.get(provider, self._default_policy)
+        return self._provider_policies.get(
+            provider,
+            self._provider_policies.get(_base_provider_name(provider), self._default_policy),
+        )
 
     def _current_usage(self, provider: str) -> tuple[ProviderBudgetPolicy, tuple[str, str], int]:
         policy = self._policy(provider)
@@ -133,7 +141,10 @@ class SupabaseProviderBudgetRepository:
         self._clock = clock or (lambda: datetime.now(UTC))
 
     def _policy(self, provider: str) -> ProviderBudgetPolicy:
-        return self._provider_policies.get(provider, self._default_policy)
+        return self._provider_policies.get(
+            provider,
+            self._provider_policies.get(_base_provider_name(provider), self._default_policy),
+        )
 
     def _select_rows(self, provider: str, period: str, columns: str = "*") -> list[dict]:
         return (

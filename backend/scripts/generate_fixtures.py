@@ -1112,7 +1112,14 @@ def build_bundle() -> FixtureBundle:
 
 
 def rendered_bundle(bundle: FixtureBundle) -> bytes:
-    return (bundle.model_dump_json(by_alias=True, indent=2) + "\n").encode("utf-8")
+    return (
+        bundle.model_dump_json(
+            by_alias=True,
+            indent=2,
+            exclude_computed_fields=True,
+        )
+        + "\n"
+    ).encode("utf-8")
 
 
 def write_bundle(bundle: FixtureBundle, output: Path) -> None:

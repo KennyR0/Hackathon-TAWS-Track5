@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import partial
@@ -12,6 +12,7 @@ import httpx
 
 from app.config import MarketProviderConfig
 from app.contracts.entities import DataMode, DataProvenance, Freshness, allow_internal_field_names
+from app.news_resolution import resolve_news_probe
 from app.providers.base import (
     CachedProviderProbe,
     FixtureDataProvider,
@@ -35,6 +36,13 @@ DEFAULT_RETRY_LIMIT = 1
 DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD = 1
 RETRYABLE_HTTP_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
 RUNTIME_STORE_UNAVAILABLE_WARNING = "PROVIDER_RUNTIME_STORE_UNAVAILABLE"
+
+
+def _configured_api_keys(
+    primary: str | None,
+    configured: Sequence[str],
+) -> tuple[str, ...]:
+    return tuple(dict.fromkeys((*((primary,) if primary else ()), *configured)))
 
 
 def _utc_now() -> datetime:
@@ -501,21 +509,28 @@ class MarketDataRuntimeService:
         *,
         news_provider: NewsProvider | None = None,
         news_fallback_provider: NewsProvider | None = None,
+        news_fallback_providers: Sequence[NewsProvider] | None = None,
         equity_price_provider: PriceProvider | None = None,
+        equity_price_providers: Sequence[PriceProvider] | None = None,
         crypto_price_provider: PriceProvider | None = None,
+        crypto_price_providers: Sequence[PriceProvider] | None = None,
         crypto_fallback_provider: PriceProvider | None = None,
         macro_provider: MacroProvider | None = None,
+        macro_providers: Sequence[MacroProvider] | None = None,
         macro_fallback_provider: MacroProvider | None = None,
         metadata_provider: PriceProvider | None = None,
+        metadata_providers: Sequence[PriceProvider] | None = None,
         provider_cache: ProviderCacheStore | None = None,
         request_budget: int = DEFAULT_REQUEST_BUDGET,
         retry_limit: int = DEFAULT_RETRY_LIMIT,
         circuit_breaker_failure_threshold: int = DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
         provider_runtime: ProviderRuntimeBundle | None = None,
+        persisted_news_loader: Callable[[int], Sequence[dict[str, object]]] | None = None,
     ) -> None:
         self._config = config
         self._fixture_provider = fixture_provider
         self._provider_cache = provider_cache
+        self._persisted_news_loader = persisted_news_loader
         self._request_budget = max(0, request_budget)
         self._retry_limit = max(0, retry_limit)
         self._circuit_breaker_failure_threshold = max(1, circuit_breaker_failure_threshold)
@@ -528,14 +543,44 @@ class MarketDataRuntimeService:
             timeout_seconds=config.gdelt_timeout_seconds,
             max_attempts=config.gdelt_max_attempts,
         )
-        self._news_fallback_provider = news_fallback_provider or (
-            FinnhubNewsProvider(config.finnhub_api_key) if config.finnhub_api_key else None
+        finnhub_keys = _configured_api_keys(config.finnhub_api_key, config.finnhub_api_keys)
+        twelve_data_keys = _configured_api_keys(
+            config.twelve_data_api_key,
+            config.twelve_data_api_keys,
         )
-        self._equity_price_provider = equity_price_provider or TwelveDataPriceProvider(
-            config.twelve_data_api_key
+        coingecko_keys = _configured_api_keys(
+            config.coingecko_api_key,
+            config.coingecko_api_keys,
         )
-        self._crypto_price_provider = crypto_price_provider or CoinGeckoPriceProvider(
-            config.coingecko_api_key
+        fred_keys = _configured_api_keys(config.fred_api_key, config.fred_api_keys)
+        self._news_fallback_providers = (
+            tuple(news_fallback_providers)
+            if news_fallback_providers is not None
+            else (
+                (news_fallback_provider,)
+                if news_fallback_provider is not None
+                else tuple(FinnhubNewsProvider(key) for key in finnhub_keys)
+            )
+        )
+        self._equity_price_providers = (
+            tuple(equity_price_providers)
+            if equity_price_providers is not None
+            else (
+                (equity_price_provider,)
+                if equity_price_provider is not None
+                else tuple(TwelveDataPriceProvider(key) for key in twelve_data_keys)
+                or (TwelveDataPriceProvider(None),)
+            )
+        )
+        self._crypto_price_providers = (
+            tuple(crypto_price_providers)
+            if crypto_price_providers is not None
+            else (
+                (crypto_price_provider,)
+                if crypto_price_provider is not None
+                else tuple(CoinGeckoPriceProvider(key) for key in coingecko_keys)
+                or (CoinGeckoPriceProvider(None),)
+            )
         )
         self._crypto_fallback_provider = crypto_fallback_provider or RapidAPIYHFinanceProvider(
             api_key=config.rapidapi_key,
@@ -543,15 +588,37 @@ class MarketDataRuntimeService:
             base_url=config.yahoo_finance_base_url,
             history_path=config.yahoo_finance_history_path,
         )
-        self._macro_provider = macro_provider or FREDMacroProvider(config.fred_api_key)
+        self._macro_providers = (
+            tuple(macro_providers)
+            if macro_providers is not None
+            else (
+                (macro_provider,)
+                if macro_provider is not None
+                else tuple(FREDMacroProvider(key) for key in fred_keys)
+                or (FREDMacroProvider(None),)
+            )
+        )
         self._macro_fallback_provider = macro_fallback_provider or EIAMacroProvider(
             config.eia_api_key
         )
-        self._metadata_provider = metadata_provider or FinnhubMarketProvider(config.finnhub_api_key)
+        self._metadata_providers = (
+            tuple(metadata_providers)
+            if metadata_providers is not None
+            else (
+                (metadata_provider,)
+                if metadata_provider is not None
+                else tuple(FinnhubMarketProvider(key) for key in finnhub_keys)
+                or (FinnhubMarketProvider(None),)
+            )
+        )
 
     @property
     def mode(self) -> str:
         return self._config.mode
+
+    @property
+    def provider_runtime(self) -> ProviderRuntimeBundle | None:
+        return self._provider_runtime
 
     def repository_provenance(self, fixture_clock: datetime) -> DataProvenance:
         with allow_internal_field_names():
@@ -578,6 +645,53 @@ class MarketDataRuntimeService:
                 warnings=("LIVE_MODE_ACTIVE_USING_FIXTURE_FALLBACK",),
             )
 
+    def _probe_credential_chain(
+        self,
+        probes: Sequence[Callable[[], ProviderProbeResult]],
+        provider: str,
+        *,
+        cache_key: str,
+        request_cost: int = 1,
+        resource_type: str | None = None,
+        cache_ttl_seconds: int | None = None,
+    ) -> ProviderProbeResult:
+        if not probes:
+            return _fallback_result(
+                provider,
+                payload={"configuredKeys": 0},
+                warning=f"{provider.upper()}_KEY_MISSING",
+            )
+        result: ProviderProbeResult | None = None
+        has_multiple_keys = len(probes) > 1
+        for index, probe in enumerate(probes, start=1):
+            runtime_provider = (
+                f"{provider}_key_{index}" if has_multiple_keys else provider
+            )
+            current = self._safe_probe(
+                probe,
+                runtime_provider,
+                cache_key=(
+                    f"{cache_key}:key:{index}" if has_multiple_keys else cache_key
+                ),
+                resource_type=resource_type,
+                cache_ttl_seconds=cache_ttl_seconds,
+                request_cost=request_cost,
+            )
+            if result is None:
+                result = current
+            else:
+                result = _merge_failover_results(
+                    result,
+                    current,
+                    failover_warning=(
+                        f"{provider.upper()}_KEY_{index - 1}_TO_KEY_{index}_FAILOVER"
+                    ),
+                )
+            if current.ok:
+                return result
+        assert result is not None
+        return result
+
     def collect_quotes(self, instruments) -> dict[str, ProviderProbeResult]:
         """Collect budgeted quotes for validated universe instruments."""
 
@@ -588,17 +702,21 @@ class MarketDataRuntimeService:
         )
         cryptos = tuple(item for item in instruments if item.instrument_type.value == "crypto")
         batch_groups = (
-            (equities, self._equity_price_provider, "twelve_data"),
-            (cryptos, self._crypto_price_provider, "coingecko"),
+            (equities, self._equity_price_providers, "twelve_data"),
+            (cryptos, self._crypto_price_providers, "coingecko"),
         )
-        for group, price_provider, provider_name in batch_groups:
+        for group, price_providers, provider_name in batch_groups:
             if not group:
                 continue
             symbols = tuple(item.symbol for item in group)
-            probe_many = getattr(price_provider, "probe_many", None)
-            if callable(probe_many):
-                batch = self._safe_probe(
-                    partial(probe_many, symbols),
+            batch_probes = tuple(
+                partial(probe_many, symbols)
+                for price_provider in price_providers
+                if callable(probe_many := getattr(price_provider, "probe_many", None))
+            )
+            if len(batch_probes) == len(price_providers):
+                batch = self._probe_credential_chain(
+                    batch_probes,
                     provider_name,
                     cache_key=f"probe:{provider_name}:quotes:{','.join(symbols)}",
                     request_cost=len(symbols) if provider_name == "twelve_data" else 1,
@@ -622,8 +740,11 @@ class MarketDataRuntimeService:
                         )
             else:
                 for symbol in symbols:
-                    results[symbol] = self._safe_probe(
-                        partial(price_provider.probe, symbol),
+                    results[symbol] = self._probe_credential_chain(
+                        tuple(
+                            partial(price_provider.probe, symbol)
+                            for price_provider in price_providers
+                        ),
                         provider_name,
                         cache_key=f"probe:{provider_name}:quote:{symbol}",
                     )
@@ -632,8 +753,11 @@ class MarketDataRuntimeService:
             symbol = instrument.symbol
             if instrument.series_id:
                 series_id = instrument.series_id
-                primary = self._safe_probe(
-                    partial(self._macro_provider.probe, series_id),
+                primary = self._probe_credential_chain(
+                    tuple(
+                        partial(provider.probe, series_id)
+                        for provider in self._macro_providers
+                    ),
                     "fred",
                     cache_key=f"probe:fred:series:{series_id}",
                 )
@@ -655,8 +779,11 @@ class MarketDataRuntimeService:
             symbol = instrument.symbol
             result = results[symbol]
             if not result.ok:
-                fallback = self._safe_probe(
-                    partial(self._metadata_provider.probe, symbol),
+                fallback = self._probe_credential_chain(
+                    tuple(
+                        partial(provider.probe, symbol)
+                        for provider in self._metadata_providers
+                    ),
                     "finnhub",
                     cache_key=f"probe:finnhub:quote:{symbol}",
                 )
@@ -769,8 +896,11 @@ class MarketDataRuntimeService:
             ),
             (
                 "spy",
-                lambda: self._safe_probe(
-                    lambda: self._metadata_provider.probe("SPY"),
+                lambda: self._probe_credential_chain(
+                    tuple(
+                        partial(provider.probe, "SPY")
+                        for provider in self._metadata_providers
+                    ),
                     "finnhub",
                     cache_key="probe:finnhub:quote:SPY",
                 ),
@@ -812,15 +942,21 @@ class MarketDataRuntimeService:
         )
 
     def _probe_equity(self, symbol: str) -> ProviderProbeResult:
-        primary = self._safe_probe(
-            partial(self._equity_price_provider.probe, symbol),
+        primary = self._probe_credential_chain(
+            tuple(
+                partial(provider.probe, symbol)
+                for provider in self._equity_price_providers
+            ),
             "twelve_data",
             cache_key=f"probe:twelve_data:quote:{symbol}",
         )
         if primary.ok:
             return primary
-        fallback = self._safe_probe(
-            partial(self._metadata_provider.probe, symbol),
+        fallback = self._probe_credential_chain(
+            tuple(
+                partial(provider.probe, symbol)
+                for provider in self._metadata_providers
+            ),
             "finnhub",
             cache_key=f"probe:finnhub:quote:{symbol}",
         )
@@ -843,8 +979,11 @@ class MarketDataRuntimeService:
         return self._fixture_quote_fallback(symbol, result)
 
     def _probe_crypto(self, symbol: str) -> ProviderProbeResult:
-        primary = self._safe_probe(
-            partial(self._crypto_price_provider.probe, symbol),
+        primary = self._probe_credential_chain(
+            tuple(
+                partial(provider.probe, symbol)
+                for provider in self._crypto_price_providers
+            ),
             "coingecko",
             cache_key=f"probe:coingecko:price:{symbol}",
         )
@@ -863,8 +1002,11 @@ class MarketDataRuntimeService:
         return self._fixture_quote_fallback(symbol, result)
 
     def _probe_macro(self, series_id: str) -> ProviderProbeResult:
-        primary = self._safe_probe(
-            partial(self._macro_provider.probe, series_id),
+        primary = self._probe_credential_chain(
+            tuple(
+                partial(provider.probe, series_id)
+                for provider in self._macro_providers
+            ),
             "fred",
             cache_key=f"probe:fred:series:{series_id}",
         )
@@ -883,28 +1025,27 @@ class MarketDataRuntimeService:
         return self._fixture_quote_fallback("WTI", result)
 
     def _probe_news(self) -> ProviderProbeResult:
-        primary = self._safe_probe(
-            self._news_provider.probe,
-            "gdelt",
-            cache_key="probe:gdelt:news:apple",
-            resource_type="news_probe",
-            cache_ttl_seconds=self._config.gdelt_cache_ttl_seconds,
+        fallback_providers = self._news_fallback_providers
+        return resolve_news_probe(
+            probe_primary=lambda: self._safe_probe(
+                self._news_provider.probe,
+                "gdelt",
+                cache_key="probe:gdelt:news:apple",
+                resource_type="news_probe",
+                cache_ttl_seconds=self._config.gdelt_cache_ttl_seconds,
+            ),
+            probe_fallback=(
+                (lambda: self._probe_credential_chain(
+                    tuple(provider.probe for provider in fallback_providers),
+                    "finnhub",
+                    cache_key="probe:finnhub:company_news:AAPL",
+                ))
+                if fallback_providers
+                else None
+            ),
+            load_persisted=self._persisted_news_loader,
+            fixture_fallback=self._fixture_news_fallback,
         )
-        if primary.ok:
-            return primary
-        if self._news_fallback_provider is None:
-            return self._fixture_news_fallback(primary)
-        fallback = self._safe_probe(
-            self._news_fallback_provider.probe,
-            "finnhub_news",
-            cache_key="probe:finnhub:company_news:AAPL",
-        )
-        result = _merge_failover_results(
-            primary,
-            fallback,
-            failover_warning="GDELT_TO_FINNHUB_FAILOVER",
-        )
-        return result if result.ok else self._fixture_news_fallback(result)
 
     def _fixture_quote_fallback(
         self,

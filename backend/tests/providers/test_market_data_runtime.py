@@ -72,6 +72,20 @@ class _MacroProvider:
         return _live_result("fred", {"seriesId": series_id, "value": "78.1"})
 
 
+class _CountingMacroProvider(_MacroProvider):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def probe(self, series_id: str):
+        self.calls += 1
+        return super().probe(series_id)
+
+
+class _TimeoutMacroProvider:
+    def probe(self, series_id: str):
+        raise httpx.TimeoutException(f"{series_id} timeout")
+
+
 class _FailingPriceProvider:
     def __init__(self) -> None:
         self.calls = 0
@@ -113,7 +127,13 @@ def test_market_provider_config_reads_optional_keys(
 ) -> None:
     monkeypatch.setenv("MARKET_DATA_MODE", "hybrid")
     monkeypatch.setenv("FINNHUB_API_KEY", "fh-key")
+    monkeypatch.setenv("FINNHUB_API_KEY_2", "fh-key-2")
     monkeypatch.setenv("TWELVE_DATA_API_KEY", "td-key")
+    monkeypatch.setenv("TWELVE_DATA_API_KEY_2", "td-key-2")
+    monkeypatch.setenv("COINGECKO_API_KEY", "cg-key")
+    monkeypatch.setenv("COINGECKO_API_KEY_2", "cg-key-2")
+    monkeypatch.setenv("FRED_API_KEY", "fred-key")
+    monkeypatch.setenv("FRED_API_KEY_2", "fred-key-2")
     monkeypatch.setenv("GDELT_BASE_URL", "https://example.test/gdelt")
     monkeypatch.setenv("SEC_USER_AGENT", "NexoMercadoAI test@example.com")
     monkeypatch.setenv("GDELT_TIMEOUT_SECONDS", "4.5")
@@ -135,13 +155,17 @@ def test_market_provider_config_reads_optional_keys(
 
     assert config.mode == "hybrid"
     assert config.finnhub_api_key == "fh-key"
+    assert config.finnhub_api_keys == ("fh-key", "fh-key-2")
     assert config.twelve_data_api_key == "td-key"
+    assert config.twelve_data_api_keys == ("td-key", "td-key-2")
+    assert config.coingecko_api_keys == ("cg-key", "cg-key-2")
     assert config.gdelt_base_url == "https://example.test/gdelt"
     assert config.gdelt_user_agent == "NexoMercadoAI test@example.com"
     assert config.gdelt_timeout_seconds == 4.5
     assert config.gdelt_max_attempts == 3
     assert config.gdelt_cache_ttl_seconds == 600
-    assert config.fred_api_key is None
+    assert config.fred_api_key == "fred-key"
+    assert config.fred_api_keys == ("fred-key", "fred-key-2")
     assert config.eia_api_key == "eia-key"
     assert config.rapidapi_key == "rapid-key"
     assert config.yahoo_finance_api_host == "yahoo-finance15.p.rapidapi.com"
@@ -181,6 +205,35 @@ def test_market_provider_config_requires_complete_rapidapi_config(
     monkeypatch.setenv("RAPIDAPI_KEY", "rapid-key")
 
     with pytest.raises(RuntimeError, match="must be configured together"):
+        get_market_provider_config()
+
+
+@pytest.mark.parametrize(
+    "provider",
+    ["FINNHUB", "TWELVE_DATA", "COINGECKO", "FRED"],
+)
+def test_market_provider_config_rejects_secondary_key_without_primary(
+    monkeypatch: pytest.MonkeyPatch,
+    provider: str,
+) -> None:
+    monkeypatch.setenv(f"{provider}_API_KEY_2", "secondary")
+
+    with pytest.raises(RuntimeError, match="requires"):
+        get_market_provider_config()
+
+
+@pytest.mark.parametrize(
+    "provider",
+    ["FINNHUB", "TWELVE_DATA", "COINGECKO", "FRED"],
+)
+def test_market_provider_config_rejects_duplicate_keys(
+    monkeypatch: pytest.MonkeyPatch,
+    provider: str,
+) -> None:
+    monkeypatch.setenv(f"{provider}_API_KEY", "same")
+    monkeypatch.setenv(f"{provider}_API_KEY_2", "same")
+
+    with pytest.raises(RuntimeError, match="must differ"):
         get_market_provider_config()
 
 
@@ -459,6 +512,91 @@ class _HTTPStatusPriceProvider:
             request=request,
             response=response,
         )
+
+
+def test_twelve_data_rotates_to_secondary_key_before_finnhub() -> None:
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        equity_price_providers=(_TimeoutPriceProvider(), _BatchPriceProvider()),
+        metadata_provider=_PriceProvider(),
+        retry_limit=0,
+    )
+
+    instruments = load_market_universe().instruments[:2]
+    results = service.collect_quotes(instruments)
+
+    assert all(result.provider == "twelve_data" for result in results.values())
+    assert all(
+        "TWELVE_DATA_KEY_1_TO_KEY_2_FAILOVER" in result.warnings
+        for result in results.values()
+    )
+    assert all(
+        "TWELVE_DATA_TO_FINNHUB_FAILOVER" not in result.warnings
+        for result in results.values()
+    )
+
+
+def test_coingecko_rotates_to_secondary_key_with_independent_runtime_state() -> None:
+    runtime = build_in_memory_provider_runtime(request_budget=5)
+    yahoo = _CountingPriceProvider()
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        crypto_price_providers=(_TimeoutPriceProvider(), _PriceProvider()),
+        crypto_fallback_provider=yahoo,
+        provider_runtime=runtime,
+        retry_limit=0,
+    )
+
+    result = service._probe_crypto("BTC-USD")
+
+    assert result.ok is True
+    assert result.provider == "price"
+    assert "COINGECKO_KEY_1_TO_KEY_2_FAILOVER" in result.warnings
+    assert "COINGECKO_TO_RAPIDAPI_YH_FINANCE_FAILOVER" not in result.warnings
+    assert yahoo.calls == 0
+    assert runtime.budget.requests_used("coingecko_key_1") == 1
+    assert runtime.budget.requests_used("coingecko_key_2") == 1
+    assert runtime.health.is_circuit_open("coingecko_key_1") is True
+    assert runtime.health.is_circuit_open("coingecko_key_2") is False
+
+
+def test_fred_rotates_to_secondary_key_before_eia() -> None:
+    eia = _CountingMacroProvider()
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        macro_providers=(_TimeoutMacroProvider(), _MacroProvider()),
+        macro_fallback_provider=eia,
+        retry_limit=0,
+    )
+
+    result = service._probe_macro("DCOILWTICO")
+
+    assert result.ok is True
+    assert result.provider == "fred"
+    assert "FRED_KEY_1_TO_KEY_2_FAILOVER" in result.warnings
+    assert "FRED_TO_EIA_FAILOVER" not in result.warnings
+    assert eia.calls == 0
+
+
+def test_finnhub_news_rotates_to_secondary_key_before_fixture() -> None:
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        news_provider=_TimeoutNewsProvider(),
+        news_fallback_providers=(_TimeoutNewsProvider(), _FinnhubNewsProvider()),
+        retry_limit=0,
+    )
+
+    result = service._probe_news()
+
+    assert result.ok is True
+    assert result.provider == "finnhub_news"
+    assert "FINNHUB_KEY_1_TO_KEY_2_FAILOVER" in result.warnings
+    assert "GDELT_TO_FINNHUB_FAILOVER" in result.warnings
+    assert "FIXTURE_NEWS_FALLBACK_ACTIVE" not in result.warnings
 
 
 class _RapidAPIYHFinanceClient:

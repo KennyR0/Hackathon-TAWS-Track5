@@ -77,7 +77,11 @@ def build_supabase_provider_runtime(
 
 
 def cache_ttl_for_provider(provider: str) -> timedelta:
-    if provider in {"gdelt", "finnhub"}:
+    base_provider, separator, suffix = provider.rpartition("_key_")
+    effective_provider = (
+        base_provider if separator and suffix.isdigit() else provider
+    )
+    if effective_provider in {"gdelt", "finnhub"}:
         return timedelta(minutes=5)
     return timedelta(minutes=15)
 
