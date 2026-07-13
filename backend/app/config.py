@@ -16,7 +16,11 @@ DEFAULT_LLM_PROVIDER = "fixture"
 DEFAULT_REPOSITORY_BACKEND = "fixture"
 DEFAULT_MARKET_DATA_MODE = "fixture"
 DEFAULT_FIXTURE_BUNDLE_PATH = "data/fixtures/v1/phase0_bundle.json"
-DEFAULT_BACKEND_CORS_ORIGINS = ("http://127.0.0.1:5173", "http://localhost:5173")
+DEFAULT_BACKEND_CORS_ORIGINS = (
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "https://hackathon-taws-track5.vercel.app",
+)
 VALID_REASONING_EFFORTS = {"minimal", "low", "medium", "high", "xhigh"}
 VALID_LLM_PROVIDERS = {"fixture", "openai"}
 VALID_REPOSITORY_BACKENDS = {"fixture", "supabase"}
@@ -191,7 +195,7 @@ def get_backend_cors_origins() -> tuple[str, ...]:
     origins = _parse_csv_env(raw_origins)
     if "*" in origins:
         raise RuntimeError("BACKEND_CORS_ORIGINS must list explicit origins; wildcard is not allowed")
-    return origins
+    return tuple(dict.fromkeys((*DEFAULT_BACKEND_CORS_ORIGINS, *origins)))
 
 
 def get_market_provider_config() -> MarketProviderConfig:

@@ -53,6 +53,24 @@ def test_cors_allows_configured_vercel_origin(monkeypatch: pytest.MonkeyPatch) -
     )
 
 
+def test_cors_allows_public_vercel_origin_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("BACKEND_CORS_ORIGINS", raising=False)
+
+    with TestClient(create_app()) as client:
+        response = client.options(
+            "/api/v1/events",
+            headers={
+                "Origin": "https://hackathon-taws-track5.vercel.app",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == (
+        "https://hackathon-taws-track5.vercel.app"
+    )
+
+
 def test_list_events_supports_filters(api_client) -> None:
     response = api_client.get("/api/v1/events", params={"asset": "AAPL"})
 
