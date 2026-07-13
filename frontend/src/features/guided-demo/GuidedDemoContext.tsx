@@ -10,8 +10,8 @@ import {
   useWatchlistQuery,
 } from '../../shared/api/queries'
 import type { EventViewModel, SignalViewModel } from '../../shared/types/view-models'
-import { GuidedDemoContext } from './guidedDemoContext'
-import type { GuidedDemoContextValue, GuidedDemoStep, GuidedDemoStepId } from './guidedDemoContext'
+import { GuidedDemoContext } from './guidedDemoStore'
+import type { GuidedDemoContextValue, GuidedDemoStep, GuidedDemoStepId } from './guidedDemoStore'
 
 const STORAGE_KEY = 'nexomercado:guided-demo-tour'
 const REVIEW_JUSTIFICATION = 'Decisión revisada para presentación: la señal cuenta con evidencia verificable y mantiene advertencias visibles.'

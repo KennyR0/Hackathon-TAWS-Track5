@@ -1,6 +1,6 @@
 import { ArrowRight, RotateCcw, X } from 'lucide-react'
 import { GuidedDemoHighlight } from './GuidedDemoHighlight'
-import { useGuidedDemoTour } from './guidedDemoContext'
+import { useGuidedDemoTour } from './guidedDemoStore'
 
 export function GuidedDemoPanel() {
   const tour = useGuidedDemoTour()

@@ -1,5 +1,5 @@
 import { Route } from 'lucide-react'
-import { useGuidedDemoTour } from './guidedDemoContext'
+import { useGuidedDemoTour } from './guidedDemoStore'
 
 export function GuidedDemoLauncher() {
   const tour = useGuidedDemoTour()
