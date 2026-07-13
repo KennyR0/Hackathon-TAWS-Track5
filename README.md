@@ -135,6 +135,7 @@ Variables esperadas:
 - `FIXTURE_BUNDLE_PATH` para seleccionar el bundle offline
 - `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` solo para persistencia real
 - `GDELT_API_KEY`, `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` y `EIA_API_KEY` para sourcing live opcional
+- `FINNHUB_API_KEY_2`, `TWELVE_DATA_API_KEY_2`, `COINGECKO_API_KEY_2` y `FRED_API_KEY_2` para rotar a una segunda credencial del mismo servicio antes de cambiar de proveedor
 - `RAPIDAPI_KEY`, `YAHOO_FINANCE_API_HOST` y `YAHOO_FINANCE_BASE_URL` para Yahoo Finance como backup e historicos
 - `MARKET_PROVIDER_BUDGETS` para limites y reservas independientes por proveedor
 - `GDELT_BASE_URL`, `GDELT_TIMEOUT_SECONDS`, `GDELT_MAX_ATTEMPTS`, `GDELT_CACHE_TTL_SECONDS` y `SEC_USER_AGENT` para endurecer el probe de noticias
@@ -201,7 +202,9 @@ El backend mantiene el contrato actual, pero puede intentar providers reales par
 
 Cadenas de respaldo:
 
-- noticias: `GDELT -> Finnhub News -> cache -> fixture`
+- noticias: `GDELT -> Finnhub News -> cache caliente -> Supabase persistido -> fixture demo`
+- Las noticias demo (`fixture`) solo aparecen si no hay reales guardadas y nunca son clickeables.
+- Las noticias live se persisten en Supabase; si el fetch del día falla, el radar sirve la última ingesta con warning `STALE_PERSISTED_NEWS`.
 - acciones y ETF: `Twelve Data -> Finnhub -> Yahoo Finance/RapidAPI -> cache -> fixture`
 - cripto: `CoinGecko -> Yahoo Finance/RapidAPI -> cache -> fixture`
 - WTI: `FRED DCOILWTICO -> EIA RWTC -> cache -> fixture`
@@ -235,13 +238,21 @@ Variables live esperadas:
 - `GDELT_CACHE_TTL_SECONDS` opcional
 - `SEC_USER_AGENT` opcional
 - `FINNHUB_API_KEY`
+- `FINNHUB_API_KEY_2` opcional
 - `TWELVE_DATA_API_KEY`
+- `TWELVE_DATA_API_KEY_2` opcional
 - `FRED_API_KEY`
+- `FRED_API_KEY_2` opcional
 - `COINGECKO_API_KEY` opcional
+- `COINGECKO_API_KEY_2` opcional
 - `EIA_API_KEY` opcional para el fallback WTI
 - `RAPIDAPI_KEY`, `YAHOO_FINANCE_API_HOST` y `YAHOO_FINANCE_BASE_URL` opcionales pero requeridos en conjunto
 - `YAHOO_FINANCE_HISTORY_PATH` opcional; por defecto `/api/v2/markets/stock/history`
 - `GDELT_API_KEY` solo si el proveedor configurado lo requiere
+
+Las claves secundarias requieren su clave primaria y deben ser distintas. Cada credencial mantiene
+presupuesto, caché y circuit breaker independientes; una rotación exitosa conserva el proveedor
+efectivo y añade una advertencia auditable como `COINGECKO_KEY_1_TO_KEY_2_FAILOVER`.
 
 ## Fase 7: despliegue y presentación
 
