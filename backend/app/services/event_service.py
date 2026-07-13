@@ -26,15 +26,19 @@ class EventService:
                 published_after=published_after,
             )
         )
+        get_event_meta = getattr(self._repository, "get_event_meta", None)
+        meta = get_event_meta() if callable(get_event_meta) else self._repository.get_meta()
         with allow_internal_field_names():
-            return EventListResponse(data=data, meta=self._repository.get_meta())
+            return EventListResponse(data=data, meta=meta)
 
     def get_event(self, event_id: str) -> EventResponse:
         self._repository.get_event(event_id)
+        get_event_meta = getattr(self._repository, "get_event_meta", None)
+        meta = get_event_meta() if callable(get_event_meta) else self._repository.get_meta()
         with allow_internal_field_names():
             return EventResponse(
                 data=self._build_event_view(event_id),
-                meta=self._repository.get_meta(),
+                meta=meta,
             )
 
     def get_watchlist(self) -> WatchlistResponse:
@@ -52,4 +56,3 @@ class EventService:
                 articles=self._repository.get_event_articles(event_id),
                 sources=self._repository.get_event_sources(event_id),
             )
-

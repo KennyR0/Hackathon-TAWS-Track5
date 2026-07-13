@@ -16,6 +16,12 @@ services:
         value: supabase
       - key: MARKET_DATA_MODE
         value: hybrid
+      - key: MARKET_REQUEST_BUDGET
+        value: 32
+      - key: MARKET_BATCH_SIZE
+        value: 10
+      - key: MARKET_REFRESH_SECONDS
+        value: 900
       - key: FIXTURE_BUNDLE_PATH
         value: data/fixtures/v1/phase0_bundle.json
       - key: BACKEND_CORS_ORIGINS
@@ -54,6 +60,12 @@ services:
         value: supabase
       - key: MARKET_DATA_MODE
         value: hybrid
+      - key: MARKET_REQUEST_BUDGET
+        value: 32
+      - key: MARKET_BATCH_SIZE
+        value: 10
+      - key: MARKET_REFRESH_SECONDS
+        value: 900
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY

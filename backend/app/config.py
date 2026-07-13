@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from os import getenv
 from pathlib import Path
 
-
 APP_ROOT = Path(__file__).resolve().parent
 BACKEND_ROOT = APP_ROOT.parent
 REPO_ROOT = BACKEND_ROOT.parent
@@ -61,6 +60,9 @@ class MarketProviderConfig:
     twelve_data_api_key: str | None = None
     coingecko_api_key: str | None = None
     fred_api_key: str | None = None
+    request_budget: int = 32
+    batch_size: int = 10
+    refresh_seconds: int = 900
 
 
 def _parse_csv_env(value: str) -> tuple[str, ...]:
@@ -108,8 +110,7 @@ def get_openai_config() -> OpenAIConfig:
     if reasoning_effort not in VALID_REASONING_EFFORTS:
         valid_values = ", ".join(sorted(VALID_REASONING_EFFORTS))
         raise RuntimeError(
-            "OPENAI_REASONING_EFFORT must be one of: "
-            f"{valid_values}. Received: {reasoning_effort}"
+            f"OPENAI_REASONING_EFFORT must be one of: {valid_values}. Received: {reasoning_effort}"
         )
 
     return OpenAIConfig(
@@ -125,31 +126,34 @@ def get_runtime_config() -> RuntimeConfig:
     llm_provider = getenv("LLM_PROVIDER", DEFAULT_LLM_PROVIDER).strip().lower()
     if llm_provider not in VALID_LLM_PROVIDERS:
         valid_values = ", ".join(sorted(VALID_LLM_PROVIDERS))
-        raise RuntimeError(
-            "LLM_PROVIDER must be one of: "
-            f"{valid_values}. Received: {llm_provider}"
-        )
+        raise RuntimeError(f"LLM_PROVIDER must be one of: {valid_values}. Received: {llm_provider}")
 
-    repository_backend = getenv(
-        "REPOSITORY_BACKEND",
-        DEFAULT_REPOSITORY_BACKEND,
-    ).strip().lower()
+    repository_backend = (
+        getenv(
+            "REPOSITORY_BACKEND",
+            DEFAULT_REPOSITORY_BACKEND,
+        )
+        .strip()
+        .lower()
+    )
     if repository_backend not in VALID_REPOSITORY_BACKENDS:
         valid_values = ", ".join(sorted(VALID_REPOSITORY_BACKENDS))
         raise RuntimeError(
-            "REPOSITORY_BACKEND must be one of: "
-            f"{valid_values}. Received: {repository_backend}"
+            f"REPOSITORY_BACKEND must be one of: {valid_values}. Received: {repository_backend}"
         )
 
-    market_data_mode = getenv(
-        "MARKET_DATA_MODE",
-        DEFAULT_MARKET_DATA_MODE,
-    ).strip().lower()
+    market_data_mode = (
+        getenv(
+            "MARKET_DATA_MODE",
+            DEFAULT_MARKET_DATA_MODE,
+        )
+        .strip()
+        .lower()
+    )
     if market_data_mode not in VALID_MARKET_DATA_MODES:
         valid_values = ", ".join(sorted(VALID_MARKET_DATA_MODES))
         raise RuntimeError(
-            "MARKET_DATA_MODE must be one of: "
-            f"{valid_values}. Received: {market_data_mode}"
+            f"MARKET_DATA_MODE must be one of: {valid_values}. Received: {market_data_mode}"
         )
 
     fixture_bundle_path = Path(
@@ -194,7 +198,9 @@ def get_backend_cors_origins() -> tuple[str, ...]:
         return DEFAULT_BACKEND_CORS_ORIGINS
     origins = _parse_csv_env(raw_origins)
     if "*" in origins:
-        raise RuntimeError("BACKEND_CORS_ORIGINS must list explicit origins; wildcard is not allowed")
+        raise RuntimeError(
+            "BACKEND_CORS_ORIGINS must list explicit origins; wildcard is not allowed"
+        )
     return tuple(dict.fromkeys((*DEFAULT_BACKEND_CORS_ORIGINS, *origins)))
 
 
@@ -204,13 +210,9 @@ def get_market_provider_config() -> MarketProviderConfig:
         mode=runtime_config.market_data_mode,
         gdelt_api_key=getenv("GDELT_API_KEY", "").strip() or None,
         gdelt_base_url=(
-            getenv("GDELT_BASE_URL", "").strip()
-            or "https://api.gdeltproject.org/api/v2/doc/doc"
+            getenv("GDELT_BASE_URL", "").strip() or "https://api.gdeltproject.org/api/v2/doc/doc"
         ),
-        gdelt_user_agent=(
-            getenv("SEC_USER_AGENT", "").strip()
-            or "NexoMercadoAI/1.0"
-        ),
+        gdelt_user_agent=(getenv("SEC_USER_AGENT", "").strip() or "NexoMercadoAI/1.0"),
         gdelt_timeout_seconds=_get_env_float("GDELT_TIMEOUT_SECONDS", 6.0),
         gdelt_max_attempts=_get_env_int("GDELT_MAX_ATTEMPTS", 2),
         gdelt_cache_ttl_seconds=_get_env_int("GDELT_CACHE_TTL_SECONDS", 900),
@@ -218,4 +220,7 @@ def get_market_provider_config() -> MarketProviderConfig:
         twelve_data_api_key=getenv("TWELVE_DATA_API_KEY", "").strip() or None,
         coingecko_api_key=getenv("COINGECKO_API_KEY", "").strip() or None,
         fred_api_key=getenv("FRED_API_KEY", "").strip() or None,
+        request_budget=_get_env_int("MARKET_REQUEST_BUDGET", 32),
+        batch_size=_get_env_int("MARKET_BATCH_SIZE", 10),
+        refresh_seconds=_get_env_int("MARKET_REFRESH_SECONDS", 900),
     )

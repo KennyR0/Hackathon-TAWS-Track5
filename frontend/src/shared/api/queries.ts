@@ -11,6 +11,8 @@ export const queryKeys = {
   ecuadorSnapshots: () => ['ecuador-snapshots'] as const,
   signals: () => ['signals'] as const,
   marketSnapshots: (filters?: { asset?: string; interval?: '1h' | '1d' }) => ['market-snapshots', filters] as const,
+  instruments: (query?: string) => ['instruments', query ?? 'all'] as const,
+  marketQuotes: (symbols: string[]) => ['market-quotes', symbols] as const,
   providerRuntime: () => ['runtime', 'providers'] as const,
   signal: (signalId: string) => ['signal', signalId] as const,
   signalEvidence: (signalId: string) => ['signal', signalId, 'evidence'] as const,
@@ -99,6 +101,32 @@ export function useMarketSnapshotsQuery(filters?: { asset?: string; interval?: '
       }
     },
     enabled: options?.enabled ?? true,
+  })
+}
+
+export function useInstrumentsQuery(query?: string) {
+  const normalized = query?.trim() ?? ''
+  return useQuery({
+    queryKey: queryKeys.instruments(normalized),
+    queryFn: async () => {
+      const payload = await apiClient.listInstruments(normalized.length >= 2 ? { query: normalized } : undefined)
+      return { items: payload.data, meta: payload.meta }
+    },
+    enabled: normalized.length === 0 || normalized.length >= 2,
+    staleTime: 15 * 60 * 1000,
+  })
+}
+
+export function useMarketQuotesQuery(symbols: string[], options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.marketQuotes(symbols),
+    queryFn: async () => {
+      const payload = await apiClient.listMarketQuotes(symbols)
+      return { items: payload.data, meta: payload.meta }
+    },
+    enabled: (options?.enabled ?? true) && symbols.length > 0 && symbols.length <= 10,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   })
 }
 

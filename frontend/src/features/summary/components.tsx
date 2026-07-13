@@ -139,16 +139,8 @@ export function MarketAssetCard({ asset }: { asset: MarketAssetViewModel }) {
     </>
   )
 
-  if (!asset.latestSignal) {
-    return (
-      <article className="market-card market-card--disabled" aria-label={`${asset.symbol}: sin señal disponible`}>
-        {content}
-      </article>
-    )
-  }
-
   return (
-    <Link className="market-card market-card--interactive" to={`/signals/${asset.latestSignal.id}`} aria-label={`Abrir señal de ${asset.symbol}`}>
+    <Link className="market-card market-card--interactive" to={asset.latestSignal ? `/signals/${asset.latestSignal.id}` : `/assets/${asset.symbol}`} aria-label={`Abrir ${asset.symbol}`}>
       {content}
     </Link>
   )

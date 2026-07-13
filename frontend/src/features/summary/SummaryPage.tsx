@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useEventsQuery, useMarketSnapshotsQuery, useProviderRuntimeQuery, useRecentRunsQuery, useSignalsQuery, useWatchlistQuery } from '../../shared/api/queries'
+import { useEventsQuery, useInstrumentsQuery, useMarketQuotesQuery, useMarketSnapshotsQuery, useRecentRunsQuery, useSignalsQuery, useWatchlistQuery } from '../../shared/api/queries'
 import { deriveMarketAssets } from '../../shared/api/mappers'
 import type { MarketAssetViewModel } from '../../shared/types/view-models'
 import { formatDateTime } from '../../shared/lib/format'
@@ -15,20 +15,46 @@ export function SummaryPage() {
   const eventsQuery = useEventsQuery()
   const signalsQuery = useSignalsQuery()
   const marketSnapshotsQuery = useMarketSnapshotsQuery({ interval: '1d' })
-  const providerRuntimeQuery = useProviderRuntimeQuery({ enabled: true })
+  const instrumentsQuery = useInstrumentsQuery()
+  const quoteSymbols = (instrumentsQuery.data?.items ?? []).slice(0, 8).map(item => item.symbol)
+  const quotesQuery = useMarketQuotesQuery(quoteSymbols)
   const watchlistQuery = useWatchlistQuery()
   const recentRunQueries = useRecentRunsQuery()
   const events = useMemo(() => eventsQuery.data?.items ?? [], [eventsQuery.data?.items])
   const signals = useMemo(() => signalsQuery.data?.items ?? [], [signalsQuery.data?.items])
   const snapshots = useMemo(() => marketSnapshotsQuery.data?.items ?? [], [marketSnapshotsQuery.data?.items])
-  const assets = useMemo(
-    () => applyLiveProviderPrices(deriveMarketAssets(snapshots, signals, events), providerRuntimeQuery.data?.status.checks ?? []),
-    [events, providerRuntimeQuery.data?.status.checks, signals, snapshots],
-  )
+  const legacyAssets = useMemo(() => deriveMarketAssets(snapshots, signals, events), [events, signals, snapshots])
+  const assets = useMemo(() => {
+    const legacyBySymbol = new Map(legacyAssets.map(asset => [asset.symbol, asset]))
+    const quoteBySymbol = new Map((quotesQuery.data?.items ?? []).map(quote => [quote.symbol, quote]))
+    return (instrumentsQuery.data?.items ?? []).slice(0, 8).map(instrument => {
+      const legacy = legacyBySymbol.get(instrument.symbol)
+      const quote = quoteBySymbol.get(instrument.symbol)
+      const price = quote?.price ?? legacy?.price ?? null
+      const previous = quote?.previousClose ?? null
+      const changeAbsolute = price != null && previous != null ? price - previous : legacy?.changeAbsolute ?? null
+      return {
+        assetId: instrument.id,
+        symbol: instrument.symbol,
+        name: instrument.name,
+        instrumentType: instrument.instrumentType,
+        signalCount: legacy?.signalCount ?? 0,
+        eventCount: legacy?.eventCount ?? 0,
+        latestSignal: legacy?.latestSignal ?? null,
+        latestEvent: legacy?.latestEvent ?? null,
+        snapshot: legacy?.snapshot ?? null,
+        price,
+        currency: instrument.currency,
+        changeAbsolute,
+        changePercent: quote?.changePercent ?? legacy?.changePercent ?? null,
+        status: changeAbsolute == null ? legacy?.status ?? 'neutral' : changeAbsolute > 0 ? 'positive' : changeAbsolute < 0 ? 'negative' : 'neutral',
+      } satisfies MarketAssetViewModel
+    })
+  }, [instrumentsQuery.data?.items, legacyAssets, quotesQuery.data?.items])
   const recentRuns = recentRunQueries.map(item => item.data).filter((run): run is NonNullable<typeof run> => Boolean(run))
-  const meta = providerRuntimeQuery.data?.meta ?? marketSnapshotsQuery.data?.meta ?? signalsQuery.data?.meta ?? eventsQuery.data?.meta
-  const isLoading = eventsQuery.isLoading || signalsQuery.isLoading || marketSnapshotsQuery.isLoading
-  const hasError = eventsQuery.isError || signalsQuery.isError || marketSnapshotsQuery.isError
+  const meta = quotesQuery.data?.meta ?? marketSnapshotsQuery.data?.meta ?? signalsQuery.data?.meta ?? eventsQuery.data?.meta
+  const isLoading = eventsQuery.isLoading || signalsQuery.isLoading || marketSnapshotsQuery.isLoading || instrumentsQuery.isLoading
+  const hasError = eventsQuery.isError || signalsQuery.isError || marketSnapshotsQuery.isError || instrumentsQuery.isError
   const reviewedCount = signals.filter(signal => signal.reviewStatus === 'reviewed').length
 
   if (isLoading) return <LoadingSkeleton rows={10} />
@@ -48,7 +74,7 @@ export function SummaryPage() {
           <h1>Mercado, contexto y decisiones</h1>
           <p>Una vista compacta de los datos disponibles y del trabajo humano pendiente.</p>
         </div>
-        <Link className="primary-button" to="/radar">Explorar radar <ArrowRight size={16} /></Link>
+        <Link className="primary-button" to="/markets">Ver 25 instrumentos <ArrowRight size={16} /></Link>
       </header>
 
       <div className="data-stamp">
@@ -59,7 +85,7 @@ export function SummaryPage() {
       </div>
 
       <section className="market-card-rail" aria-label="Activos de mercado">
-        {assets.slice(0, 4).map(asset => <MarketAssetCard key={asset.assetId} asset={asset} />)}
+        {assets.map(asset => <MarketAssetCard key={asset.assetId} asset={asset} />)}
       </section>
 
       <div className="panorama-grid">
@@ -74,36 +100,4 @@ export function SummaryPage() {
       </div>
     </div>
   )
-}
-
-function applyLiveProviderPrices(
-  assets: MarketAssetViewModel[],
-  checks: NonNullable<ReturnType<typeof useProviderRuntimeQuery>['data']>['status']['checks'],
-): MarketAssetViewModel[] {
-  const priceBySymbol = new Map<string, { current: number; previous: number | null }>()
-
-  for (const check of checks) {
-    if (check.dataMode !== 'live') continue
-    const symbol = check.key === 'btc' ? 'BTC-USD' : check.key === 'wti' ? 'WTI' : check.key.toUpperCase()
-    const rawCurrent = check.key === 'aapl' ? check.metrics.close : check.key === 'spy' ? check.metrics.current : check.key === 'btc' ? check.metrics.usd : check.metrics.value
-    const current = typeof rawCurrent === 'string' ? Number(rawCurrent) : rawCurrent
-    if (typeof current !== 'number' || !Number.isFinite(current)) continue
-    const rawPrevious = check.key === 'spy' ? check.metrics.previousClose : null
-    const previous = typeof rawPrevious === 'number' && Number.isFinite(rawPrevious) ? rawPrevious : null
-    priceBySymbol.set(symbol, { current, previous })
-  }
-
-  return assets.map(asset => {
-    const live = priceBySymbol.get(asset.symbol)
-    if (!live) return asset
-    const changeAbsolute = live.previous == null ? null : live.current - live.previous
-    const changePercent = live.previous == null || live.previous === 0 ? null : changeAbsolute! / live.previous
-    return {
-      ...asset,
-      price: live.current,
-      changeAbsolute,
-      changePercent,
-      status: changeAbsolute == null ? asset.status : changeAbsolute > 0 ? 'positive' : changeAbsolute < 0 ? 'negative' : 'neutral',
-    }
-  })
 }

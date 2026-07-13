@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from time import sleep
 
 import httpx
@@ -23,6 +24,12 @@ from app.providers.base import (
 from app.services.provider_runtime_service import ProviderRuntimeBundle, store_probe_cache
 
 FIXTURE_WARNINGS: tuple[str, ...] = ("FIXTURE_DATA", "NOT_REAL_TIME")
+BUSINESS_NEWS_QUERY = (
+    '("Apple" OR "Microsoft" OR "NVIDIA" OR "Amazon" OR "Alphabet" OR "Meta" '
+    'OR "Tesla" OR "JPMorgan" OR "Bank of America" OR "Visa" OR "Walmart" '
+    'OR "Costco" OR "Exxon" OR "Chevron" OR "UnitedHealth" OR "Johnson & Johnson" '
+    'OR "Pfizer" OR "Coca-Cola" OR "Disney" OR "Netflix")'
+)
 DEFAULT_REQUEST_BUDGET = 8
 DEFAULT_RETRY_LIMIT = 1
 DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD = 1
@@ -96,9 +103,9 @@ class GDELTNewsProvider(NewsProvider):
 
     def probe(self) -> ProviderProbeResult:
         request_params = {
-            "query": "Apple",
+            "query": BUSINESS_NEWS_QUERY,
             "mode": "ArtList",
-            "maxrecords": 1,
+            "maxrecords": 50,
             "format": "json",
             "sort": "datedesc",
             "timespan": "1day",
@@ -130,6 +137,7 @@ class GDELTNewsProvider(NewsProvider):
                 "articleCount": len(articles),
                 "titles": [item.get("title") for item in articles[:3]],
                 "query": request_params["query"],
+                "articles": articles[:50],
             },
         )
 
@@ -160,6 +168,7 @@ class FinnhubNewsProvider(NewsProvider):
                 "articleCount": len(payload),
                 "titles": [item.get("headline") for item in payload[:3]],
                 "query": "AAPL",
+                "articles": payload[:50],
             },
         )
 
@@ -170,21 +179,43 @@ class TwelveDataPriceProvider(PriceProvider):
         self._client = client or httpx.Client(timeout=10.0)
 
     def probe(self, symbol: str) -> ProviderProbeResult:
-        if not self._api_key:
+        result = self.probe_many((symbol,))
+        quotes = result.payload.get("quotes", {})
+        quote = quotes.get(symbol, {}) if isinstance(quotes, dict) else {}
+        if not result.ok or not isinstance(quote, dict):
             return _fallback_result(
                 "twelve_data",
                 payload={"symbol": symbol},
+                warning=result.warnings or "TWELVE_DATA_QUOTE_UNAVAILABLE",
+            )
+        return _live_result("twelve_data", quote)
+
+    def probe_many(self, symbols: tuple[str, ...]) -> ProviderProbeResult:
+        if not self._api_key:
+            return _fallback_result(
+                "twelve_data",
+                payload={"symbols": list(symbols)},
                 warning="TWELVE_DATA_KEY_MISSING",
             )
         response = self._client.get(
             "https://api.twelvedata.com/quote",
-            params={"symbol": symbol, "apikey": self._api_key},
+            params={"symbol": ",".join(symbols), "apikey": self._api_key},
         )
         response.raise_for_status()
         payload = response.json()
+        raw_quotes = payload if len(symbols) > 1 else {symbols[0]: payload}
+        quotes = {
+            symbol: {
+                "symbol": symbol,
+                "close": quote.get("close"),
+                "currency": quote.get("currency"),
+            }
+            for symbol, quote in raw_quotes.items()
+            if symbol in symbols and isinstance(quote, dict)
+        }
         return _live_result(
             "twelve_data",
-            {"symbol": symbol, "close": payload.get("close"), "currency": payload.get("currency")},
+            {"quotes": quotes},
         )
 
 
@@ -194,8 +225,28 @@ class CoinGeckoPriceProvider(PriceProvider):
         self._client = client or httpx.Client(timeout=10.0)
 
     def probe(self, symbol: str) -> ProviderProbeResult:
+        result = self.probe_many((symbol,))
+        quotes = result.payload.get("quotes", {})
+        quote = quotes.get(symbol, {}) if isinstance(quotes, dict) else {}
+        if not result.ok or not isinstance(quote, dict):
+            return _fallback_result(
+                "coingecko",
+                payload={"symbol": symbol},
+                warning=result.warnings or "COINGECKO_QUOTE_UNAVAILABLE",
+            )
+        return _live_result("coingecko", quote)
+
+    def probe_many(self, symbols: tuple[str, ...]) -> ProviderProbeResult:
+        coin_ids = {"BTC-USD": "bitcoin", "ETH-USD": "ethereum"}
+        requested = {symbol: coin_ids[symbol] for symbol in symbols if symbol in coin_ids}
+        if len(requested) != len(symbols):
+            return _fallback_result(
+                "coingecko",
+                payload={"symbols": list(symbols)},
+                warning="COINGECKO_SYMBOL_UNSUPPORTED",
+            )
         params = {
-            "ids": "bitcoin",
+            "ids": ",".join(requested.values()),
             "vs_currencies": "usd",
             "include_last_updated_at": "true",
         }
@@ -208,14 +259,18 @@ class CoinGeckoPriceProvider(PriceProvider):
             headers=headers,
         )
         response.raise_for_status()
-        payload = response.json().get("bitcoin", {})
+        payload = response.json()
+        quotes = {
+            symbol: {
+                "symbol": symbol,
+                "usd": payload.get(coin_id, {}).get("usd"),
+                "lastUpdatedAt": payload.get(coin_id, {}).get("last_updated_at"),
+            }
+            for symbol, coin_id in requested.items()
+        }
         return _live_result(
             "coingecko",
-            {
-                "symbol": symbol,
-                "usd": payload.get("usd"),
-                "lastUpdatedAt": payload.get("last_updated_at"),
-            },
+            {"quotes": quotes},
         )
 
 
@@ -357,6 +412,111 @@ class MarketDataRuntimeService:
                 freshness=freshness,
                 warnings=("LIVE_MODE_ACTIVE_USING_FIXTURE_FALLBACK",),
             )
+
+    def collect_quotes(self, instruments) -> dict[str, ProviderProbeResult]:
+        """Collect budgeted quotes for validated universe instruments."""
+
+        self._requests_used = 0
+        results: dict[str, ProviderProbeResult] = {}
+        equities = tuple(
+            item for item in instruments if item.instrument_type.value in {"equity", "etf"}
+        )
+        cryptos = tuple(item for item in instruments if item.instrument_type.value == "crypto")
+        batch_groups = (
+            (equities, self._equity_price_provider, "twelve_data"),
+            (cryptos, self._crypto_price_provider, "coingecko"),
+        )
+        for group, price_provider, provider_name in batch_groups:
+            if not group:
+                continue
+            symbols = tuple(item.symbol for item in group)
+            probe_many = getattr(price_provider, "probe_many", None)
+            if callable(probe_many):
+                batch = self._safe_probe(
+                    partial(probe_many, symbols),
+                    provider_name,
+                    cache_key=f"probe:{provider_name}:quotes:{','.join(symbols)}",
+                )
+                quotes = batch.payload.get("quotes", {})
+                for symbol in symbols:
+                    quote = quotes.get(symbol) if isinstance(quotes, dict) else None
+                    if batch.ok and isinstance(quote, dict):
+                        results[symbol] = ProviderProbeResult(
+                            provider=batch.provider,
+                            data_mode=batch.data_mode,
+                            ok=True,
+                            warnings=batch.warnings,
+                            payload=quote,
+                        )
+                    else:
+                        results[symbol] = _fallback_result(
+                            provider_name,
+                            payload={"symbol": symbol},
+                            warning=batch.warnings or f"{provider_name.upper()}_QUOTE_UNAVAILABLE",
+                        )
+            else:
+                for symbol in symbols:
+                    results[symbol] = self._safe_probe(
+                        partial(price_provider.probe, symbol),
+                        provider_name,
+                        cache_key=f"probe:{provider_name}:quote:{symbol}",
+                    )
+
+        for instrument in instruments:
+            symbol = instrument.symbol
+            if instrument.series_id:
+                series_id = instrument.series_id
+                results[symbol] = self._safe_probe(
+                    partial(self._macro_provider.probe, series_id),
+                    "fred",
+                    cache_key=f"probe:fred:series:{series_id}",
+                )
+
+        for instrument in equities:
+            symbol = instrument.symbol
+            result = results[symbol]
+            if not result.ok:
+                fallback = self._safe_probe(
+                    partial(self._metadata_provider.probe, symbol),
+                    "finnhub",
+                    cache_key=f"probe:finnhub:quote:{symbol}",
+                )
+                if fallback.ok:
+                    result = ProviderProbeResult(
+                        provider=fallback.provider,
+                        data_mode=fallback.data_mode,
+                        ok=True,
+                        warnings=tuple(
+                            dict.fromkeys((*result.warnings, "TWELVE_DATA_TO_FINNHUB_FAILOVER"))
+                        ),
+                        payload=fallback.payload,
+                    )
+                results[symbol] = result
+        return results
+
+    def collect_universe_snapshot(self, instruments) -> MarketRuntimeSnapshot:
+        checks = self.collect_quotes(instruments)
+        warnings = tuple(
+            dict.fromkeys(warning for result in checks.values() for warning in result.warnings)
+        )
+        all_live = bool(checks) and all(result.ok for result in checks.values())
+        if self._config.mode == DataMode.FIXTURE.value:
+            effective_mode = DataMode.FIXTURE.value
+            warnings = FIXTURE_WARNINGS
+        elif all_live:
+            effective_mode = DataMode.LIVE.value
+        else:
+            effective_mode = DataMode.FALLBACK.value
+            if not warnings:
+                warnings = ("LIVE_FETCH_FAILED_FALLBACK_ACTIVE",)
+        return MarketRuntimeSnapshot(
+            data_mode=effective_mode,
+            provider="+".join(dict.fromkeys(result.provider for result in checks.values())),
+            warnings=warnings,
+            checks=checks,
+            request_budget=self._request_budget,
+            requests_used=self._requests_used,
+        )
 
     def collect_demo_snapshot(self) -> MarketRuntimeSnapshot:
         checks: dict[str, ProviderProbeResult] = {}
@@ -601,9 +761,7 @@ class MarketDataRuntimeService:
                         runtime.health.record_failure(
                             provider,
                             error_code=(
-                                result.warnings[0]
-                                if result.warnings
-                                else "ProviderFallback"
+                                result.warnings[0] if result.warnings else "ProviderFallback"
                             ),
                         )
                     except Exception:
@@ -756,8 +914,7 @@ class MarketDataRuntimeService:
 
     def _is_circuit_open(self, provider: str) -> bool:
         return (
-            self._failed_provider_counts.get(provider, 0)
-            >= self._circuit_breaker_failure_threshold
+            self._failed_provider_counts.get(provider, 0) >= self._circuit_breaker_failure_threshold
         )
 
     def _record_provider_failure(self, provider: str) -> None:

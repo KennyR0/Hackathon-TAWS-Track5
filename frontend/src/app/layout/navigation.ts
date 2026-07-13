@@ -1,4 +1,4 @@
-import { Bot, BriefcaseBusiness, ChartNoAxesCombined, Newspaper, Radar, ShieldCheck } from 'lucide-react'
+import { Bot, BriefcaseBusiness, ChartNoAxesCombined, Landmark, Newspaper, Radar, ShieldCheck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export interface NavigationItem {
@@ -16,7 +16,10 @@ interface NavigationSection {
 export const navigationSections: NavigationSection[] = [
   {
     label: 'Mercado',
-    items: [{ to: '/summary', label: 'Panorama', number: '01', icon: ChartNoAxesCombined }],
+    items: [
+      { to: '/summary', label: 'Panorama', number: '01', icon: ChartNoAxesCombined },
+      { to: '/markets', label: 'Mercados', number: 'M', icon: Landmark },
+    ],
   },
   {
     label: 'Investigación',

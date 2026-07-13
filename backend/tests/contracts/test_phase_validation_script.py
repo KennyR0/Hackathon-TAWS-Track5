@@ -42,6 +42,7 @@ phase_7: pendiente
 phase_8: pendiente
 phase_9: pendiente
 phase_10: pendiente
+phase_11: pendiente
 last_updated: 2026-07-12
 ---
 
@@ -92,6 +93,7 @@ phase_7: pendiente
 phase_8: pendiente
 phase_9: pendiente
 phase_10: pendiente
+phase_11: pendiente
 last_updated: 2026-07-12
 ---
 
@@ -143,6 +145,7 @@ phase_7: en_curso
 phase_8: pendiente
 phase_9: pendiente
 phase_10: pendiente
+phase_11: pendiente
 last_updated: 2026-07-12
 ---
 

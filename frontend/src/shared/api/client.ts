@@ -12,6 +12,8 @@ import type {
   ApiEventView,
   ApiEvidence,
   ApiMarketSnapshot,
+  ApiInstrumentSummary,
+  ApiMarketQuote,
   ApiMeta,
   ApiProviderRuntimeStatus,
   ApiReviewRequest,
@@ -120,6 +122,17 @@ export const apiClient = {
     if (filters?.interval) params.set('interval', filters.interval)
     const query = params.toString() ? `?${params.toString()}` : ''
     return request<Envelope<ApiMarketSnapshot[]>>(`/market-snapshots${query}`)
+  },
+  listInstruments(filters?: { query?: string; limit?: number }) {
+    const params = new URLSearchParams()
+    if (filters?.query) params.set('query', filters.query)
+    if (filters?.limit) params.set('limit', String(filters.limit))
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return request<Envelope<ApiInstrumentSummary[]>>(`/instruments${query}`)
+  },
+  listMarketQuotes(symbols: string[]) {
+    const params = new URLSearchParams({ symbols: symbols.join(',') })
+    return request<Envelope<ApiMarketQuote[]>>(`/market-quotes?${params.toString()}`)
   },
   getProviderRuntimeStatus() {
     return request<Envelope<ApiProviderRuntimeStatus>>('/runtime/providers')

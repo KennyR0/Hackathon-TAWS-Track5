@@ -12,6 +12,7 @@ from app.config import get_market_provider_config, get_runtime_config, get_supab
 from app.llm.base import LLMAdapter
 from app.llm.fixture_adapter import FixtureLLMAdapter
 from app.llm.openai_responses import OpenAIResponsesAdapter
+from app.market_universe import load_market_universe
 from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import MarketDataRuntimeService
 from app.repositories.conversation_repository import (
@@ -31,6 +32,7 @@ from app.services.briefing_service import BriefingService
 from app.services.conversation_service import ConversationService
 from app.services.differentiator_service import DifferentiatorService
 from app.services.event_service import EventService
+from app.services.instrument_service import InstrumentService
 from app.services.market_service import MarketService
 from app.services.provider_demo_service import ProviderDemoService
 from app.services.provider_runtime_service import (
@@ -122,23 +124,32 @@ def get_scoped_repository(user: AppUserContext) -> FixtureRepository:
 
 @lru_cache
 def get_market_data_runtime_service() -> MarketDataRuntimeService:
+    provider_config = get_market_provider_config()
     runtime_config = get_runtime_config()
     if runtime_config.repository_backend == "supabase":
         provider_runtime = build_supabase_provider_runtime(
             get_supabase_client(),
-            request_budget=8,
+            request_budget=provider_config.request_budget,
         )
     else:
-        provider_runtime = build_in_memory_provider_runtime(request_budget=8)
+        provider_runtime = build_in_memory_provider_runtime(
+            request_budget=provider_config.request_budget
+        )
     return MarketDataRuntimeService(
-        get_market_provider_config(),
+        provider_config,
         get_fixture_provider(),
+        request_budget=provider_config.request_budget,
         provider_runtime=provider_runtime,
     )
 
 
 def get_provider_demo_service() -> ProviderDemoService:
     return ProviderDemoService(get_market_data_runtime_service())
+
+
+@lru_cache
+def get_instrument_service() -> InstrumentService:
+    return InstrumentService(load_market_universe(), get_market_data_runtime_service())
 
 
 @lru_cache

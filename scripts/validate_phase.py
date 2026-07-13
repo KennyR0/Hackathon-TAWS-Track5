@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-PHASE_ORDER = ["S0", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+PHASE_ORDER = ["S0", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"]
 VALID_STATUSES = {
     "pendiente",
     "en_curso",

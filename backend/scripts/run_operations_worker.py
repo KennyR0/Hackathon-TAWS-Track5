@@ -40,11 +40,13 @@ def main() -> int:
         load_dotenv(args.env_file, override=False)
 
     fixture_provider = FixtureProvider(REPO_ROOT / "data/fixtures/v1/phase0_bundle.json")
-    runtime = build_in_memory_provider_runtime(request_budget=8)
+    provider_config = get_market_provider_config()
+    runtime = build_in_memory_provider_runtime(request_budget=provider_config.request_budget)
     trace.set_tracer_provider(TracerProvider())
     market_service = MarketDataRuntimeService(
-        get_market_provider_config(),
+        provider_config,
         fixture_provider,
+        request_budget=provider_config.request_budget,
         provider_runtime=runtime,
     )
     runtime_config = get_runtime_config()

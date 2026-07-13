@@ -14,6 +14,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.market_universe import load_market_universe  # noqa: E402
 from app.providers.fixture_provider import FixtureProvider  # noqa: E402
 from app.repositories.fixture_repository import FixtureRepository  # noqa: E402
 from app.supabase_client import create_supabase_client  # noqa: E402
@@ -26,11 +27,7 @@ def _existing_ids(client, table: str) -> set[str]:
 
 def _existing_pairs(client, table: str, left: str, right: str) -> set[tuple[str, str]]:
     rows = client.table(table).select(f"{left},{right}").execute().data or []
-    return {
-        (row[left], row[right])
-        for row in rows
-        if left in row and right in row
-    }
+    return {(row[left], row[right]) for row in rows if left in row and right in row}
 
 
 def _upsert(client, table: str, rows: list[dict], *, conflict: str | None = None) -> None:
@@ -46,11 +43,49 @@ def bootstrap() -> dict[str, int]:
         FixtureProvider(REPO_ROOT / "data/fixtures/v1/phase0_bundle.json")
     )
     bundle = repository._bundle
+    universe = load_market_universe()
 
     _upsert(
         client,
         "organizations",
         [{"id": "org_demo", "name": "NexoMercado Demo"}],
+    )
+    asset_ids = {item.symbol: item.id for item in universe.instruments}
+    _upsert(
+        client,
+        "assets",
+        [
+            {
+                "id": item.id,
+                "symbol": item.symbol,
+                "name": item.name,
+                "instrument_type": item.instrument_type.value,
+                "currency": item.currency,
+                "exchange": item.exchange,
+                "benchmark_asset_id": asset_ids.get(item.benchmark_symbol),
+                "series_id": item.series_id,
+            }
+            for item in universe.instruments
+        ],
+        conflict="symbol",
+    )
+    _upsert(
+        client,
+        "watchlists",
+        [{"id": "watchlist_demo_global", "organization_id": "org_demo", "name": "Global"}],
+    )
+    _upsert(
+        client,
+        "watchlist_assets",
+        [
+            {
+                "watchlist_id": "watchlist_demo_global",
+                "asset_id": item.id,
+                "position": position,
+            }
+            for position, item in enumerate(universe.instruments)
+        ],
+        conflict="watchlist_id,asset_id",
     )
     existing_review_ids = _existing_ids(client, "signal_reviews")
     _upsert(
@@ -121,8 +156,7 @@ def bootstrap() -> dict[str, int]:
                     "operation": "briefing",
                     "idempotency_key": f"bootstrap-{briefing.briefing_id}",
                     "request_hash": (
-                        "sha256:"
-                        + sha256(briefing.briefing_id.encode("utf-8")).hexdigest()
+                        "sha256:" + sha256(briefing.briefing_id.encode("utf-8")).hexdigest()
                     ),
                     "response_status": 200,
                     "response_body": briefing.model_dump(mode="json", by_alias=True),
@@ -163,9 +197,7 @@ def bootstrap() -> dict[str, int]:
         {
             "run_id": run.id,
             "snapshot_id": snapshot_id,
-            "snapshot_kind": (
-                "market" if snapshot_id.startswith("mkt_") else "raw_source"
-            ),
+            "snapshot_kind": ("market" if snapshot_id.startswith("mkt_") else "raw_source"),
         }
         for run in bundle.agent_runs
         for snapshot_id in run.source_snapshot_ids
@@ -175,6 +207,8 @@ def bootstrap() -> dict[str, int]:
         client.table("agent_run_source_snapshots").insert(snapshot_rows).execute()
 
     return {
+        "assets": len(universe.instruments),
+        "watchlistAssets": len(universe.instruments),
         "reviews": len(bundle.signal_reviews),
         "briefings": len(bundle.briefings),
         "runs": len(bundle.agent_runs),

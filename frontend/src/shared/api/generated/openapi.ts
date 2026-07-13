@@ -208,6 +208,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/instruments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search the versioned production market universe */
+        get: operations["listInstruments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/market-quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read auditable live or fallback market quotes */
+        get: operations["listMarketQuotes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/market-snapshots": {
         parameters: {
             query?: never;
@@ -1006,6 +1040,36 @@ export interface components {
          * @enum {string}
          */
         Impact: "positive" | "negative" | "neutral" | "uncertain";
+        /** InstrumentSearchResponse */
+        InstrumentSearchResponse: {
+            /** Data */
+            data: components["schemas"]["InstrumentSummary"][];
+            meta: components["schemas"]["DataProvenance"];
+        };
+        /** InstrumentSummary */
+        InstrumentSummary: {
+            /**
+             * Benchmarksymbol
+             * @default null
+             */
+            benchmarkSymbol: string | null;
+            /** Currency */
+            currency: string;
+            /** Exchange */
+            exchange: string;
+            /** Id */
+            id: string;
+            instrumentType: components["schemas"]["InstrumentType"];
+            /** Name */
+            name: string;
+            /**
+             * Seriesid
+             * @default null
+             */
+            seriesId: string | null;
+            /** Symbol */
+            symbol: string;
+        };
         /**
          * InstrumentType
          * @enum {string}
@@ -1041,6 +1105,53 @@ export interface components {
              * @default null
              */
             volume: number | null;
+        };
+        /** MarketQuote */
+        MarketQuote: {
+            /**
+             * Changepercent
+             * @default null
+             */
+            changePercent: number | null;
+            /** Currency */
+            currency: string;
+            /**
+             * Dataasof
+             * Format: date-time
+             */
+            dataAsOf: string;
+            dataMode: components["schemas"]["DataMode"];
+            freshness: components["schemas"]["Freshness"];
+            instrumentType: components["schemas"]["InstrumentType"];
+            /** Name */
+            name: string;
+            /**
+             * Previousclose
+             * @default null
+             */
+            previousClose: number | null;
+            /**
+             * Price
+             * @default null
+             */
+            price: number | null;
+            /** Provider */
+            provider: string;
+            /**
+             * Retrievedat
+             * Format: date-time
+             */
+            retrievedAt: string;
+            /** Symbol */
+            symbol: string;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** MarketQuoteListResponse */
+        MarketQuoteListResponse: {
+            /** Data */
+            data: components["schemas"]["MarketQuote"][];
+            meta: components["schemas"]["DataProvenance"];
         };
         /** MarketSnapshot */
         MarketSnapshot: {
@@ -1157,22 +1268,16 @@ export interface components {
              */
             dataAsOf: string | null;
             dataMode: components["schemas"]["DataMode"];
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "news" | "aapl" | "spy" | "btc" | "wti";
+            /** Key */
+            key: string;
             /** Metrics */
             metrics: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
             /** Ok */
             ok: boolean;
-            /**
-             * Provider
-             * @enum {string}
-             */
-            provider: "gdelt" | "twelve_data" | "finnhub" | "coingecko" | "fred";
+            /** Provider */
+            provider: string;
             /** Resource */
             resource: string;
             /**
@@ -1892,6 +1997,60 @@ export interface operations {
             };
             /** @description Request could not be completed */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listInstruments: {
+        parameters: {
+            query?: {
+                query?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentSearchResponse"];
+                };
+            };
+        };
+    };
+    listMarketQuotes: {
+        parameters: {
+            query: {
+                symbols: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketQuoteListResponse"];
+                };
+            };
+            /** @description Request could not be completed */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

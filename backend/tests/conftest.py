@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api import dependencies
-from app.main import create_app
 from app.contracts.api import build_openapi_document
+from app.main import create_app
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
@@ -43,6 +43,7 @@ def reset_backend_singletons(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AUTH_ENABLED", raising=False)
     dependencies.get_fixture_provider.cache_clear()
     dependencies.get_market_data_runtime_service.cache_clear()
+    dependencies.get_instrument_service.cache_clear()
     dependencies.get_supabase_client.cache_clear()
     dependencies.get_in_memory_conversation_repository.cache_clear()
     dependencies.get_repository.cache_clear()

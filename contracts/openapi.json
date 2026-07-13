@@ -1691,6 +1691,102 @@
         "title": "Impact",
         "type": "string"
       },
+      "InstrumentSearchResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentSummary"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "InstrumentSearchResponse",
+        "type": "object"
+      },
+      "InstrumentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "benchmarkSymbol": {
+            "anyOf": [
+              {
+                "maxLength": 24,
+                "minLength": 1,
+                "pattern": "^[A-Z0-9][A-Z0-9./-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Benchmarksymbol"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "exchange": {
+            "minLength": 1,
+            "title": "Exchange",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_:-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "instrumentType": {
+            "$ref": "#/components/schemas/InstrumentType"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "seriesId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Seriesid"
+          },
+          "symbol": {
+            "maxLength": 24,
+            "minLength": 1,
+            "pattern": "^[A-Z0-9][A-Z0-9./-]*$",
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "symbol",
+          "name",
+          "instrumentType",
+          "currency",
+          "exchange"
+        ],
+        "title": "InstrumentSummary",
+        "type": "object"
+      },
       "InstrumentType": {
         "enum": [
           "equity",
@@ -1772,6 +1868,133 @@
           "close"
         ],
         "title": "MarketPoint",
+        "type": "object"
+      },
+      "MarketQuote": {
+        "additionalProperties": false,
+        "properties": {
+          "changePercent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Changepercent"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "dataAsOf": {
+            "format": "date-time",
+            "title": "Dataasof",
+            "type": "string"
+          },
+          "dataMode": {
+            "$ref": "#/components/schemas/DataMode"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
+          },
+          "instrumentType": {
+            "$ref": "#/components/schemas/InstrumentType"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "previousClose": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Previousclose"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Price"
+          },
+          "provider": {
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          },
+          "retrievedAt": {
+            "format": "date-time",
+            "title": "Retrievedat",
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 24,
+            "minLength": 1,
+            "pattern": "^[A-Z0-9][A-Z0-9./-]*$",
+            "title": "Symbol",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dataMode",
+          "provider",
+          "retrievedAt",
+          "dataAsOf",
+          "freshness",
+          "warnings",
+          "symbol",
+          "name",
+          "instrumentType",
+          "currency"
+        ],
+        "title": "MarketQuote",
+        "type": "object"
+      },
+      "MarketQuoteListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MarketQuote"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "MarketQuoteListResponse",
         "type": "object"
       },
       "MarketSnapshot": {
@@ -2066,13 +2289,7 @@
             "$ref": "#/components/schemas/DataMode"
           },
           "key": {
-            "enum": [
-              "news",
-              "aapl",
-              "spy",
-              "btc",
-              "wti"
-            ],
+            "minLength": 1,
             "title": "Key",
             "type": "string"
           },
@@ -2088,13 +2305,7 @@
             "type": "boolean"
           },
           "provider": {
-            "enum": [
-              "gdelt",
-              "twelve_data",
-              "finnhub",
-              "coingecko",
-              "fred"
-            ],
+            "minLength": 1,
             "title": "Provider",
             "type": "string"
           },
@@ -3523,6 +3734,85 @@
           }
         },
         "summary": "List deterministic historical event similarities"
+      }
+    },
+    "/api/v1/instruments": {
+      "get": {
+        "operationId": "listInstruments",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentSearchResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "summary": "Search the versioned production market universe"
+      }
+    },
+    "/api/v1/market-quotes": {
+      "get": {
+        "operationId": "listMarketQuotes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbols",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketQuoteListResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request could not be completed"
+          }
+        },
+        "summary": "Read auditable live or fallback market quotes"
       }
     },
     "/api/v1/market-snapshots": {

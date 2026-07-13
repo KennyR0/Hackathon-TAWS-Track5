@@ -120,6 +120,48 @@ def test_market_snapshots_endpoint_filters_by_asset_and_interval(api_client) -> 
     assert first_observation["timestamp"] < last_observation["timestamp"]
 
 
+def test_instruments_endpoint_exposes_productive_universe(api_client) -> None:
+    response = api_client.get("/api/v1/instruments")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["data"]) == 25
+    symbols = {item["symbol"] for item in payload["data"]}
+    assert {"AAPL", "MSFT", "NVDA", "QQQ", "ETH-USD", "WTI"} <= symbols
+    assert payload["meta"]["provider"] == "production_universe_v1"
+
+
+def test_instruments_endpoint_searches_symbol_and_name(api_client) -> None:
+    response = api_client.get("/api/v1/instruments", params={"query": "micro"})
+
+    assert response.status_code == 200
+    assert [item["symbol"] for item in response.json()["data"]] == ["MSFT"]
+
+
+def test_market_quotes_rejects_unknown_or_oversized_symbol_lists(api_client) -> None:
+    unknown = api_client.get("/api/v1/market-quotes", params={"symbols": "UNKNOWN"})
+    oversized = api_client.get(
+        "/api/v1/market-quotes",
+        params={"symbols": ",".join(["AAPL"] * 11)},
+    )
+
+    assert unknown.status_code == 422
+    assert oversized.status_code == 200  # duplicates are normalized before enforcing the cap
+
+
+def test_market_quotes_preserves_fixture_fallback(api_client) -> None:
+    response = api_client.get(
+        "/api/v1/market-quotes",
+        params={"symbols": "AAPL,MSFT,ETH-USD"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["symbol"] for item in payload["data"]] == ["AAPL", "MSFT", "ETH-USD"]
+    assert all(item["dataMode"] == "fallback" for item in payload["data"])
+    assert payload["meta"]["dataMode"] == "fallback"
+
+
 def test_similar_events_endpoint_exposes_deterministic_matches(api_client) -> None:
     response = api_client.get("/api/v1/events/evt_aapl_outlook_20260709/similar")
 

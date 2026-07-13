@@ -17,8 +17,10 @@ class MarketService:
         asset: str | None = None,
         interval: str | None = None,
     ) -> MarketSnapshotListResponse:
+        get_market_meta = getattr(self._repository, "get_market_meta", None)
+        meta = get_market_meta() if callable(get_market_meta) else self._repository.get_meta()
         with allow_internal_field_names():
             return MarketSnapshotListResponse(
                 data=self._repository.list_market_snapshots(asset=asset, interval=interval),
-                meta=self._repository.get_meta(),
+                meta=meta,
             )

@@ -4,6 +4,7 @@ import { AppShell } from './layout/AppShell'
 import { LoadingSkeleton } from '../shared/ui/primitives'
 
 const SummaryPage = lazy(() => import('../features/summary/SummaryPage').then(module => ({ default: module.SummaryPage })))
+const MarketsPage = lazy(() => import('../features/markets/MarketsPage').then(module => ({ default: module.MarketsPage })))
 const RadarPage = lazy(() => import('../features/radar/RadarPage').then(module => ({ default: module.RadarPage })))
 const AssetDetailPage = lazy(() => import('../features/assets/AssetDetailPage').then(module => ({ default: module.AssetDetailPage })))
 const SignalsPage = lazy(() => import('../features/signals/SignalsPage').then(module => ({ default: module.SignalsPage })))
@@ -30,6 +31,14 @@ export function AppRouter() {
             element={
               <Suspense fallback={<RouteFallback />}>
                 <SummaryPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="markets"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <MarketsPage />
               </Suspense>
             }
           />

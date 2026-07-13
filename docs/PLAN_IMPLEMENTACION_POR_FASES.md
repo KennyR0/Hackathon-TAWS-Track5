@@ -1,6 +1,6 @@
 ---
-plan_version: 2
-current_phase: 10
+plan_version: 3
+current_phase: 11
 phase_S0: aceptada
 phase_0: aceptada
 phase_1: aceptada
@@ -12,7 +12,8 @@ phase_6: aceptada
 phase_7: aceptada
 phase_8: aceptada
 phase_9: aceptada
-phase_10: lista_para_revision
+phase_10: aceptada
+phase_11: en_curso
 last_updated: 2026-07-13
 ---
 
@@ -91,7 +92,8 @@ Reglas:
 | 7 | aceptada | Despliegue y demo |
 | 8 | aceptada | Auth, roles y RLS |
 | 9 | aceptada | Workers y operación |
-| 10 | lista_para_revision | Diferenciadores |
+| 10 | aceptada | Diferenciadores |
+| 11 | en_curso | Cobertura productiva de mercado |
 
 Estado operativo actual del repositorio:
 
@@ -658,6 +660,51 @@ Evidencia del ajuste final de entrega pública:
 - Smoke público contra Render actual: bloqueado hasta redeploy; el servicio desplegado todavía responde `HTTP 500` en `/api/v1/runtime/providers` porque no contiene este ajuste.
 - Resultado: ajuste listo para revisión; requiere commit/push/redeploy para que la URL pública adopte la corrección.
 
+### Fase 11 — Cobertura productiva de mercado
+
+Prerrequisito: Fase 10 `aceptada` por decisión explícita del usuario.
+
+Entregables:
+
+- Universo versionado de 25 instrumentos: 20 empresas, SPY, QQQ, BTC-USD, ETH-USD y WTI.
+- Proveedores y runtime generalizados para cotizaciones, búsqueda y noticias con caché,
+  presupuesto, lotes, retry, circuit breaker y fallback por recurso.
+- Persistencia Supabase de activos, watchlist, snapshots/observaciones y contenido live sin
+  reinsertar el bundle fixture durante los workers.
+- `GET /api/v1/instruments`, `GET /api/v1/market-quotes` y contratos OpenAPI/TypeScript.
+- Panorama sin límite rígido de cuatro activos, explorador buscable y procedencia visible.
+- Despliegue autorizado a Render y Vercel, con bootstrap idempotente y smoke público.
+
+Gates:
+
+- Suite backend, Ruff, OpenAPI, pruebas de persistencia y validación de fase aprobadas.
+- Lint, typecheck, build y QA responsive del frontend aprobados.
+- Producción devuelve al menos 25 instrumentos y conserva `live`/`fallback` por recurso.
+- La fase termina en `lista_para_revision`; no se acepta automáticamente.
+
+Estado inicial:
+
+- Rama `codex/fase-11-cobertura-productiva` creada conforme al gate.
+- El usuario autorizó commit, push, despliegue Render/Vercel y escrituras idempotentes en el
+  Supabase existente, sin cambio destructivo de esquema ni contratación de planes.
+
+Evidencia parcial de implementación:
+
+- Universo v1 con 25 instrumentos, búsqueda local y cotizaciones auditables implementado.
+- Prueba real con `backend/scripts/check_market_universe.py --env-file backend/.env.local`:
+  `25/25 live`; Twelve Data degradó y el failover Finnhub cubrió las acciones, mientras
+  CoinGecko y FRED cubrieron cripto y WTI.
+- Bootstrap Supabase aplicado idempotentemente: `assets=25`, `watchlistAssets=25`.
+- Worker productivo: precios escribió `73` filas y macro `27`; la primera ingestión detectó
+  dos incompatibilidades reales (`events_timeline` e `is_primary`) que quedaron corregidas.
+- Backend: `206 passed`, dos warnings externos; Ruff focal, OpenAPI y `git diff --check`
+  aprobados. Ruff global conserva incidencias preexistentes fuera del alcance de Fase 11.
+- Frontend: lint, typecheck y build aprobados; `/summary`, `/markets`, búsqueda `micro` y
+  `/assets/MSFT` verificados en escritorio y `390x844`, con cero errores y warnings de consola.
+- Bloqueo de cierre: el entorno rechazó nuevas ejecuciones externas por límite de uso después
+  de las correcciones finales. Falta repetir ingest/reconcile, commit/push, deploy Render/Vercel
+  y smoke público. La fase permanece `en_curso` y no se presenta como lista para revisión.
+
 ## 8. Matriz mínima del Track 5
 
 | Criterio | Fase |
@@ -722,6 +769,8 @@ Producto:
 | 2026-07-12 | 10 | Crear rama `codex/fase-10-diferenciadores` | Gate original de fase exige rama `codex/fase-*`; no se autorizo excepcion para `main` |
 | 2026-07-12 | 10 | Cerrar diferenciadores sin migracion nueva | Conversaciones ya existian en DB; similares y snapshots EC se implementan fixture-first y trazables |
 | 2026-07-12 | 10 | Ajustar consumo real en `main` sin rama nueva | El usuario autorizo completar el alcance sin importar fase y prohibio crear ramas; el despliegue debe usar APIs reales con fallback auditable |
+| 2026-07-12 | 10 | Aceptar Fase 10 y abrir Fase 11 | Decisión explícita del usuario para separar la cobertura productiva de mercado |
+| 2026-07-12 | 11 | Crear rama y autorizar despliegue productivo | Mismo repositorio con commit, push, Render, Vercel y bootstrap Supabase idempotente |
 
 ## 12. Registro de cambios
 
@@ -735,3 +784,4 @@ Producto:
 | 2026-07-12 | 2 | Fase 7 deploy-ready implementada y lista para revision |
 | 2026-07-12 | 2 | Fase 8 auth/roles/RLS cerrada sin migraciones nuevas y Fase 9 workers/operacion lista para revision |
 | 2026-07-12 | 2 | Fase 10 diferenciadores implementada y lista para revision |
+| 2026-07-12 | 3 | Fase 10 aceptada y Fase 11 de cobertura productiva iniciada |

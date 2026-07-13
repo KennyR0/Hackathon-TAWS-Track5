@@ -20,11 +20,13 @@ from .entities import (
     BriefingStatus,
     Claim,
     ContractModel,
+    CurrencyCode,
     DataMode,
     DataProvenance,
     Event,
     Evidence,
     Identifier,
+    InstrumentType,
     MarketSnapshot,
     NonEmptyString,
     NonNegativeInt,
@@ -150,9 +152,40 @@ class MarketSnapshotListResponse(ContractModel):
     meta: DataProvenance
 
 
+class InstrumentSummary(ContractModel):
+    id: Identifier
+    symbol: AssetSymbol
+    name: NonEmptyString
+    instrument_type: InstrumentType
+    currency: CurrencyCode
+    exchange: NonEmptyString
+    benchmark_symbol: AssetSymbol | None = None
+    series_id: NonEmptyString | None = None
+
+
+class InstrumentSearchResponse(ContractModel):
+    data: tuple[InstrumentSummary, ...]
+    meta: DataProvenance
+
+
+class MarketQuote(DataProvenance):
+    symbol: AssetSymbol
+    name: NonEmptyString
+    instrument_type: InstrumentType
+    currency: CurrencyCode
+    price: Annotated[float, Field(gt=0)] | None = None
+    previous_close: Annotated[float, Field(gt=0)] | None = None
+    change_percent: float | None = None
+
+
+class MarketQuoteListResponse(ContractModel):
+    data: tuple[MarketQuote, ...]
+    meta: DataProvenance
+
+
 class ProviderRuntimeCheck(ContractModel):
-    key: Literal["news", "aapl", "spy", "btc", "wti"]
-    provider: Literal["gdelt", "twelve_data", "finnhub", "coingecko", "fred"]
+    key: NonEmptyString
+    provider: NonEmptyString
     resource: NonEmptyString
     data_mode: DataMode
     ok: bool
@@ -260,6 +293,10 @@ PUBLIC_API_MODELS: tuple[type[ContractModel], ...] = (
     WatchlistResponse,
     AgentRunStepsResponse,
     MarketSnapshotListResponse,
+    InstrumentSummary,
+    InstrumentSearchResponse,
+    MarketQuote,
+    MarketQuoteListResponse,
     ProviderRuntimeCheck,
     ProviderRuntimeStatus,
     ProviderRuntimeResponse,
@@ -290,9 +327,7 @@ def _json_response(
 
 
 def _error_responses(*codes: str) -> dict[str, object]:
-    return {
-        code: _json_response(ApiError, "Request could not be completed") for code in codes
-    }
+    return {code: _json_response(ApiError, "Request could not be completed") for code in codes}
 
 
 def _path_parameter(name: str) -> dict[str, object]:
@@ -440,6 +475,45 @@ def build_openapi_document() -> dict[str, object]:
                 "responses": {"200": _json_response(MarketSnapshotListResponse)},
             }
         },
+        "/api/v1/instruments": {
+            "get": {
+                "operationId": "listInstruments",
+                "summary": "Search the versioned production market universe",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "string", "minLength": 2},
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "integer", "minimum": 1, "maximum": 20, "default": 20},
+                    },
+                ],
+                "responses": {"200": _json_response(InstrumentSearchResponse)},
+            }
+        },
+        "/api/v1/market-quotes": {
+            "get": {
+                "operationId": "listMarketQuotes",
+                "summary": "Read auditable live or fallback market quotes",
+                "parameters": [
+                    {
+                        "name": "symbols",
+                        "in": "query",
+                        "required": True,
+                        "schema": {"type": "string", "minLength": 1},
+                    }
+                ],
+                "responses": {
+                    "200": _json_response(MarketQuoteListResponse),
+                    **_error_responses("422"),
+                },
+            }
+        },
         "/api/v1/runtime/providers": {
             "get": {
                 "operationId": "getProviderRuntimeStatus",
@@ -488,8 +562,7 @@ def build_openapi_document() -> dict[str, object]:
                         "required": False,
                         "schema": {"type": "string"},
                         "description": (
-                            "Browser EventSource replay cursor when custom headers "
-                            "are unavailable."
+                            "Browser EventSource replay cursor when custom headers are unavailable."
                         ),
                     },
                 ],
@@ -665,6 +738,10 @@ __all__ = [
     "EventView",
     "HealthResponse",
     "MarketSnapshotListResponse",
+    "InstrumentSummary",
+    "InstrumentSearchResponse",
+    "MarketQuote",
+    "MarketQuoteListResponse",
     "ProviderRuntimeCheck",
     "ProviderRuntimeResponse",
     "ProviderRuntimeStatus",

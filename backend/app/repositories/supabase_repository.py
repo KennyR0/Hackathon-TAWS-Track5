@@ -8,15 +8,31 @@ from typing import Any
 
 from supabase import Client
 
-from app.contracts.api import AgentRunStep, AnalysisRequest, BriefingRequest, ReviewRequest
+from app.contracts.api import (
+    AgentRunStep,
+    AnalysisRequest,
+    BriefingRequest,
+    ReviewRequest,
+    Watchlist,
+)
 from app.contracts.entities import (
     AgentRun,
+    Article,
+    Asset,
+    AssetRelation,
     Briefing,
+    DataMode,
+    DataProvenance,
     Event,
     Evidence,
+    Freshness,
+    MarketPoint,
+    MarketSnapshot,
     Reviewer,
     Signal,
     SignalReview,
+    Source,
+    SourceTier,
     allow_internal_field_names,
 )
 from app.contracts.fixtures import canonical_json_bytes
@@ -42,7 +58,109 @@ class SupabaseRepository(FixtureRepository):
         self._actor_user_id = actor_user_id
         self._enforce_ownership = actor_user_id is not None
         super().__init__(provider, market_runtime=market_runtime)
+        self._hydrate_market_content()
         self._hydrate_mutable_state()
+
+    def _hydrate_market_content(self) -> None:
+        try:
+            asset_rows = self._supabase.table("assets").select("*").execute().data or []
+            source_rows = self._supabase.table("sources").select("*").execute().data or []
+            article_rows = self._supabase.table("articles").select("*").execute().data or []
+            event_rows = self._supabase.table("events").select("*").execute().data or []
+            link_rows = self._supabase.table("event_articles").select("*").execute().data or []
+            relation_rows = (
+                self._supabase.table("event_asset_relations").select("*").execute().data or []
+            )
+        except Exception:
+            return
+        with allow_internal_field_names():
+            for row in asset_rows:
+                asset = Asset(
+                    id=row["id"],
+                    symbol=row["symbol"],
+                    name=row["name"],
+                    instrument_type=row["instrument_type"],
+                    currency=row["currency"],
+                    exchange=row.get("exchange"),
+                    benchmark_asset_id=row.get("benchmark_asset_id"),
+                    series_id=row.get("series_id"),
+                )
+                self._assets[asset.id] = asset
+                self._assets_by_symbol[asset.symbol] = asset
+            for row in source_rows:
+                source = Source(
+                    id=row["id"],
+                    name=row["name"],
+                    domain=row["domain"],
+                    tier=SourceTier(row["tier"]),
+                    publisher_group_id=row["publisher_group_id"],
+                    is_original_publisher=row["is_original_publisher"],
+                    is_aggregator=row["is_aggregator"],
+                    fixture_only=row["fixture_only"],
+                    homepage_url=row["homepage_url"],
+                    country_code=row["country_code"],
+                    language=row["language"],
+                )
+                self._sources[source.id] = source
+            for row in article_rows:
+                article = Article(
+                    id=row["id"],
+                    source_id=row["source_id"],
+                    provider_article_id=row["provider_article_id"],
+                    headline=row["headline"],
+                    summary=row["summary"],
+                    published_at=row["published_at"],
+                    url=row["url"],
+                    language=row["language"],
+                    source_snapshot_id=row["source_snapshot_id"],
+                    content_hash=row["content_hash"],
+                    is_synthetic=row["is_synthetic"],
+                    data_mode=DataMode(row["data_mode"]),
+                    provider=row["provider"],
+                    retrieved_at=row["retrieved_at"],
+                    data_as_of=row["data_as_of"],
+                    freshness=Freshness.model_validate(row["freshness"]),
+                    warnings=tuple(row.get("warnings") or ()),
+                )
+                self._articles[article.id] = article
+            article_ids_by_event: dict[str, list[str]] = {}
+            for row in sorted(link_rows, key=lambda item: item.get("position", 0)):
+                article_ids_by_event.setdefault(row["event_id"], []).append(row["article_id"])
+            relations_by_event: dict[str, list[AssetRelation]] = {}
+            for row in relation_rows:
+                asset = self._assets.get(row["asset_id"])
+                if asset is None:
+                    continue
+                relation = AssetRelation(
+                    asset_id=asset.id,
+                    symbol=asset.symbol,
+                    relationship=row["relationship"],
+                    reason=row["reason"],
+                    entity_match_score=float(row["entity_match_score"]),
+                )
+                relations_by_event.setdefault(row["event_id"], []).append(relation)
+            for row in event_rows:
+                article_ids = tuple(article_ids_by_event.get(row["id"], ()))
+                relations = tuple(relations_by_event.get(row["id"], ()))
+                if not article_ids or not relations:
+                    continue
+                event = Event(
+                    id=row["id"],
+                    title=row["title"],
+                    summary=row["summary"],
+                    event_at=row["event_at"],
+                    article_ids=article_ids,
+                    related_assets=relations,
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                    data_mode=DataMode(row["data_mode"]),
+                    provider=row["provider"],
+                    retrieved_at=row["retrieved_at"],
+                    data_as_of=row["data_as_of"],
+                    freshness=Freshness.model_validate(row["freshness"]),
+                    warnings=tuple(row.get("warnings") or ()),
+                )
+                self._events[event.id] = event
 
     def _hydrate_mutable_state(self) -> None:
         signal_ids = self._owned_ids("signals") if self._enforce_ownership else ()
@@ -50,21 +168,20 @@ class SupabaseRepository(FixtureRepository):
             review_rows = []
             if signal_ids:
                 review_rows = (
-                self._supabase.table("signal_reviews")
-                .select("*")
-                .in_("signal_id", signal_ids)
-                .execute()
-                .data
-                or []
-            )
+                    self._supabase.table("signal_reviews")
+                    .select("*")
+                    .in_("signal_id", signal_ids)
+                    .execute()
+                    .data
+                    or []
+                )
         else:
             review_rows = self._supabase.table("signal_reviews").select("*").execute().data or []
         with allow_internal_field_names():
             reviewer = Reviewer(**REVIEWER)
         for row in review_rows:
             if any(
-                item.id == row["id"]
-                for item in self._reviews_by_signal.get(row["signal_id"], [])
+                item.id == row["id"] for item in self._reviews_by_signal.get(row["signal_id"], [])
             ):
                 continue
             with allow_internal_field_names():
@@ -173,14 +290,208 @@ class SupabaseRepository(FixtureRepository):
             raise KeyError("Resource not found")
 
     def list_events(self, **filters: str | None) -> tuple[tuple[Event, tuple[str, ...]], ...]:
-        if not self._enforce_ownership:
-            return super().list_events(**filters)
-        owned = set(self._owned_ids("events"))
-        return tuple(item for item in super().list_events(**filters) if item[0].id in owned)
+        owned = set(self._owned_ids("events")) if self._enforce_ownership else None
+        instrument_type = filters.get("instrument_type")
+        asset = filters.get("asset")
+        published_after = filters.get("published_after")
+        result: list[tuple[Event, tuple[str, ...]]] = []
+        for event in self._events.values():
+            if owned is not None and event.id not in owned:
+                continue
+            symbols = tuple(relation.symbol for relation in event.related_assets)
+            if asset and asset not in symbols:
+                continue
+            if instrument_type and not any(
+                self._assets[relation.asset_id].instrument_type.value == instrument_type
+                for relation in event.related_assets
+            ):
+                continue
+            if (
+                published_after
+                and event.event_at.isoformat().replace("+00:00", "Z") <= published_after
+            ):
+                continue
+            result.append((event, symbols))
+        return tuple(sorted(result, key=lambda item: item[0].event_at, reverse=True))
 
     def get_event(self, event_id: str) -> tuple[Event, tuple[str, ...]]:
         self._assert_owned("events", event_id)
         return super().get_event(event_id)
+
+    def get_watchlist(self) -> Watchlist:
+        try:
+            rows = (
+                self._supabase.table("watchlist_assets")
+                .select("asset_id,position")
+                .eq("watchlist_id", "watchlist_demo_global")
+                .order("position")
+                .execute()
+                .data
+                or []
+            )
+        except Exception:
+            return super().get_watchlist()
+        if not rows:
+            return super().get_watchlist()
+        with allow_internal_field_names():
+            return Watchlist(
+                id="watchlist_demo_global",
+                name="Global",
+                asset_ids=tuple(str(row["asset_id"]) for row in rows),
+            )
+
+    def list_market_snapshots(
+        self,
+        *,
+        asset: str | None = None,
+        interval: str | None = None,
+    ) -> tuple[MarketSnapshot, ...]:
+        try:
+            query = self._supabase.table("market_snapshots").select("*")
+            if asset:
+                asset_rows = (
+                    self._supabase.table("assets")
+                    .select("id")
+                    .eq("symbol", asset.upper())
+                    .limit(1)
+                    .execute()
+                    .data
+                    or []
+                )
+                if not asset_rows:
+                    return ()
+                query = query.eq("asset_id", asset_rows[0]["id"])
+            if interval:
+                query = query.eq("interval", interval)
+            rows = query.execute().data or []
+        except Exception:
+            return super().list_market_snapshots(asset=asset, interval=interval)
+
+        live_snapshots: list[MarketSnapshot] = []
+        live_asset_ids: set[str] = set()
+        for row in rows:
+            observations = (
+                self._supabase.table("market_observations")
+                .select("*")
+                .eq("market_snapshot_id", row["id"])
+                .order("observed_at")
+                .execute()
+                .data
+                or []
+            )
+            if len(observations) < 2:
+                continue
+            with allow_internal_field_names():
+                points = tuple(
+                    MarketPoint(
+                        timestamp=item["observed_at"],
+                        close=float(item["close_value"]),
+                        volume=(float(item["volume"]) if item.get("volume") is not None else None),
+                        open=(
+                            float(item["open_value"])
+                            if item.get("open_value") is not None
+                            else None
+                        ),
+                        high=(
+                            float(item["high_value"])
+                            if item.get("high_value") is not None
+                            else None
+                        ),
+                        low=(
+                            float(item["low_value"]) if item.get("low_value") is not None else None
+                        ),
+                    )
+                    for item in observations
+                )
+                freshness_payload = row["freshness"]
+                freshness = Freshness.model_validate(freshness_payload)
+                snapshot = MarketSnapshot(
+                    id=row["id"],
+                    asset_id=row["asset_id"],
+                    benchmark_asset_id=row.get("benchmark_asset_id"),
+                    series_id=row.get("series_id"),
+                    interval=row["interval"],
+                    currency=row["currency"],
+                    timezone=row["timezone"],
+                    start_at=points[0].timestamp,
+                    end_at=points[-1].timestamp,
+                    source_url=row["source_url"],
+                    observations=points,
+                    missing_value_policy=row["missing_value_policy"],
+                    content_hash=row["content_hash"],
+                    data_mode=DataMode(row["data_mode"]),
+                    provider=row["provider"],
+                    retrieved_at=row["retrieved_at"],
+                    data_as_of=row["data_as_of"],
+                    freshness=freshness,
+                    warnings=tuple(row.get("warnings") or ()),
+                )
+            live_snapshots.append(snapshot)
+            live_asset_ids.add(snapshot.asset_id)
+
+        fallback = tuple(
+            item
+            for item in super().list_market_snapshots(asset=asset, interval=interval)
+            if item.asset_id not in live_asset_ids
+        )
+        return tuple(
+            sorted(
+                (*live_snapshots, *fallback),
+                key=lambda item: (item.asset_id, item.interval, item.id),
+            )
+        )
+
+    def get_market_meta(self) -> DataProvenance:
+        try:
+            rows = (
+                self._supabase.table("market_snapshots")
+                .select("data_mode,provider,retrieved_at,data_as_of,freshness,warnings")
+                .order("retrieved_at", desc=True)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+        except Exception:
+            return super().get_meta()
+        if not rows:
+            return super().get_meta()
+        row = rows[0]
+        with allow_internal_field_names():
+            return DataProvenance(
+                data_mode=DataMode(row["data_mode"]),
+                provider=row["provider"],
+                retrieved_at=row["retrieved_at"],
+                data_as_of=row["data_as_of"],
+                freshness=Freshness.model_validate(row["freshness"]),
+                warnings=tuple(row.get("warnings") or ()),
+            )
+
+    def get_event_meta(self) -> DataProvenance:
+        try:
+            rows = (
+                self._supabase.table("events")
+                .select("data_mode,provider,retrieved_at,data_as_of,freshness,warnings")
+                .order("retrieved_at", desc=True)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+        except Exception:
+            return super().get_meta()
+        if not rows:
+            return super().get_meta()
+        row = rows[0]
+        with allow_internal_field_names():
+            return DataProvenance(
+                data_mode=DataMode(row["data_mode"]),
+                provider=row["provider"],
+                retrieved_at=row["retrieved_at"],
+                data_as_of=row["data_as_of"],
+                freshness=Freshness.model_validate(row["freshness"]),
+                warnings=tuple(row.get("warnings") or ()),
+            )
 
     def list_signals(self, **filters: str | None) -> tuple[Signal, ...]:
         if not self._enforce_ownership:
@@ -330,10 +641,7 @@ class SupabaseRepository(FixtureRepository):
                 operation=f"review:{signal_id}",
                 key=idempotency_key,
                 payload=payload,
-                response_body=[
-                    item.model_dump(mode="json", by_alias=True)
-                    for item in reviews
-                ],
+                response_body=[item.model_dump(mode="json", by_alias=True) for item in reviews],
             )
             self._persist_audit_event(
                 audit_id=f"audit_review_{created.id}",
@@ -449,9 +757,7 @@ class SupabaseRepository(FixtureRepository):
                 {
                     "run_id": run.id,
                     "snapshot_id": snapshot_id,
-                    "snapshot_kind": (
-                        "market" if snapshot_id.startswith("mkt_") else "raw_source"
-                    ),
+                    "snapshot_kind": ("market" if snapshot_id.startswith("mkt_") else "raw_source"),
                 }
                 for snapshot_id in run.source_snapshot_ids
             ]
@@ -464,17 +770,16 @@ class SupabaseRepository(FixtureRepository):
                     .data
                     or []
                 )
-                existing_pairs = {
-                    (row["run_id"], row["snapshot_id"])
-                    for row in existing_links
-                }
+                existing_pairs = {(row["run_id"], row["snapshot_id"]) for row in existing_links}
                 rows_to_insert = [
                     row
                     for row in links
                     if (row["run_id"], row["snapshot_id"]) not in existing_pairs
                 ]
                 if rows_to_insert:
-                    self._supabase.table("agent_run_source_snapshots").insert(rows_to_insert).execute()
+                    self._supabase.table("agent_run_source_snapshots").insert(
+                        rows_to_insert
+                    ).execute()
             self._persist_idempotency(
                 operation="analysis",
                 key=idempotency_key,
@@ -508,9 +813,7 @@ class SupabaseRepository(FixtureRepository):
                 "input_hash": run.input_hash,
                 "started_at": run.started_at.isoformat(),
                 "finished_at": (
-                    run.finished_at.isoformat()
-                    if run.finished_at is not None
-                    else None
+                    run.finished_at.isoformat() if run.finished_at is not None else None
                 ),
                 "error_code": run.error_code,
                 "retry_count": run.retry_count,

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "instruments": [
+    {"id":"ast_aapl","symbol":"AAPL","name":"Apple Inc.","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_msft","symbol":"MSFT","name":"Microsoft Corporation","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_nvda","symbol":"NVDA","name":"NVIDIA Corporation","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_amzn","symbol":"AMZN","name":"Amazon.com Inc.","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_googl","symbol":"GOOGL","name":"Alphabet Inc.","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_meta","symbol":"META","name":"Meta Platforms Inc.","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_tsla","symbol":"TSLA","name":"Tesla Inc.","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_jpm","symbol":"JPM","name":"JPMorgan Chase & Co.","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_bac","symbol":"BAC","name":"Bank of America Corporation","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_v","symbol":"V","name":"Visa Inc.","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_wmt","symbol":"WMT","name":"Walmart Inc.","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_cost","symbol":"COST","name":"Costco Wholesale Corporation","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_xom","symbol":"XOM","name":"Exxon Mobil Corporation","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_cvx","symbol":"CVX","name":"Chevron Corporation","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_unh","symbol":"UNH","name":"UnitedHealth Group Incorporated","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_jnj","symbol":"JNJ","name":"Johnson & Johnson","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_pfe","symbol":"PFE","name":"Pfizer Inc.","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_ko","symbol":"KO","name":"The Coca-Cola Company","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_dis","symbol":"DIS","name":"The Walt Disney Company","instrumentType":"equity","currency":"USD","exchange":"NYSE","benchmarkSymbol":"SPY"},
+    {"id":"ast_nflx","symbol":"NFLX","name":"Netflix Inc.","instrumentType":"equity","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_spy","symbol":"SPY","name":"SPDR S&P 500 ETF Trust","instrumentType":"etf","currency":"USD","exchange":"NYSE Arca","benchmarkSymbol":null},
+    {"id":"ast_qqq","symbol":"QQQ","name":"Invesco QQQ Trust","instrumentType":"etf","currency":"USD","exchange":"NASDAQ","benchmarkSymbol":"SPY"},
+    {"id":"ast_btc_usd","symbol":"BTC-USD","name":"Bitcoin","instrumentType":"crypto","currency":"USD","exchange":"Crypto","benchmarkSymbol":null},
+    {"id":"ast_eth_usd","symbol":"ETH-USD","name":"Ethereum","instrumentType":"crypto","currency":"USD","exchange":"Crypto","benchmarkSymbol":"BTC-USD"},
+    {"id":"ast_wti","symbol":"WTI","name":"West Texas Intermediate Crude Oil","instrumentType":"commodity","currency":"USD","exchange":"FRED","benchmarkSymbol":null,"seriesId":"DCOILWTICO"}
+  ]
+}

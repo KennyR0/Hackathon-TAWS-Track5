@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Protocol
+from urllib.parse import urlsplit
 
 from supabase import Client
 
 from app.contracts.fixtures import FixtureBundle
+from app.market_universe import MarketUniverse
+from app.providers.live_market import MarketRuntimeSnapshot
 
 
 class OperationStore(Protocol):
@@ -16,6 +22,12 @@ class OperationStore(Protocol):
     def market(self, bundle: FixtureBundle, *, macro: bool) -> tuple[int, int]: ...
     def reconcile(self, bundle: FixtureBundle) -> tuple[int, int]: ...
     def cleanup(self, now: datetime) -> tuple[int, int]: ...
+    def market_runtime(
+        self, snapshot: MarketRuntimeSnapshot, universe: MarketUniverse
+    ) -> tuple[int, int]: ...
+    def ingest_runtime(
+        self, snapshot: MarketRuntimeSnapshot, universe: MarketUniverse
+    ) -> tuple[int, int]: ...
 
 
 @dataclass
@@ -38,9 +50,7 @@ class InMemoryOperationStore:
 
     def market(self, bundle: FixtureBundle, *, macro: bool) -> tuple[int, int]:
         snapshots = {
-            item.id
-            for item in bundle.market_snapshots
-            if (item.series_id is not None) is macro
+            item.id for item in bundle.market_snapshots if (item.series_id is not None) is macro
         }
         return self._upsert("market_snapshots", snapshots)
 
@@ -56,6 +66,25 @@ class InMemoryOperationStore:
         _ = now
         expired = self.records.pop("expired", set())
         return len(expired), len(expired)
+
+    def market_runtime(
+        self, snapshot: MarketRuntimeSnapshot, universe: MarketUniverse
+    ) -> tuple[int, int]:
+        known_symbols = {item.symbol for item in universe.instruments}
+        ids = {
+            f"live:{symbol}"
+            for symbol, result in snapshot.checks.items()
+            if symbol in known_symbols and _quote_value(result.payload) is not None
+        }
+        return self._upsert("market_snapshots_live", ids)
+
+    def ingest_runtime(
+        self, snapshot: MarketRuntimeSnapshot, universe: MarketUniverse
+    ) -> tuple[int, int]:
+        _ = universe
+        articles = _news_articles(snapshot)
+        ids = {_stable_id("article", _article_provider_id(item)) for item in articles}
+        return self._upsert("articles_live", ids)
 
 
 class SupabaseOperationStore:
@@ -78,9 +107,7 @@ class SupabaseOperationStore:
 
     def market(self, bundle: FixtureBundle, *, macro: bool) -> tuple[int, int]:
         snapshots = [
-            item
-            for item in bundle.market_snapshots
-            if (item.series_id is not None) is macro
+            item for item in bundle.market_snapshots if (item.series_id is not None) is macro
         ]
         snapshot_rows = [self._json_row(item, exclude={"observations"}) for item in snapshots]
         observation_rows = [
@@ -108,7 +135,7 @@ class SupabaseOperationStore:
 
     def reconcile(self, bundle: FixtureBundle) -> tuple[int, int]:
         rows = [
-            {"event_id": event.id, "article_id": article_id, "is_primary": index == 0}
+            {"event_id": event.id, "article_id": article_id, "position": index}
             for event in bundle.events
             for index, article_id in enumerate(event.article_ids)
         ]
@@ -122,14 +149,365 @@ class SupabaseOperationStore:
     def cleanup(self, now: datetime) -> tuple[int, int]:
         timestamp = now.astimezone(UTC).isoformat()
         idempotency = (
-            self._client.table("idempotency_keys")
-            .delete()
-            .lt("expires_at", timestamp)
-            .execute()
+            self._client.table("idempotency_keys").delete().lt("expires_at", timestamp).execute()
         )
         cache = self._client.table("provider_cache").delete().lt("expires_at", timestamp).execute()
         deleted = len(idempotency.data or []) + len(cache.data or [])
         return deleted, deleted
+
+    def market_runtime(
+        self, snapshot: MarketRuntimeSnapshot, universe: MarketUniverse
+    ) -> tuple[int, int]:
+        now = datetime.now(UTC)
+        by_symbol = {item.symbol: item for item in universe.instruments}
+        asset_ids = {item.symbol: item.id for item in universe.instruments}
+        asset_rows = [
+            {
+                "id": item.id,
+                "symbol": item.symbol,
+                "name": item.name,
+                "instrument_type": item.instrument_type.value,
+                "currency": item.currency,
+                "exchange": item.exchange,
+                "benchmark_asset_id": asset_ids.get(item.benchmark_symbol),
+                "series_id": item.series_id,
+            }
+            for item in universe.instruments
+        ]
+        self._client.table("assets").upsert(asset_rows, on_conflict="symbol").execute()
+        self._client.table("watchlists").upsert(
+            {"id": "watchlist_demo_global", "organization_id": "org_demo", "name": "Global"}
+        ).execute()
+        self._client.table("watchlist_assets").upsert(
+            [
+                {
+                    "watchlist_id": "watchlist_demo_global",
+                    "asset_id": item.id,
+                    "position": position,
+                }
+                for position, item in enumerate(universe.instruments)
+            ],
+            on_conflict="watchlist_id,asset_id",
+        ).execute()
+
+        snapshot_rows: list[dict[str, object]] = []
+        observation_rows: list[dict[str, object]] = []
+        for symbol, result in snapshot.checks.items():
+            instrument = by_symbol.get(symbol)
+            value = _quote_value(result.payload)
+            if instrument is None or value is None:
+                continue
+            observed_at = _quote_timestamp(result.payload, now)
+            snapshot_id = f"mkt_live_{symbol.lower().replace('-', '_')}_1d"
+            existing = (
+                self._client.table("market_snapshots")
+                .select("start_at")
+                .eq("id", snapshot_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            start_at = existing[0]["start_at"] if existing else observed_at.isoformat()
+            warnings = list(result.warnings)
+            if result.data_mode != "live" and not warnings:
+                warnings = ["LIVE_QUOTE_FALLBACK"]
+            snapshot_rows.append(
+                {
+                    "id": snapshot_id,
+                    "asset_id": instrument.id,
+                    "benchmark_asset_id": asset_ids.get(instrument.benchmark_symbol),
+                    "series_id": instrument.series_id,
+                    "interval": "1d",
+                    "currency": instrument.currency,
+                    "timezone": "UTC",
+                    "start_at": start_at,
+                    "end_at": observed_at.isoformat(),
+                    "source_url": _provider_source_url(result.provider),
+                    "missing_value_policy": (
+                        "skip_non_trading_days" if instrument.series_id else "none"
+                    ),
+                    "content_hash": _quote_hash(symbol, result.payload),
+                    "data_mode": result.data_mode,
+                    "provider": result.provider,
+                    "retrieved_at": now.isoformat(),
+                    "data_as_of": observed_at.isoformat(),
+                    "freshness": {
+                        "evaluatedAt": now.isoformat(),
+                        "staleAfterSeconds": 86400,
+                        "isStale": (now - observed_at).total_seconds() > 86400,
+                    },
+                    "warnings": warnings,
+                }
+            )
+            observation_rows.append(
+                {
+                    "market_snapshot_id": snapshot_id,
+                    "observed_at": observed_at.isoformat(),
+                    "close_value": value,
+                    "volume": None,
+                    "open_value": None,
+                    "high_value": None,
+                    "low_value": None,
+                }
+            )
+        if snapshot_rows:
+            self._client.table("market_snapshots").upsert(snapshot_rows).execute()
+        if observation_rows:
+            self._client.table("market_observations").upsert(
+                observation_rows,
+                on_conflict="market_snapshot_id,observed_at",
+            ).execute()
+        total = len(asset_rows) + len(snapshot_rows) + len(observation_rows)
+        return total, total
+
+    def ingest_runtime(
+        self, snapshot: MarketRuntimeSnapshot, universe: MarketUniverse
+    ) -> tuple[int, int]:
+        articles = _news_articles(snapshot)
+        if not articles:
+            return 0, 0
+        news_result = snapshot.checks["news"]
+        now = datetime.now(UTC)
+        by_symbol = {item.symbol: item for item in universe.instruments}
+        source_rows: dict[str, dict[str, object]] = {}
+        raw_rows: list[dict[str, object]] = []
+        article_rows: list[dict[str, object]] = []
+        event_rows: list[dict[str, object]] = []
+        event_article_rows: list[dict[str, object]] = []
+        event_asset_rows: list[dict[str, object]] = []
+        for item in articles:
+            provider_id = _article_provider_id(item)
+            article_url = _article_url(item)
+            domain = _article_domain(item, article_url)
+            source_id = _stable_id("src", domain)
+            raw_id = _stable_id("raw", f"{news_result.provider}:{provider_id}")
+            article_id = _stable_id("art", f"{news_result.provider}:{provider_id}")
+            event_id = _stable_id("evt", f"{news_result.provider}:{provider_id}")
+            published_at = _article_published_at(item, now)
+            title = _article_title(item)
+            summary = _article_summary(item, title)
+            symbol = _match_article_symbol(title, summary, universe) or "AAPL"
+            instrument = by_symbol[symbol]
+            raw_hash = _content_hash(item)
+            source_rows[source_id] = {
+                "id": source_id,
+                "name": domain,
+                "domain": domain,
+                "tier": "B",
+                "publisher_group_id": _stable_id("grp", domain),
+                "is_original_publisher": True,
+                "is_aggregator": False,
+                "fixture_only": False,
+                "homepage_url": f"https://{domain}",
+                "country_code": "US",
+                "language": "en",
+            }
+            raw_rows.append(
+                {
+                    "id": raw_id,
+                    "source_id": source_id,
+                    "provider": news_result.provider,
+                    "provider_article_id": provider_id,
+                    "captured_at": now.isoformat(),
+                    "payload": item,
+                    "content_hash": raw_hash,
+                }
+            )
+            warnings = list(news_result.warnings)
+            article_rows.append(
+                {
+                    "id": article_id,
+                    "source_id": source_id,
+                    "provider_article_id": provider_id,
+                    "headline": title,
+                    "summary": summary,
+                    "published_at": published_at.isoformat(),
+                    "url": article_url,
+                    "language": "en",
+                    "source_snapshot_id": raw_id,
+                    "content_hash": raw_hash,
+                    "is_synthetic": False,
+                    "data_mode": news_result.data_mode,
+                    "provider": news_result.provider,
+                    "retrieved_at": now.isoformat(),
+                    "data_as_of": published_at.isoformat(),
+                    "freshness": {
+                        "evaluatedAt": now.isoformat(),
+                        "staleAfterSeconds": 86400,
+                        "isStale": (now - published_at).total_seconds() > 86400,
+                    },
+                    "warnings": warnings,
+                }
+            )
+            event_rows.append(
+                {
+                    "id": event_id,
+                    "organization_id": "org_demo",
+                    "title": title,
+                    "summary": summary,
+                    "event_at": published_at.isoformat(),
+                    "data_mode": news_result.data_mode,
+                    "provider": news_result.provider,
+                    "retrieved_at": now.isoformat(),
+                    "data_as_of": published_at.isoformat(),
+                    "freshness": {
+                        "evaluatedAt": now.isoformat(),
+                        "staleAfterSeconds": 86400,
+                        "isStale": (now - published_at).total_seconds() > 86400,
+                    },
+                    "warnings": warnings,
+                    "created_at": now.isoformat(),
+                    "updated_at": now.isoformat(),
+                }
+            )
+            event_article_rows.append(
+                {"event_id": event_id, "article_id": article_id, "position": 0}
+            )
+            event_asset_rows.append(
+                {
+                    "event_id": event_id,
+                    "asset_id": instrument.id,
+                    "relationship": "direct",
+                    "reason": f"Entity match for {instrument.name}",
+                    "entity_match_score": 0.9,
+                }
+            )
+        self._client.table("sources").upsert(list(source_rows.values())).execute()
+        self._client.table("raw_source_snapshots").upsert(
+            raw_rows, on_conflict="provider,provider_article_id"
+        ).execute()
+        self._client.table("articles").upsert(
+            article_rows, on_conflict="source_id,provider_article_id"
+        ).execute()
+        self._client.table("events").upsert(event_rows).execute()
+        self._client.table("event_articles").upsert(
+            event_article_rows, on_conflict="event_id,article_id"
+        ).execute()
+        self._client.table("event_asset_relations").upsert(
+            event_asset_rows, on_conflict="event_id,asset_id"
+        ).execute()
+        total = sum(
+            len(rows)
+            for rows in (
+                source_rows,
+                raw_rows,
+                article_rows,
+                event_rows,
+                event_article_rows,
+                event_asset_rows,
+            )
+        )
+        return total, total
+
+
+def _quote_value(payload: dict[str, object]) -> float | None:
+    raw = (
+        payload.get("close") or payload.get("current") or payload.get("usd") or payload.get("value")
+    )
+    try:
+        value = float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+    return value if value is not None and value > 0 else None
+
+
+def _quote_timestamp(payload: dict[str, object], fallback: datetime) -> datetime:
+    updated_at = payload.get("lastUpdatedAt")
+    if isinstance(updated_at, (int, float)):
+        return datetime.fromtimestamp(updated_at, tz=UTC)
+    observed_on = payload.get("date")
+    if isinstance(observed_on, str):
+        try:
+            return datetime.fromisoformat(observed_on).replace(tzinfo=UTC)
+        except ValueError:
+            pass
+    return fallback
+
+
+def _provider_source_url(provider: str) -> str:
+    return {
+        "twelve_data": "https://api.twelvedata.com/quote",
+        "finnhub": "https://finnhub.io/api/v1/quote",
+        "coingecko": "https://api.coingecko.com/api/v3/simple/price",
+        "fred": "https://api.stlouisfed.org/fred/series/observations",
+    }.get(provider, "https://api.nexomercado.example/market")
+
+
+def _quote_hash(symbol: str, payload: dict[str, object]) -> str:
+    body = json.dumps({"symbol": symbol, "payload": payload}, sort_keys=True, default=str)
+    return f"sha256:{sha256(body.encode('utf-8')).hexdigest()}"
+
+
+def _news_articles(snapshot: MarketRuntimeSnapshot) -> list[dict[str, object]]:
+    result = snapshot.checks.get("news")
+    if result is None or not result.ok:
+        return []
+    articles = result.payload.get("articles")
+    if not isinstance(articles, list):
+        return []
+    return [item for item in articles if isinstance(item, dict)]
+
+
+def _article_provider_id(item: dict[str, object]) -> str:
+    value = item.get("id") or item.get("url") or item.get("title") or item.get("headline")
+    return str(value or _content_hash(item))[:250]
+
+
+def _article_title(item: dict[str, object]) -> str:
+    return str(item.get("title") or item.get("headline") or "Market update")[:500]
+
+
+def _article_summary(item: dict[str, object], title: str) -> str:
+    return str(item.get("summary") or item.get("description") or title)[:2000]
+
+
+def _article_url(item: dict[str, object]) -> str:
+    value = str(item.get("url") or "").strip()
+    return value if value.startswith("https://") else "https://www.reuters.com/markets/"
+
+
+def _article_domain(item: dict[str, object], url: str) -> str:
+    raw = str(item.get("domain") or item.get("source") or urlsplit(url).hostname or "reuters.com")
+    domain = raw.lower().removeprefix("www.")
+    domain = re.sub(r"[^a-z0-9.-]", "-", domain).strip("-.")
+    return domain if "." in domain else f"{domain or 'market-source'}.com"
+
+
+def _article_published_at(item: dict[str, object], now: datetime) -> datetime:
+    raw = item.get("datetime") or item.get("seendate") or item.get("publishedAt")
+    if isinstance(raw, (int, float)):
+        parsed = datetime.fromtimestamp(raw, tz=UTC)
+        return min(parsed, now)
+    if isinstance(raw, str):
+        for value in (raw, raw.replace("Z", "+00:00")):
+            try:
+                parsed = datetime.fromisoformat(value)
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=UTC)
+                return min(parsed.astimezone(UTC), now)
+            except ValueError:
+                continue
+    return now
+
+
+def _match_article_symbol(title: str, summary: str, universe: MarketUniverse) -> str | None:
+    content = f"{title} {summary}".casefold()
+    for item in universe.instruments:
+        company_token = item.name.split()[0].casefold()
+        if item.symbol.casefold() in content or company_token in content:
+            return item.symbol
+    return None
+
+
+def _content_hash(value: object) -> str:
+    body = json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
+    return f"sha256:{sha256(body.encode('utf-8')).hexdigest()}"
+
+
+def _stable_id(prefix: str, value: str) -> str:
+    digest = sha256(value.encode("utf-8")).hexdigest()[:24]
+    return f"{prefix}_{digest}"
 
 
 __all__ = ["InMemoryOperationStore", "OperationStore", "SupabaseOperationStore"]

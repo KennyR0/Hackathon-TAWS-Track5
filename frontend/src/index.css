@@ -168,6 +168,17 @@ button:disabled, a[aria-disabled="true"] { opacity: .48; cursor: not-allowed; }
 .metric-card small { color: var(--muted); }
 
 .market-card-rail { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.instrument-search { min-height: 48px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: 1px solid var(--border); background: var(--surface); padding: 0 14px; }
+.instrument-search input { min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); }
+.instrument-search span { color: var(--muted); font-size: 11px; }
+.instrument-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.instrument-card { min-width: 0; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border); background: var(--surface); padding: 14px; color: inherit; }
+.instrument-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.instrument-card__head { display: flex; justify-content: space-between; gap: 8px; }
+.instrument-card h2 { margin: 3px 0 0; font: 700 15px "Cascadia Code", Consolas, monospace; }
+.instrument-card p { min-height: 32px; margin: 0; color: var(--muted); font-size: 11px; }
+.instrument-card > strong { font: 700 1.1rem "Cascadia Code", Consolas, monospace; }
+.instrument-card small { color: var(--muted); }
 .market-card { min-width: 0; min-height: 148px; display: flex; flex-direction: column; border: 1px solid var(--border); background: var(--surface); padding: 12px; }
 .market-card--interactive:hover { border-color: var(--accent); transform: translateY(-1px); }
 .market-card__header { display: flex; justify-content: space-between; gap: 8px; }
@@ -335,6 +346,7 @@ button:disabled, a[aria-disabled="true"] { opacity: .48; cursor: not-allowed; }
   .assistant-dialog { width: min(420px, 100%); height: 100%; background: var(--surface); box-shadow: var(--shadow); }
   .panorama-grid { grid-template-columns: minmax(0, 1.4fr) minmax(230px, .6fr); }
   .market-card-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .instrument-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .signal-grid { grid-template-columns: 100px 86px 60px 90px minmax(140px, 1fr) 18px; }
 }
 
@@ -371,6 +383,9 @@ button:disabled, a[aria-disabled="true"] { opacity: .48; cursor: not-allowed; }
   .page-heading .primary-button { width: 100%; }
   .data-stamp { align-items: start; }
   .market-card-rail { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .instrument-grid { grid-template-columns: 1fr; }
+  .instrument-search { grid-template-columns: auto 1fr; }
+  .instrument-search span { display: none; }
   .market-card { min-width: min(82vw, 304px); scroll-snap-align: start; }
   .panorama-side { grid-template-columns: 1fr; }
   .panorama-side .market-side-panel { grid-column: auto; grid-template-columns: 1fr; }

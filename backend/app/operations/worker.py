@@ -10,6 +10,7 @@ from typing import Literal
 from opentelemetry import trace
 from opentelemetry.trace import Tracer
 
+from app.market_universe import MarketUniverse, load_market_universe
 from app.operations.store import InMemoryOperationStore, OperationStore
 from app.providers.base import ProviderProbeResult
 from app.providers.fixture_provider import FixtureProvider
@@ -101,6 +102,7 @@ def run_operations_worker(
     effective_store = store or InMemoryOperationStore()
     tasks = TASK_ORDER if task == "all" else (task,)
     bundle = fixture_provider.load_bundle()
+    universe = load_market_universe()
     metrics: list[OperationMetric] = []
     alerts: list[OperationAlert] = []
     effective_mode = "fixture"
@@ -122,7 +124,7 @@ def run_operations_worker(
                 with effective_tracer.start_as_current_span(
                     f"nexomercado.worker.{atomic_task}"
                 ) as span:
-                    snapshot = _snapshot_for_task(atomic_task, market_service)
+                    snapshot = _snapshot_for_task(atomic_task, market_service, universe)
                     if snapshot is not None:
                         effective_mode = snapshot.data_mode
                         alerts.extend(_snapshot_alerts(snapshot))
@@ -132,6 +134,8 @@ def run_operations_worker(
                         atomic_task,
                         effective_store,
                         bundle,
+                        snapshot,
+                        universe,
                     )
                     span.set_attribute("nexomercado.rows_read", rows_read)
                     span.set_attribute("nexomercado.rows_written", rows_written)
@@ -181,19 +185,36 @@ def run_operations_worker(
 def _snapshot_for_task(
     task: AtomicTask,
     market_service: MarketDataRuntimeService,
+    universe: MarketUniverse,
 ) -> MarketRuntimeSnapshot | None:
-    if task in {"ingest", "prices", "macro"}:
+    if task == "ingest":
         return market_service.collect_demo_snapshot()
+    if task == "prices":
+        instruments = tuple(item for item in universe.instruments if item.series_id is None)
+        return market_service.collect_universe_snapshot(instruments)
+    if task == "macro":
+        instruments = tuple(item for item in universe.instruments if item.series_id is not None)
+        return market_service.collect_universe_snapshot(instruments)
     return None
 
 
-def _execute_task(task: AtomicTask, store: OperationStore, bundle) -> tuple[int, int]:
+def _execute_task(
+    task: AtomicTask,
+    store: OperationStore,
+    bundle,
+    snapshot: MarketRuntimeSnapshot | None,
+    universe: MarketUniverse,
+) -> tuple[int, int]:
     if task == "ingest":
+        if snapshot is not None:
+            live_result = store.ingest_runtime(snapshot, universe)
+            if live_result[0] > 0:
+                return live_result
         return store.ingest(bundle)
     if task == "prices":
-        return store.market(bundle, macro=False)
+        return store.market_runtime(snapshot, universe) if snapshot is not None else (0, 0)
     if task == "macro":
-        return store.market(bundle, macro=True)
+        return store.market_runtime(snapshot, universe) if snapshot is not None else (0, 0)
     if task == "reconcile":
         return store.reconcile(bundle)
     return store.cleanup(datetime.now(UTC))
