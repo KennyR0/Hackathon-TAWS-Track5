@@ -658,6 +658,14 @@ Evidencia del ajuste final de entrega pública:
   - Backend local con `.env` en `127.0.0.1:8010`: `GET /api/v1/runtime/providers` respondió `200`.
   - `.venv314/bin/python backend/scripts/check_public_deployment.py --backend-url http://127.0.0.1:8010 --skip-browser --skip-cors`: aprobado.
 - Smoke público contra Render actual: bloqueado hasta redeploy; el servicio desplegado todavía responde `HTTP 500` en `/api/v1/runtime/providers` porque no contiene este ajuste.
+- Ajuste local del flujo de revisión humana en `codex/fase-10-fix-revision-flow`: el frontend incorpora inmediatamente la respuesta del POST al estado y al historial, muestra confirmación o error visible, y Supabase rehidrata cada revisión con el `reviewed_by` y `display_name` persistidos en vez de sustituirlos por `Analista Demo`.
+- Validaciones del ajuste de revisión:
+  - `.venv/Scripts/python.exe -m pytest backend/tests/repositories/test_supabase_repository.py -q`: aprobado, 8 pruebas.
+  - Cuatro contratos HTTP de creación, identidad e idempotencia de revisiones en `backend/tests/api/test_runtime_api.py`: aprobados.
+  - `frontend/node_modules/.bin/tsc.cmd -b --pretty false`: aprobado.
+  - `frontend/node_modules/.bin/oxlint.cmd .`: aprobado sin advertencias.
+  - `pnpm.cmd build`: aprobado; persiste el warning no bloqueante del chunk principal mayor a 500 kB.
+  - Suite backend restante: todos los casos ejecutados pasaron salvo el chequeo ya conocido de bytes CRLF/LF del snapshot OpenAPI; `test_worker.py` no se pudo recolectar porque el entorno local no contiene la dependencia opcional `opentelemetry.sdk`.
 - Resultado: ajuste listo para revisión; requiere commit/push/redeploy para que la URL pública adopte la corrección.
 
 ### Fase 11 — Cobertura productiva de mercado

@@ -177,14 +177,36 @@ class SupabaseRepository(FixtureRepository):
                 )
         else:
             review_rows = self._supabase.table("signal_reviews").select("*").execute().data or []
-        with allow_internal_field_names():
-            reviewer = Reviewer(**REVIEWER)
-        for row in review_rows:
+        reviewer_ids = tuple(
+            sorted({str(row["reviewed_by"]) for row in review_rows if row.get("reviewed_by")})
+        )
+        reviewer_names: dict[str, str] = {}
+        if reviewer_ids:
+            reviewer_rows = (
+                self._supabase.table("app_users")
+                .select("id,display_name")
+                .in_("id", reviewer_ids)
+                .execute()
+                .data
+                or []
+            )
+            reviewer_names = {
+                str(row["id"]): str(row["display_name"])
+                for row in reviewer_rows
+                if row.get("id") and row.get("display_name")
+            }
+        for row in sorted(review_rows, key=lambda item: item["created_at"]):
             if any(
                 item.id == row["id"] for item in self._reviews_by_signal.get(row["signal_id"], [])
             ):
                 continue
+            reviewer_id = str(row["reviewed_by"])
+            reviewer_name = reviewer_names.get(reviewer_id)
+            if reviewer_name is None and reviewer_id == REVIEWER["id"]:
+                reviewer_name = REVIEWER["name"]
+            reviewer_name = reviewer_name or reviewer_id
             with allow_internal_field_names():
+                reviewer = Reviewer(id=reviewer_id, name=reviewer_name)
                 review = SignalReview(
                     id=row["id"],
                     signal_id=row["signal_id"],

@@ -2,7 +2,15 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { apiClient } from './client'
 import { mapBriefing, mapEventView, mapEvidence, mapMarketSnapshot, mapRun, mapSignal, mapWatchlist } from './mappers'
 import { recentBriefingsStorage, recentRunsStorage } from './storage'
-import type { ApiReviewRequest } from './contracts'
+import type { ApiMeta, ApiReviewRequest, ApiSignalReview } from './contracts'
+import type { EvidenceViewModel, SignalViewModel } from '../types/view-models'
+
+interface SignalDetailQueryData {
+  signal: SignalViewModel
+  evidence: EvidenceViewModel[]
+  reviews: ApiSignalReview[]
+  meta: ApiMeta
+}
 
 export const queryKeys = {
   events: (filters?: { instrumentType?: string; asset?: string; publishedAfter?: string }) => ['events', filters] as const,
@@ -255,10 +263,36 @@ export function useCreateReviewMutation(signalId: string) {
 
   return useMutation({
     mutationFn: (payload: ApiReviewRequest) => apiClient.createSignalReview(signalId, payload),
-    onSuccess: async () => {
+    onSuccess: async payload => {
+      const latestReview = payload.data.at(-1)
+      if (latestReview) {
+        const reviewSummary = {
+          status: latestReview.status,
+          justification: latestReview.justification,
+          reviewedBy: latestReview.reviewedBy,
+          reviewedAt: latestReview.reviewedAt,
+        }
+        queryClient.setQueryData<SignalDetailQueryData>(queryKeys.signal(signalId), current => {
+          if (!current) return current
+          return {
+            ...current,
+            signal: {
+              ...current.signal,
+              reviewStatus: latestReview.status,
+              reviewSummary,
+              updatedAt: latestReview.createdAt,
+              raw: {
+                ...current.signal.raw,
+                review: reviewSummary,
+                updatedAt: latestReview.createdAt,
+              },
+            },
+            reviews: payload.data,
+          }
+        })
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.signal(signalId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.signalReviews(signalId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.signals() }),
       ])
     },

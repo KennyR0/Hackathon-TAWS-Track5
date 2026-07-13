@@ -19,9 +19,16 @@ export function ReviewComposer({ signalId, currentStatus }: { signalId: string; 
   })
 
   const onSubmit = form.handleSubmit(async values => {
-    await mutation.mutateAsync(values)
-    form.reset({ status: values.status, justification: '' })
+    mutation.reset()
+    try {
+      await mutation.mutateAsync(values)
+      form.reset({ status: values.status, justification: '' })
+    } catch {
+      // The mutation state renders the API error next to the action.
+    }
   })
+
+  const savedReview = mutation.data?.data.at(-1)
 
   return (
     <form className="review-form" onSubmit={onSubmit}>
@@ -46,6 +53,16 @@ export function ReviewComposer({ signalId, currentStatus }: { signalId: string; 
           {mutation.isPending ? 'Guardando revisión' : 'Guardar decisión'}
         </button>
       </div>
+      {mutation.isError ? (
+        <p className="field-error" role="alert">
+          {mutation.error instanceof Error ? mutation.error.message : 'No se pudo guardar la decisión.'}
+        </p>
+      ) : null}
+      {mutation.isSuccess && savedReview ? (
+        <p className="inline-hint" role="status">
+          Decisión guardada en el flujo por {savedReview.reviewedBy.name}.
+        </p>
+      ) : null}
     </form>
   )
 }

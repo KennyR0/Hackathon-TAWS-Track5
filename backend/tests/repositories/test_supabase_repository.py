@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from app.contracts.api import AgentRunStep, AnalysisRequest, BriefingRequest, ReviewRequest
+from app.contracts.entities import Reviewer
 from app.providers.fixture_provider import FixtureProvider
 from app.repositories.supabase_repository import SupabaseRepository
 
@@ -178,6 +179,32 @@ def test_review_persists_and_rehydrates_after_repository_restart() -> None:
     )
     assert client.rows["audit_events"][-1]["action"] == "review_reviewed"
     assert client.rows["audit_events"][-1]["actor_user_id"] == "usr_analista_demo"
+
+
+def test_review_rehydrates_the_persisted_reviewer_identity() -> None:
+    client = FakeClient()
+    client.rows["app_users"] = [
+        {
+            "id": "usr_current_analyst",
+            "display_name": "Analista Actual",
+        }
+    ]
+    first = _repository(client)
+
+    first.create_signal_review(
+        "sig_wti_context",
+        ReviewRequest.model_validate(
+            {"status": "escalated", "justification": "Requiere validacion adicional."}
+        ),
+        idempotency_key="supabase-review-current-analyst-001",
+        reviewer=Reviewer(id="usr_current_analyst", name="Analista Actual"),
+    )
+    restarted = _repository(client)
+
+    persisted = restarted.list_signal_reviews("sig_wti_context")[-1]
+    assert persisted.reviewed_by.id == "usr_current_analyst"
+    assert persisted.reviewed_by.name == "Analista Actual"
+    assert restarted.get_signal("sig_wti_context").review.reviewed_by == persisted.reviewed_by
 
 
 def test_review_idempotency_rejects_different_payload_after_restart() -> None:
