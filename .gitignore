@@ -17,3 +17,4 @@ migrations/
 .agents/skills/
 node_modules/
 .codex
+.output/pdf/

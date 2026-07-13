@@ -25,6 +25,7 @@ El foco del proyecto es explicar por qué una señal existe, de dónde salen sus
 - [Arquitectura general](docs/referencias/ARQUITECTURA_GENERAL_NexoMercado_AI.md)
 - [Guía del Track 5](docs/referencias/Hackathon_Guide_Financial_Agents_IA_-_Track_5.md)
 - [Conexiones frontend-backend](docs/CONEXIONES_FRONTEND_BACKEND.md)
+- [Documento explicativo para entregables](docs/DOCUMENTO_EXPLICATIVO.md)
 - [Guion de presentación](docs/demo-script.md)
 - [Entrega para jurado](docs/ENTREGA_JURADO.md)
 

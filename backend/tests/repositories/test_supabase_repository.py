@@ -111,6 +111,15 @@ class FakeQuery:
             return SimpleNamespace(data=payloads)
 
         if self.operation == "update":
+            missing_columns = self.client.missing_columns.get(self.table, set())
+            missing_payload_columns = set(payloads[0]).intersection(missing_columns)
+            if missing_payload_columns:
+                column = sorted(missing_payload_columns)[0]
+                raise RuntimeError(
+                    "{'message': \"Could not find the "
+                    f"'{column}' column of 'conversations' in the schema cache\", "
+                    "'code': 'PGRST204', 'hint': None, 'details': None}"
+                )
             updated = []
             for row in rows:
                 if all(row.get(column) == value for column, value in self.filters):
@@ -124,6 +133,7 @@ class FakeQuery:
 class FakeClient:
     def __init__(self) -> None:
         self.rows: dict[str, list[dict[str, Any]]] = {}
+        self.missing_columns: dict[str, set[str]] = {}
 
     def table(self, name: str) -> FakeQuery:
         return FakeQuery(self, name)
@@ -163,6 +173,27 @@ def test_conversation_repository_persists_instrument_and_clears_stale_signal() -
     assert updated is not None
     assert updated.active_instrument_symbol == "MSFT"
     assert updated.active_signal_id is None
+
+
+def test_conversation_repository_degrades_when_instrument_column_is_missing() -> None:
+    client = FakeClient()
+    client.missing_columns["conversations"] = {"active_instrument_symbol"}
+    repository = SupabaseConversationRepository(client)  # type: ignore[arg-type]
+    conversation = repository.create(
+        organization_id="org_demo",
+        user_id="usr_demo",
+    )
+
+    updated = repository.update_context(
+        conversation.id,
+        active_instrument_symbol="MSFT",
+        active_signal_id="sig_aapl_negative",
+    )
+
+    assert updated is not None
+    assert updated.active_instrument_symbol is None
+    assert updated.active_signal_id == "sig_aapl_negative"
+    assert "active_instrument_symbol" not in client.rows["conversations"][0]
 
 
 def test_authenticated_repository_hides_other_organization_resources() -> None:

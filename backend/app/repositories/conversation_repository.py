@@ -12,6 +12,15 @@ from app.contracts.entities import allow_internal_field_names
 from app.models.conversations import Conversation, ConversationMessage
 
 
+def _is_missing_schema_column_error(error: Exception, column: str) -> bool:
+    message = str(error)
+    return (
+        "PGRST204" in message
+        and f"'{column}' column" in message
+        and "'conversations'" in message
+    )
+
+
 class ConversationRepository(Protocol):
     def create(
         self,
@@ -327,7 +336,23 @@ class SupabaseConversationRepository:
             updates["active_instrument_symbol"] = active_instrument_symbol
         if last_run_id is not None:
             updates["last_run_id"] = last_run_id
-        self._client.table("conversations").update(updates).eq("id", conversation_id).execute()
+        try:
+            self._client.table("conversations").update(updates).eq(
+                "id", conversation_id
+            ).execute()
+        except Exception as error:
+            if "active_instrument_symbol" not in updates or not _is_missing_schema_column_error(
+                error, "active_instrument_symbol"
+            ):
+                raise
+            compatible_updates = {
+                key: value
+                for key, value in updates.items()
+                if key != "active_instrument_symbol"
+            }
+            self._client.table("conversations").update(compatible_updates).eq(
+                "id", conversation_id
+            ).execute()
         return self.get(conversation_id)
 
 
