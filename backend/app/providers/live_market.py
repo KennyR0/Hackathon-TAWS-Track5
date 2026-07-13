@@ -304,115 +304,81 @@ class CoinGeckoPriceProvider(PriceProvider):
         )
 
 
-class RapidAPIYahooFinanceProvider(PriceProvider):
+class RapidAPIYHFinanceProvider(PriceProvider):
     def __init__(
         self,
         *,
         api_key: str | None,
         api_host: str | None,
         base_url: str | None,
-        chart_path: str = "/stock/v3/get-chart",
+        history_path: str = "/api/v2/markets/stock/history",
         client: httpx.Client | None = None,
     ) -> None:
         self._api_key = api_key
         self._api_host = api_host
         self._base_url = base_url.rstrip("/") if base_url else None
-        self._chart_path = chart_path
+        self._history_path = history_path
         self._client = client or httpx.Client(timeout=10.0)
 
     def probe(self, symbol: str) -> ProviderProbeResult:
         result = self.probe_many((symbol,))
         quotes = result.payload.get("quotes", {})
         quote = quotes.get(symbol, {}) if isinstance(quotes, dict) else {}
-        if not result.ok or not isinstance(quote, dict):
+        if not isinstance(quote, dict):
             return _fallback_result(
-                "rapidapi_yahoo",
+                "rapidapi_yh_finance",
                 payload={"symbol": symbol},
-                warning=result.warnings or "RAPIDAPI_YAHOO_QUOTE_UNAVAILABLE",
+                warning=result.warnings or "RAPIDAPI_YH_FINANCE_HISTORY_UNAVAILABLE",
             )
-        return _live_result("rapidapi_yahoo", quote)
+        if not result.ok:
+            return ProviderProbeResult(
+                provider=result.provider,
+                data_mode=result.data_mode,
+                ok=False,
+                warnings=result.warnings,
+                payload=quote,
+            )
+        return _live_result("rapidapi_yh_finance", quote)
 
     def probe_many(self, symbols: tuple[str, ...]) -> ProviderProbeResult:
         if not self._api_key or not self._api_host or not self._base_url:
             return _fallback_result(
-                "rapidapi_yahoo",
+                "rapidapi_yh_finance",
                 payload={"symbols": list(symbols)},
-                warning="RAPIDAPI_YAHOO_CONFIG_MISSING",
+                warning="RAPIDAPI_YH_FINANCE_CONFIG_MISSING",
             )
-        quotes: dict[str, dict[str, object]] = {}
+        raw_histories: dict[str, dict[str, object]] = {}
+        has_provider_failure = False
         for symbol in symbols:
             response = self._client.get(
-                f"{self._base_url}{self._chart_path}",
+                f"{self._base_url}{self._history_path}",
                 headers={
                     "X-RapidAPI-Key": self._api_key,
                     "X-RapidAPI-Host": self._api_host,
                 },
                 params={
                     "symbol": symbol,
-                    "region": "US",
                     "interval": "1d",
-                    "range": "1mo",
+                    "limit": 30,
                 },
             )
             response.raise_for_status()
-            payload = response.json()
-            chart = payload.get("chart", payload) if isinstance(payload, dict) else {}
-            results = chart.get("result", []) if isinstance(chart, dict) else []
-            result = results[0] if isinstance(results, list) and results else None
-            if not isinstance(result, dict):
-                raise ValueError("RapidAPI Yahoo response did not include chart data")
-            meta = result.get("meta", {})
-            timestamps = result.get("timestamp", [])
-            indicators = result.get("indicators", {})
-            quote_groups = indicators.get("quote", []) if isinstance(indicators, dict) else []
-            quote = quote_groups[0] if isinstance(quote_groups, list) and quote_groups else {}
-            if not isinstance(meta, dict) or not isinstance(quote, dict):
-                raise ValueError("RapidAPI Yahoo chart payload is invalid")
-            closes = quote.get("close", [])
-            opens = quote.get("open", [])
-            highs = quote.get("high", [])
-            lows = quote.get("low", [])
-            volumes = quote.get("volume", [])
-            history: list[dict[str, object]] = []
-            if isinstance(timestamps, list) and isinstance(closes, list):
-                for index, timestamp in enumerate(timestamps):
-                    close = closes[index] if index < len(closes) else None
-                    if close is None:
-                        continue
-                    history.append(
-                        {
-                            "timestamp": timestamp,
-                            "close": close,
-                            "open": opens[index]
-                            if isinstance(opens, list) and index < len(opens)
-                            else None,
-                            "high": highs[index]
-                            if isinstance(highs, list) and index < len(highs)
-                            else None,
-                            "low": lows[index]
-                            if isinstance(lows, list) and index < len(lows)
-                            else None,
-                            "volume": volumes[index]
-                            if isinstance(volumes, list) and index < len(volumes)
-                            else None,
-                        }
-                    )
-            current = meta.get("regularMarketPrice")
-            if current is None and history:
-                current = history[-1]["close"]
-            if current is None:
-                raise ValueError("RapidAPI Yahoo chart did not include a current price")
-            quotes[symbol] = {
+            raw_response = response.json()
+            if isinstance(raw_response, dict) and raw_response.get("success") is False:
+                has_provider_failure = True
+            raw_histories[symbol] = {
                 "symbol": symbol,
-                "close": current,
-                "previousClose": meta.get("chartPreviousClose")
-                or meta.get("previousClose"),
-                "currency": meta.get("currency"),
-                "history": history,
+                "interval": "1d",
+                "limit": 30,
+                "rawResponse": raw_response,
             }
-        if len(quotes) != len(symbols):
-            raise ValueError("RapidAPI Yahoo response omitted requested symbols")
-        return _live_result("rapidapi_yahoo", {"quotes": quotes})
+        if has_provider_failure:
+            return _fallback_result(
+                "rapidapi_yh_finance",
+                payload={"quotes": raw_histories},
+                warning="RAPIDAPI_YH_FINANCE_NO_DATA_FALLBACK_ACTIVE",
+            )
+        return _live_result("rapidapi_yh_finance", {"quotes": raw_histories})
 
 
 class FREDMacroProvider(MacroProvider):
@@ -571,11 +537,11 @@ class MarketDataRuntimeService:
         self._crypto_price_provider = crypto_price_provider or CoinGeckoPriceProvider(
             config.coingecko_api_key
         )
-        self._crypto_fallback_provider = crypto_fallback_provider or RapidAPIYahooFinanceProvider(
+        self._crypto_fallback_provider = crypto_fallback_provider or RapidAPIYHFinanceProvider(
             api_key=config.rapidapi_key,
             api_host=config.yahoo_finance_api_host,
             base_url=config.yahoo_finance_base_url,
-            chart_path=config.yahoo_finance_chart_path,
+            history_path=config.yahoo_finance_history_path,
         )
         self._macro_provider = macro_provider or FREDMacroProvider(config.fred_api_key)
         self._macro_fallback_provider = macro_fallback_provider or EIAMacroProvider(
@@ -707,13 +673,13 @@ class MarketDataRuntimeService:
                 if not result.ok:
                     yahoo = self._safe_probe(
                         partial(self._crypto_fallback_provider.probe, symbol),
-                        "rapidapi_yahoo",
-                        cache_key=f"probe:rapidapi_yahoo:chart:{symbol}",
+                        "rapidapi_yh_finance",
+                        cache_key=f"probe:rapidapi_yh_finance:history:{symbol}",
                     )
                     result = _merge_failover_results(
                         result,
                         yahoo,
-                        failover_warning="FINNHUB_TO_RAPIDAPI_YAHOO_FAILOVER",
+                        failover_warning="FINNHUB_TO_RAPIDAPI_YH_FINANCE_FAILOVER",
                     )
                 results[symbol] = result
 
@@ -724,8 +690,8 @@ class MarketDataRuntimeService:
             if callable(probe_many):
                 batch = self._safe_probe(
                     partial(probe_many, symbols),
-                    "rapidapi_yahoo",
-                    cache_key=f"probe:rapidapi_yahoo:charts:{','.join(symbols)}",
+                    "rapidapi_yh_finance",
+                    cache_key=f"probe:rapidapi_yh_finance:history:{','.join(symbols)}",
                     request_cost=len(symbols),
                 )
                 quotes = batch.payload.get("quotes", {})
@@ -745,14 +711,14 @@ class MarketDataRuntimeService:
                             data_mode=DataMode.FALLBACK.value,
                             ok=False,
                             warnings=batch.warnings
-                            or ("RAPIDAPI_YAHOO_QUOTE_UNAVAILABLE",),
+                            or ("RAPIDAPI_YH_FINANCE_HISTORY_UNAVAILABLE",),
                             payload=batch.payload,
                         )
                     )
                     results[symbol] = _merge_failover_results(
                         results[symbol],
                         fallback,
-                        failover_warning="COINGECKO_TO_RAPIDAPI_YAHOO_FAILOVER",
+                        failover_warning="COINGECKO_TO_RAPIDAPI_YH_FINANCE_FAILOVER",
                     )
         for instrument in instruments:
             symbol = instrument.symbol
@@ -866,13 +832,13 @@ class MarketDataRuntimeService:
         if not result.ok:
             yahoo = self._safe_probe(
                 partial(self._crypto_fallback_provider.probe, symbol),
-                "rapidapi_yahoo",
-                cache_key=f"probe:rapidapi_yahoo:chart:{symbol}",
+                "rapidapi_yh_finance",
+                cache_key=f"probe:rapidapi_yh_finance:history:{symbol}",
             )
             result = _merge_failover_results(
                 result,
                 yahoo,
-                failover_warning="FINNHUB_TO_RAPIDAPI_YAHOO_FAILOVER",
+                failover_warning="FINNHUB_TO_RAPIDAPI_YH_FINANCE_FAILOVER",
             )
         return self._fixture_quote_fallback(symbol, result)
 
@@ -886,13 +852,13 @@ class MarketDataRuntimeService:
             return primary
         fallback = self._safe_probe(
             partial(self._crypto_fallback_provider.probe, symbol),
-            "rapidapi_yahoo",
-            cache_key=f"probe:rapidapi_yahoo:chart:{symbol}",
+            "rapidapi_yh_finance",
+            cache_key=f"probe:rapidapi_yh_finance:history:{symbol}",
         )
         result = _merge_failover_results(
             primary,
             fallback,
-            failover_warning="COINGECKO_TO_RAPIDAPI_YAHOO_FAILOVER",
+            failover_warning="COINGECKO_TO_RAPIDAPI_YH_FINANCE_FAILOVER",
         )
         return self._fixture_quote_fallback(symbol, result)
 
@@ -1243,7 +1209,11 @@ class MarketDataRuntimeService:
         if isinstance(exc, httpx.HTTPStatusError):
             status_code = exc.response.status_code
             warning = f"{provider.upper()}_HTTP_ERROR_FALLBACK_ACTIVE"
-            if status_code == 429:
+            if status_code == 401:
+                warning = f"{provider.upper()}_AUTHENTICATION_FALLBACK_ACTIVE"
+            elif status_code == 403:
+                warning = f"{provider.upper()}_FORBIDDEN_FALLBACK_ACTIVE"
+            elif status_code == 429:
                 warning = f"{provider.upper()}_RATE_LIMIT_FALLBACK_ACTIVE"
             elif status_code >= 500:
                 warning = f"{provider.upper()}_UPSTREAM_FALLBACK_ACTIVE"

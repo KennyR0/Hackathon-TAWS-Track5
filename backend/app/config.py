@@ -32,7 +32,7 @@ VALID_MARKET_PROVIDER_NAMES = {
     "twelve_data",
     "finnhub",
     "coingecko",
-    "rapidapi_yahoo",
+    "rapidapi_yh_finance",
     "fred",
     "eia",
 }
@@ -83,7 +83,7 @@ class MarketProviderConfig:
     rapidapi_key: str | None = None
     yahoo_finance_api_host: str | None = None
     yahoo_finance_base_url: str | None = None
-    yahoo_finance_chart_path: str = "/stock/v3/get-chart"
+    yahoo_finance_history_path: str = "/api/v2/markets/stock/history"
     request_budget: int = 32
     batch_size: int = 10
     refresh_seconds: int = 900
@@ -282,9 +282,12 @@ def get_market_provider_config() -> MarketProviderConfig:
     rapidapi_key = getenv("RAPIDAPI_KEY", "").strip() or None
     yahoo_finance_api_host = getenv("YAHOO_FINANCE_API_HOST", "").strip() or None
     yahoo_finance_base_url = getenv("YAHOO_FINANCE_BASE_URL", "").strip().rstrip("/") or None
-    yahoo_finance_chart_path = (
-        getenv("YAHOO_FINANCE_CHART_PATH", "/stock/v3/get-chart").strip()
-        or "/stock/v3/get-chart"
+    yahoo_finance_history_path = (
+        getenv(
+            "YAHOO_FINANCE_HISTORY_PATH",
+            "/api/v2/markets/stock/history",
+        ).strip()
+        or "/api/v2/markets/stock/history"
     )
     yahoo_values = (rapidapi_key, yahoo_finance_api_host, yahoo_finance_base_url)
     if any(yahoo_values) and not all(yahoo_values):
@@ -296,8 +299,8 @@ def get_market_provider_config() -> MarketProviderConfig:
         raise RuntimeError("YAHOO_FINANCE_BASE_URL must use https")
     if yahoo_finance_api_host and "://" in yahoo_finance_api_host:
         raise RuntimeError("YAHOO_FINANCE_API_HOST must be a host name without a URL scheme")
-    if not yahoo_finance_chart_path.startswith("/"):
-        raise RuntimeError("YAHOO_FINANCE_CHART_PATH must start with /")
+    if not yahoo_finance_history_path.startswith("/"):
+        raise RuntimeError("YAHOO_FINANCE_HISTORY_PATH must start with /")
     return MarketProviderConfig(
         mode=runtime_config.market_data_mode,
         gdelt_api_key=getenv("GDELT_API_KEY", "").strip() or None,
@@ -316,7 +319,7 @@ def get_market_provider_config() -> MarketProviderConfig:
         rapidapi_key=rapidapi_key,
         yahoo_finance_api_host=yahoo_finance_api_host,
         yahoo_finance_base_url=yahoo_finance_base_url,
-        yahoo_finance_chart_path=yahoo_finance_chart_path,
+        yahoo_finance_history_path=yahoo_finance_history_path,
         request_budget=_get_env_int("MARKET_REQUEST_BUDGET", 32),
         batch_size=_get_env_int("MARKET_BATCH_SIZE", 10),
         refresh_seconds=_get_env_int("MARKET_REFRESH_SECONDS", 900),

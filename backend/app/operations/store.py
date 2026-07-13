@@ -506,7 +506,7 @@ def _provider_source_url(provider: str) -> str:
         "twelve_data": "https://api.twelvedata.com/quote",
         "finnhub": "https://finnhub.io/api/v1/quote",
         "coingecko": "https://api.coingecko.com/api/v3/simple/price",
-        "rapidapi_yahoo": "https://rapidapi.com/apidojo/api/yahoo-finance1",
+        "rapidapi_yh_finance": "https://rapidapi.com/sparior/api/yahoo-finance15",
         "fred": "https://api.stlouisfed.org/fred/series/observations",
         "eia": "https://api.eia.gov/v2/petroleum/pri/spt/data/",
     }.get(provider, "https://api.nexomercado.example/market")

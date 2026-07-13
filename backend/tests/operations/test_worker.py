@@ -16,7 +16,7 @@ from app.services.provider_runtime_service import build_in_memory_provider_runti
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-def test_rapidapi_history_normalizes_persistable_market_points() -> None:
+def test_explicit_quote_history_normalizes_persistable_market_points() -> None:
     points = _quote_history(
         {
             "history": [

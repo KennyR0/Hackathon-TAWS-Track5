@@ -207,10 +207,11 @@ Cadenas de respaldo:
 - WTI: `FRED DCOILWTICO -> EIA RWTC -> cache -> fixture`
 
 Los backups se activan ante clave ausente, presupuesto agotado, circuito abierto,
-timeout, HTTP 429/5xx o payload invalido. Yahoo Finance/RapidAPI usa el endpoint
-de chart para recuperar precio actual y hasta un mes de observaciones diarias;
-el worker persiste esos puntos historicos de forma idempotente. No se usa `CL=F`
-como sustituto de WTI porque un futuro no es equivalente al precio spot.
+timeout, HTTP 401/403/429/5xx o payload invalido. YH Finance usa exclusivamente
+`/api/v2/markets/stock/history` con `symbol`, `interval` y `limit`. La primera
+integracion conserva el JSON crudo en `rawResponse`; no interpreta ni persiste OHLCV
+hasta aprobar el contrato real del proveedor. No se usa `CL=F` como sustituto de WTI
+porque un futuro no es equivalente al precio spot.
 Twelve Data Basic ofrece actualmente 800 creditos diarios y cobra un credito por
 simbolo incluso en batch; el ejemplo reserva 40 creditos:
 
@@ -239,7 +240,7 @@ Variables live esperadas:
 - `COINGECKO_API_KEY` opcional
 - `EIA_API_KEY` opcional para el fallback WTI
 - `RAPIDAPI_KEY`, `YAHOO_FINANCE_API_HOST` y `YAHOO_FINANCE_BASE_URL` opcionales pero requeridos en conjunto
-- `YAHOO_FINANCE_CHART_PATH` opcional; por defecto `/stock/v3/get-chart`
+- `YAHOO_FINANCE_HISTORY_PATH` opcional; por defecto `/api/v2/markets/stock/history`
 - `GDELT_API_KEY` solo si el proveedor configurado lo requiere
 
 ## Fase 7: despliegue y presentación

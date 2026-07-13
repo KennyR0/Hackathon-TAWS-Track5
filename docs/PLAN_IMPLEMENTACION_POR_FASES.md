@@ -721,20 +721,23 @@ Evidencia del ajuste de fallbacks y cuotas:
   `implement 11` conserva su rechazo esperado de rama, mientras `validate 11` termina `ok`.
 - Cadenas efectivas: GDELT a Finnhub News; Twelve Data a Finnhub y Yahoo Finance/RapidAPI;
   CoinGecko a Yahoo Finance/RapidAPI; FRED a EIA. Se eliminó Kraken por decisión del usuario.
-- Yahoo Finance/RapidAPI usa un chart configurable para precio e históricos diarios de acciones,
-  ETF y cripto. Los workers persisten los puntos históricos idempotentemente. WTI no usa `CL=F`
+- YH Finance/RapidAPI usa `/api/v2/markets/stock/history` para acciones, ETF y cripto;
+  conserva primero el JSON crudo sin asumir el esquema ni persistir OHLCV. WTI no usa `CL=F`
   como proxy porque futuros y spot no son equivalentes.
+- El adaptador YH Finance envía `symbol`, `interval` y `limit`, conserva timeout y clasifica
+  401, 403, 429 y timeout con fallback fixture auditable.
 - Presupuestos configurables por proveedor y período mediante `MARKET_PROVIDER_BUDGETS`; el
   contador Supabase ya no reinicia `used_requests` en cada consulta y los lotes Twelve Data
   consumen un crédito por símbolo.
 - Plantillas `.env.example`, README y `render.yaml` actualizados con `RAPIDAPI_KEY`,
-  `YAHOO_FINANCE_API_HOST`, `YAHOO_FINANCE_BASE_URL`, `YAHOO_FINANCE_CHART_PATH` y `EIA_API_KEY`;
+  `YAHOO_FINANCE_API_HOST`, `YAHOO_FINANCE_BASE_URL`, `YAHOO_FINANCE_HISTORY_PATH` y `EIA_API_KEY`;
   no se creó un secreto real ni se ejecutó despliegue.
-- Backend post-pull: `222 passed`, dos warnings externos; Ruff focal aprobado. Ruff global conserva `57`
+- Backend: `227 passed`, dos warnings externos; Ruff focal aprobado. Ruff global conserva `57`
   incidencias preexistentes fuera de este ajuste.
 - OpenAPI vigente; smoke fixture `25/25` en fallback auditable. Frontend lint, typecheck y build
   aprobados; build conserva únicamente el warning conocido de chunk mayor a 500 kB.
-- La Fase 11 permanece `en_curso`: no hubo commit, push, despliegue ni smoke público.
+- La Fase 11 permanece `en_curso`: este ajuste YH Finance no incluye commit, push, despliegue
+  ni smoke público.
 
 ## 8. Matriz mínima del Track 5
 

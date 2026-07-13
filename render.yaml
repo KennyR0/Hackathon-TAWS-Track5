@@ -56,8 +56,8 @@ services:
         sync: false
       - key: YAHOO_FINANCE_BASE_URL
         sync: false
-      - key: YAHOO_FINANCE_CHART_PATH
-        value: /stock/v3/get-chart
+      - key: YAHOO_FINANCE_HISTORY_PATH
+        value: /api/v2/markets/stock/history
 
   - type: cron
     name: nexomercado-ingest
@@ -102,8 +102,8 @@ services:
         sync: false
       - key: YAHOO_FINANCE_BASE_URL
         sync: false
-      - key: YAHOO_FINANCE_CHART_PATH
-        value: /stock/v3/get-chart
+      - key: YAHOO_FINANCE_HISTORY_PATH
+        value: /api/v2/markets/stock/history
 
   - type: cron
     name: nexomercado-prices

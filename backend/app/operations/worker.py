@@ -279,7 +279,7 @@ def _runtime_metrics(task: str, provider_runtime: ProviderRuntimeBundle):
         "finnhub",
         "twelve_data",
         "coingecko",
-        "rapidapi_yahoo",
+        "rapidapi_yh_finance",
         "fred",
         "eia",
     )
