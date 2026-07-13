@@ -30,6 +30,13 @@ export function EventCard({ event }: { event: EventViewModel }) {
         <span>{event.relatedAssets.map(asset => asset.symbol).join(', ') || 'Sin activos ligados'}</span>
       </div>
       <div className="card-actions">
+        {event.mainArticle && event.mainArticleLinkable ? (
+          <a className="text-link" href={event.mainArticle.url} rel="noreferrer" target="_blank">
+            Leer fuente
+          </a>
+        ) : event.mainArticle ? (
+          <span className="news-source-muted">Demo · sin enlace externo</span>
+        ) : null}
         <Link className="text-link" to={`/radar?event=${event.id}`}>
           Ver en radar
         </Link>

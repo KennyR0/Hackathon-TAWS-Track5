@@ -24,6 +24,7 @@ import type {
   SignalViewModel,
   WatchlistViewModel,
 } from '../types/view-models'
+import { isArticleLinkable, isEvidenceLinkable } from '../lib/news'
 
 export function mapMeta(meta?: ApiMeta): DataMetaViewModel {
   return {
@@ -67,6 +68,7 @@ export function mapEventView(view: ApiEventView, meta?: ApiMeta): EventViewModel
     sources: view.sources,
     relatedAssets: view.event.relatedAssets,
     mainArticle,
+    mainArticleLinkable: mainArticle ? isArticleLinkable(mainArticle) : false,
     independentSourceCount,
     warnings: [...view.event.warnings, ...mapMeta(meta).warnings],
     meta: mapMeta(meta),
@@ -114,6 +116,7 @@ export function mapSignal(signal: ApiSignal, meta?: ApiMeta): SignalViewModel {
     assumptions: signal.assumptions,
     invalidationConditions: signal.invalidationConditions,
     suggestedResearchActions: signal.suggestedResearchActions,
+    disclaimer: signal.disclaimer,
     priceReaction: signal.priceReaction,
     priceReactionRows: priceReactionRows.filter(row => Number.isFinite(row.value)),
     evidenceIds: signal.evidenceIds,
@@ -184,6 +187,7 @@ export function mapEvidence(evidence: ApiEvidence): EvidenceViewModel {
     evidenceType: evidence.evidenceType,
     supportsSignal: evidence.supportsSignal,
     sourceUrl: evidence.sourceUrl,
+    linkable: isEvidenceLinkable(evidence),
     excerpt: evidence.excerpt,
     articleId: evidence.articleId,
     sourceId: evidence.sourceId,

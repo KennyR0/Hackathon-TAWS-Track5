@@ -540,6 +540,8 @@ export interface components {
             isSynthetic: boolean;
             /** Language */
             language: string;
+            /** Linkable */
+            readonly linkable: boolean;
             /** Provider */
             provider: string;
             /** Providerarticleid */
@@ -1008,6 +1010,8 @@ export interface components {
             excerpt: string | null;
             /** Id */
             id: string;
+            /** Linkable */
+            readonly linkable: boolean;
             /**
              * Marketsnapshotids
              * @default []

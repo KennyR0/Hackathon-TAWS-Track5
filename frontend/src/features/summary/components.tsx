@@ -13,6 +13,7 @@ import type {
 import { formatConfidence, formatCurrency, formatDateTime, formatPercent, formatRelativeTime } from '../../shared/lib/format'
 import { DataFreshnessIndicator, DataModeBadge, ImpactBadge, ReviewStatusBadge } from '../../shared/ui/badges'
 import { EmptyState, LoadingSkeleton } from '../../shared/ui/primitives'
+import { NewsSourceLink } from '../../shared/ui/NewsSourceLink'
 import { RunCard } from '../../shared/ui/cards'
 
 export interface MarketCategory {
@@ -238,6 +239,12 @@ function MarketNewsCard({
           {signal ? <ImpactBadge impact={signal.impact} /> : null}
           {signal ? <ReviewStatusBadge status={signal.reviewStatus} /> : null}
         </div>
+        {event.mainArticle ? (
+          <NewsSourceLink
+            url={event.mainArticle.url}
+            linkable={event.mainArticleLinkable}
+          />
+        ) : null}
       </div>
       <div className="market-news-card__aside">
         {signal ? (

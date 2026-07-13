@@ -34,6 +34,7 @@ export interface EventViewModel {
   sources: ApiSource[]
   relatedAssets: ApiAssetRelation[]
   mainArticle: ApiArticle | null
+  mainArticleLinkable: boolean
   independentSourceCount: number
   warnings: string[]
   meta: DataMetaViewModel
@@ -53,6 +54,7 @@ export interface SignalViewModel {
   assumptions: string[]
   invalidationConditions: string[]
   suggestedResearchActions: string[]
+  disclaimer: string
   priceReaction: ApiSignal['priceReaction']
   priceReactionRows: Array<{
     key: 'assetReturn' | 'benchmarkReturn' | 'abnormalReturn' | 'relativeVolume'
@@ -73,6 +75,7 @@ export interface EvidenceViewModel {
   evidenceType: ApiEvidence['evidenceType']
   supportsSignal: boolean
   sourceUrl: string
+  linkable: boolean
   excerpt: string | null
   articleId: string | null
   sourceId: string | null

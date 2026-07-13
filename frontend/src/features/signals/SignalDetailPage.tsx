@@ -4,6 +4,8 @@ import { ConfidenceBreakdown } from '../../shared/ui/charts/ConfidenceBreakdown'
 import { ReactionChart } from '../../shared/ui/charts/ReactionChart'
 import { AnalysisStatusBadge, ImpactBadge, ReviewStatusBadge, WarningList } from '../../shared/ui/badges'
 import { BackToHomeButton, EmptyState, LoadingSkeleton, SurfaceCard } from '../../shared/ui/primitives'
+import { NewsSourceLink } from '../../shared/ui/NewsSourceLink'
+import { PriceReactionMetrics, SignalDisclaimer } from '../../shared/ui/compliance'
 import { formatDateTime } from '../../shared/lib/format'
 import { ReviewComposer } from '../reviews/ReviewComposer'
 
@@ -44,6 +46,7 @@ export function SignalDetailPage() {
             <span>{signal.counterEvidenceIds.length} contraevidencias</span>
           </div>
           <WarningList warnings={signal.meta.warnings} />
+          <SignalDisclaimer text={signal.disclaimer} />
         </SurfaceCard>
 
         <SurfaceCard eyebrow="Evento vinculado" title={eventQuery.data?.title ?? 'Cargando evento'}>
@@ -60,6 +63,10 @@ export function SignalDetailPage() {
         <ConfidenceBreakdown signal={signal} />
       </section>
 
+      <SurfaceCard eyebrow="Reacción verificable" title="Comparación con benchmark y volumen">
+        <PriceReactionMetrics signal={signal} />
+      </SurfaceCard>
+
       <section className="content-grid content-grid--wide">
         <SurfaceCard eyebrow="Ledger · Evidencia favorable" title="Soportes trazables" className="evidence-ledger" tourTarget="signal-evidence">
           <div className="stack-list">
@@ -69,9 +76,7 @@ export function SignalDetailPage() {
                 <p>{item.excerpt ?? 'Sin excerpt. El backend solo entrego el claim y la fuente.'}</p>
                 <div className="data-points">
                   <span>{item.evidenceType}</span>
-                  <a href={item.sourceUrl} rel="noreferrer" target="_blank">
-                    Fuente original
-                  </a>
+                  <NewsSourceLink url={item.sourceUrl} linkable={item.linkable} label="Fuente original" />
                 </div>
               </article>
             ))}
@@ -87,9 +92,7 @@ export function SignalDetailPage() {
                   <p>{item.excerpt ?? 'Sin excerpt.'}</p>
                   <div className="data-points">
                     <span>{item.evidenceType}</span>
-                    <a href={item.sourceUrl} rel="noreferrer" target="_blank">
-                      Fuente original
-                    </a>
+                    <NewsSourceLink url={item.sourceUrl} linkable={item.linkable} label="Fuente original" />
                   </div>
                 </article>
               ))}
