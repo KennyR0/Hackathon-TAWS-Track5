@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
 from os import getenv
 from pathlib import Path
 
@@ -24,6 +25,17 @@ VALID_REASONING_EFFORTS = {"minimal", "low", "medium", "high", "xhigh"}
 VALID_LLM_PROVIDERS = {"fixture", "openai"}
 VALID_REPOSITORY_BACKENDS = {"fixture", "supabase"}
 VALID_MARKET_DATA_MODES = {"fixture", "hybrid", "live"}
+VALID_PROVIDER_BUDGET_PERIODS = {"minute", "hour", "day", "month"}
+VALID_MARKET_PROVIDER_NAMES = {
+    "gdelt",
+    "finnhub_news",
+    "twelve_data",
+    "finnhub",
+    "coingecko",
+    "rapidapi_yahoo",
+    "fred",
+    "eia",
+}
 
 
 @dataclass(frozen=True)
@@ -48,6 +60,13 @@ class SupabaseConfig:
 
 
 @dataclass(frozen=True)
+class ProviderBudgetPolicy:
+    period: str
+    max_requests: int
+    safety_reserve: int = 0
+
+
+@dataclass(frozen=True)
 class MarketProviderConfig:
     mode: str = DEFAULT_MARKET_DATA_MODE
     gdelt_api_key: str | None = None
@@ -60,9 +79,15 @@ class MarketProviderConfig:
     twelve_data_api_key: str | None = None
     coingecko_api_key: str | None = None
     fred_api_key: str | None = None
+    eia_api_key: str | None = None
+    rapidapi_key: str | None = None
+    yahoo_finance_api_host: str | None = None
+    yahoo_finance_base_url: str | None = None
+    yahoo_finance_chart_path: str = "/stock/v3/get-chart"
     request_budget: int = 32
     batch_size: int = 10
     refresh_seconds: int = 900
+    provider_budgets: dict[str, ProviderBudgetPolicy] = field(default_factory=dict)
 
 
 def _parse_csv_env(value: str) -> tuple[str, ...]:
@@ -93,6 +118,54 @@ def _get_env_float(name: str, default: float) -> float:
     if value <= 0:
         raise RuntimeError(f"{name} must be > 0. Received: {value}")
     return value
+
+
+def _get_provider_budget_policies() -> dict[str, ProviderBudgetPolicy]:
+    raw = getenv("MARKET_PROVIDER_BUDGETS", "").strip()
+    if not raw:
+        return {}
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("MARKET_PROVIDER_BUDGETS must be valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError("MARKET_PROVIDER_BUDGETS must be a JSON object")
+
+    policies: dict[str, ProviderBudgetPolicy] = {}
+    for raw_provider, raw_policy in payload.items():
+        provider = str(raw_provider).strip().lower()
+        if provider not in VALID_MARKET_PROVIDER_NAMES:
+            valid_values = ", ".join(sorted(VALID_MARKET_PROVIDER_NAMES))
+            raise RuntimeError(
+                f"MARKET_PROVIDER_BUDGETS contains unknown provider {provider!r}; "
+                f"valid providers: {valid_values}"
+            )
+        if not isinstance(raw_policy, dict):
+            raise RuntimeError(f"Budget policy for {provider} must be a JSON object")
+        period = str(raw_policy.get("period", "")).strip().lower()
+        max_requests = raw_policy.get("maxRequests")
+        safety_reserve = raw_policy.get("safetyReserve", 0)
+        if period not in VALID_PROVIDER_BUDGET_PERIODS:
+            valid_periods = ", ".join(sorted(VALID_PROVIDER_BUDGET_PERIODS))
+            raise RuntimeError(
+                f"Budget period for {provider} must be one of: {valid_periods}"
+            )
+        if isinstance(max_requests, bool) or not isinstance(max_requests, int):
+            raise RuntimeError(f"maxRequests for {provider} must be an integer")
+        if isinstance(safety_reserve, bool) or not isinstance(safety_reserve, int):
+            raise RuntimeError(f"safetyReserve for {provider} must be an integer")
+        if max_requests < 1:
+            raise RuntimeError(f"maxRequests for {provider} must be >= 1")
+        if safety_reserve < 0 or safety_reserve >= max_requests:
+            raise RuntimeError(
+                f"safetyReserve for {provider} must be >= 0 and lower than maxRequests"
+            )
+        policies[provider] = ProviderBudgetPolicy(
+            period=period,
+            max_requests=max_requests,
+            safety_reserve=safety_reserve,
+        )
+    return policies
 
 
 def get_openai_config() -> OpenAIConfig:
@@ -206,6 +279,25 @@ def get_backend_cors_origins() -> tuple[str, ...]:
 
 def get_market_provider_config() -> MarketProviderConfig:
     runtime_config = get_runtime_config()
+    rapidapi_key = getenv("RAPIDAPI_KEY", "").strip() or None
+    yahoo_finance_api_host = getenv("YAHOO_FINANCE_API_HOST", "").strip() or None
+    yahoo_finance_base_url = getenv("YAHOO_FINANCE_BASE_URL", "").strip().rstrip("/") or None
+    yahoo_finance_chart_path = (
+        getenv("YAHOO_FINANCE_CHART_PATH", "/stock/v3/get-chart").strip()
+        or "/stock/v3/get-chart"
+    )
+    yahoo_values = (rapidapi_key, yahoo_finance_api_host, yahoo_finance_base_url)
+    if any(yahoo_values) and not all(yahoo_values):
+        raise RuntimeError(
+            "RAPIDAPI_KEY, YAHOO_FINANCE_API_HOST and YAHOO_FINANCE_BASE_URL "
+            "must be configured together"
+        )
+    if yahoo_finance_base_url and not yahoo_finance_base_url.startswith("https://"):
+        raise RuntimeError("YAHOO_FINANCE_BASE_URL must use https")
+    if yahoo_finance_api_host and "://" in yahoo_finance_api_host:
+        raise RuntimeError("YAHOO_FINANCE_API_HOST must be a host name without a URL scheme")
+    if not yahoo_finance_chart_path.startswith("/"):
+        raise RuntimeError("YAHOO_FINANCE_CHART_PATH must start with /")
     return MarketProviderConfig(
         mode=runtime_config.market_data_mode,
         gdelt_api_key=getenv("GDELT_API_KEY", "").strip() or None,
@@ -220,7 +312,13 @@ def get_market_provider_config() -> MarketProviderConfig:
         twelve_data_api_key=getenv("TWELVE_DATA_API_KEY", "").strip() or None,
         coingecko_api_key=getenv("COINGECKO_API_KEY", "").strip() or None,
         fred_api_key=getenv("FRED_API_KEY", "").strip() or None,
+        eia_api_key=getenv("EIA_API_KEY", "").strip() or None,
+        rapidapi_key=rapidapi_key,
+        yahoo_finance_api_host=yahoo_finance_api_host,
+        yahoo_finance_base_url=yahoo_finance_base_url,
+        yahoo_finance_chart_path=yahoo_finance_chart_path,
         request_budget=_get_env_int("MARKET_REQUEST_BUDGET", 32),
         batch_size=_get_env_int("MARKET_BATCH_SIZE", 10),
         refresh_seconds=_get_env_int("MARKET_REFRESH_SECONDS", 900),
+        provider_budgets=_get_provider_budget_policies(),
     )

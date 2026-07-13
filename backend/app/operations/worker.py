@@ -274,7 +274,15 @@ def _provider_metrics(task: str, checks: dict[str, ProviderProbeResult]):
 
 
 def _runtime_metrics(task: str, provider_runtime: ProviderRuntimeBundle):
-    providers = ("gdelt", "finnhub", "twelve_data", "coingecko", "fred")
+    providers = (
+        "gdelt",
+        "finnhub",
+        "twelve_data",
+        "coingecko",
+        "rapidapi_yahoo",
+        "fred",
+        "eia",
+    )
     return tuple(
         OperationMetric(
             "nexomercado_provider_circuit_open",

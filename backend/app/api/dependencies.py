@@ -130,10 +130,12 @@ def get_market_data_runtime_service() -> MarketDataRuntimeService:
         provider_runtime = build_supabase_provider_runtime(
             get_supabase_client(),
             request_budget=provider_config.request_budget,
+            provider_policies=provider_config.provider_budgets,
         )
     else:
         provider_runtime = build_in_memory_provider_runtime(
-            request_budget=provider_config.request_budget
+            request_budget=provider_config.request_budget,
+            provider_policies=provider_config.provider_budgets,
         )
     return MarketDataRuntimeService(
         provider_config,

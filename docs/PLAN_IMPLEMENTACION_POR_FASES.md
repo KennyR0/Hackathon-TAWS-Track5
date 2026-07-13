@@ -76,6 +76,7 @@ Reglas:
 - Excepcion autorizada: Fase 8 ejecutada en `main` por autorizacion explicita del usuario.
 - Excepcion autorizada: Fase 9 ejecutada en `main` por autorizacion explicita del usuario.
 - Excepcion autorizada: ajuste live posterior al despliegue ejecutado en `main` por autorizacion explicita del usuario; no crear ramas.
+- Excepcion autorizada: ajuste de fallbacks de proveedores de Fase 11 ejecutado en `main` por autorizacion explicita del usuario; no crear ramas.
 
 ## 4. Estado
 
@@ -692,7 +693,8 @@ Gates:
 
 Estado inicial:
 
-- Rama `codex/fase-11-cobertura-productiva` creada conforme al gate.
+- El ajuste de fallbacks de proveedores continúa en `main` por autorización explícita del usuario;
+  no se crea ni cambia de rama para esta invocación.
 - El usuario autorizó commit, push, despliegue Render/Vercel y escrituras idempotentes en el
   Supabase existente, sin cambio destructivo de esquema ni contratación de planes.
 
@@ -712,6 +714,27 @@ Evidencia parcial de implementación:
 - Bloqueo de cierre: el entorno rechazó nuevas ejecuciones externas por límite de uso después
   de las correcciones finales. Falta repetir ingest/reconcile, commit/push, deploy Render/Vercel
   y smoke público. La fase permanece `en_curso` y no se presenta como lista para revisión.
+
+Evidencia del ajuste de fallbacks y cuotas:
+
+- Excepción de rama registrada: implementación en `main` por autorización explícita; el gate
+  `implement 11` conserva su rechazo esperado de rama, mientras `validate 11` termina `ok`.
+- Cadenas efectivas: GDELT a Finnhub News; Twelve Data a Finnhub y Yahoo Finance/RapidAPI;
+  CoinGecko a Yahoo Finance/RapidAPI; FRED a EIA. Se eliminó Kraken por decisión del usuario.
+- Yahoo Finance/RapidAPI usa un chart configurable para precio e históricos diarios de acciones,
+  ETF y cripto. Los workers persisten los puntos históricos idempotentemente. WTI no usa `CL=F`
+  como proxy porque futuros y spot no son equivalentes.
+- Presupuestos configurables por proveedor y período mediante `MARKET_PROVIDER_BUDGETS`; el
+  contador Supabase ya no reinicia `used_requests` en cada consulta y los lotes Twelve Data
+  consumen un crédito por símbolo.
+- Plantillas `.env.example`, README y `render.yaml` actualizados con `RAPIDAPI_KEY`,
+  `YAHOO_FINANCE_API_HOST`, `YAHOO_FINANCE_BASE_URL`, `YAHOO_FINANCE_CHART_PATH` y `EIA_API_KEY`;
+  no se creó un secreto real ni se ejecutó despliegue.
+- Backend post-pull: `222 passed`, dos warnings externos; Ruff focal aprobado. Ruff global conserva `57`
+  incidencias preexistentes fuera de este ajuste.
+- OpenAPI vigente; smoke fixture `25/25` en fallback auditable. Frontend lint, typecheck y build
+  aprobados; build conserva únicamente el warning conocido de chunk mayor a 500 kB.
+- La Fase 11 permanece `en_curso`: no hubo commit, push, despliegue ni smoke público.
 
 ## 8. Matriz mínima del Track 5
 
@@ -779,6 +802,7 @@ Producto:
 | 2026-07-12 | 10 | Ajustar consumo real en `main` sin rama nueva | El usuario autorizo completar el alcance sin importar fase y prohibio crear ramas; el despliegue debe usar APIs reales con fallback auditable |
 | 2026-07-12 | 10 | Aceptar Fase 10 y abrir Fase 11 | Decisión explícita del usuario para separar la cobertura productiva de mercado |
 | 2026-07-12 | 11 | Crear rama y autorizar despliegue productivo | Mismo repositorio con commit, push, Render, Vercel y bootstrap Supabase idempotente |
+| 2026-07-12 | 11 | Ajustar fallbacks en `main` sin rama nueva | Excepción autorizada explícitamente por el usuario para noticias, cotizaciones, cripto y WTI; sin commit, push ni despliegue |
 
 ## 12. Registro de cambios
 

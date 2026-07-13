@@ -79,6 +79,36 @@ def _add_warning(result: ProviderProbeResult, warning: str | None) -> ProviderPr
     )
 
 
+def _merge_failover_results(
+    primary: ProviderProbeResult,
+    fallback: ProviderProbeResult,
+    *,
+    failover_warning: str,
+) -> ProviderProbeResult:
+    warnings = tuple(
+        dict.fromkeys((*primary.warnings, *fallback.warnings, failover_warning))
+    )
+    if fallback.ok:
+        return ProviderProbeResult(
+            provider=fallback.provider,
+            data_mode=fallback.data_mode,
+            ok=True,
+            warnings=warnings,
+            payload=fallback.payload,
+        )
+
+    primary_is_cached = primary.payload.get("servedFromCache") is True
+    fallback_is_cached = fallback.payload.get("servedFromCache") is True
+    selected = fallback if fallback_is_cached and not primary_is_cached else primary
+    return ProviderProbeResult(
+        provider=selected.provider,
+        data_mode=DataMode.FALLBACK.value,
+        ok=False,
+        warnings=warnings,
+        payload=selected.payload,
+    )
+
+
 class GDELTNewsProvider(NewsProvider):
     def __init__(
         self,
@@ -274,6 +304,117 @@ class CoinGeckoPriceProvider(PriceProvider):
         )
 
 
+class RapidAPIYahooFinanceProvider(PriceProvider):
+    def __init__(
+        self,
+        *,
+        api_key: str | None,
+        api_host: str | None,
+        base_url: str | None,
+        chart_path: str = "/stock/v3/get-chart",
+        client: httpx.Client | None = None,
+    ) -> None:
+        self._api_key = api_key
+        self._api_host = api_host
+        self._base_url = base_url.rstrip("/") if base_url else None
+        self._chart_path = chart_path
+        self._client = client or httpx.Client(timeout=10.0)
+
+    def probe(self, symbol: str) -> ProviderProbeResult:
+        result = self.probe_many((symbol,))
+        quotes = result.payload.get("quotes", {})
+        quote = quotes.get(symbol, {}) if isinstance(quotes, dict) else {}
+        if not result.ok or not isinstance(quote, dict):
+            return _fallback_result(
+                "rapidapi_yahoo",
+                payload={"symbol": symbol},
+                warning=result.warnings or "RAPIDAPI_YAHOO_QUOTE_UNAVAILABLE",
+            )
+        return _live_result("rapidapi_yahoo", quote)
+
+    def probe_many(self, symbols: tuple[str, ...]) -> ProviderProbeResult:
+        if not self._api_key or not self._api_host or not self._base_url:
+            return _fallback_result(
+                "rapidapi_yahoo",
+                payload={"symbols": list(symbols)},
+                warning="RAPIDAPI_YAHOO_CONFIG_MISSING",
+            )
+        quotes: dict[str, dict[str, object]] = {}
+        for symbol in symbols:
+            response = self._client.get(
+                f"{self._base_url}{self._chart_path}",
+                headers={
+                    "X-RapidAPI-Key": self._api_key,
+                    "X-RapidAPI-Host": self._api_host,
+                },
+                params={
+                    "symbol": symbol,
+                    "region": "US",
+                    "interval": "1d",
+                    "range": "1mo",
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+            chart = payload.get("chart", payload) if isinstance(payload, dict) else {}
+            results = chart.get("result", []) if isinstance(chart, dict) else []
+            result = results[0] if isinstance(results, list) and results else None
+            if not isinstance(result, dict):
+                raise ValueError("RapidAPI Yahoo response did not include chart data")
+            meta = result.get("meta", {})
+            timestamps = result.get("timestamp", [])
+            indicators = result.get("indicators", {})
+            quote_groups = indicators.get("quote", []) if isinstance(indicators, dict) else []
+            quote = quote_groups[0] if isinstance(quote_groups, list) and quote_groups else {}
+            if not isinstance(meta, dict) or not isinstance(quote, dict):
+                raise ValueError("RapidAPI Yahoo chart payload is invalid")
+            closes = quote.get("close", [])
+            opens = quote.get("open", [])
+            highs = quote.get("high", [])
+            lows = quote.get("low", [])
+            volumes = quote.get("volume", [])
+            history: list[dict[str, object]] = []
+            if isinstance(timestamps, list) and isinstance(closes, list):
+                for index, timestamp in enumerate(timestamps):
+                    close = closes[index] if index < len(closes) else None
+                    if close is None:
+                        continue
+                    history.append(
+                        {
+                            "timestamp": timestamp,
+                            "close": close,
+                            "open": opens[index]
+                            if isinstance(opens, list) and index < len(opens)
+                            else None,
+                            "high": highs[index]
+                            if isinstance(highs, list) and index < len(highs)
+                            else None,
+                            "low": lows[index]
+                            if isinstance(lows, list) and index < len(lows)
+                            else None,
+                            "volume": volumes[index]
+                            if isinstance(volumes, list) and index < len(volumes)
+                            else None,
+                        }
+                    )
+            current = meta.get("regularMarketPrice")
+            if current is None and history:
+                current = history[-1]["close"]
+            if current is None:
+                raise ValueError("RapidAPI Yahoo chart did not include a current price")
+            quotes[symbol] = {
+                "symbol": symbol,
+                "close": current,
+                "previousClose": meta.get("chartPreviousClose")
+                or meta.get("previousClose"),
+                "currency": meta.get("currency"),
+                "history": history,
+            }
+        if len(quotes) != len(symbols):
+            raise ValueError("RapidAPI Yahoo response omitted requested symbols")
+        return _live_result("rapidapi_yahoo", {"quotes": quotes})
+
+
 class FREDMacroProvider(MacroProvider):
     def __init__(self, api_key: str | None, client: httpx.Client | None = None) -> None:
         self._api_key = api_key
@@ -302,6 +443,53 @@ class FREDMacroProvider(MacroProvider):
         return _live_result(
             "fred",
             {"seriesId": series_id, "value": latest.get("value"), "date": latest.get("date")},
+        )
+
+
+class EIAMacroProvider(MacroProvider):
+    def __init__(self, api_key: str | None, client: httpx.Client | None = None) -> None:
+        self._api_key = api_key
+        self._client = client or httpx.Client(timeout=10.0)
+
+    def probe(self, series_id: str) -> ProviderProbeResult:
+        if series_id not in {"DCOILWTICO", "RWTC"}:
+            return _fallback_result(
+                "eia",
+                payload={"seriesId": series_id},
+                warning="EIA_SERIES_UNSUPPORTED",
+            )
+        if not self._api_key:
+            return _fallback_result(
+                "eia",
+                payload={"seriesId": "RWTC"},
+                warning="EIA_KEY_MISSING",
+            )
+        response = self._client.get(
+            "https://api.eia.gov/v2/petroleum/pri/spt/data/",
+            params={
+                "api_key": self._api_key,
+                "frequency": "daily",
+                "data[0]": "value",
+                "facets[series][]": "RWTC",
+                "sort[0][column]": "period",
+                "sort[0][direction]": "desc",
+                "offset": 0,
+                "length": 1,
+            },
+        )
+        response.raise_for_status()
+        payload = response.json().get("response", {})
+        observations = payload.get("data", []) if isinstance(payload, dict) else []
+        latest = observations[0] if isinstance(observations, list) and observations else None
+        if not isinstance(latest, dict) or latest.get("value") in {None, ""}:
+            raise ValueError("EIA response did not include a valid RWTC observation")
+        return _live_result(
+            "eia",
+            {
+                "seriesId": "RWTC",
+                "value": latest.get("value"),
+                "date": latest.get("period"),
+            },
         )
 
 
@@ -349,7 +537,9 @@ class MarketDataRuntimeService:
         news_fallback_provider: NewsProvider | None = None,
         equity_price_provider: PriceProvider | None = None,
         crypto_price_provider: PriceProvider | None = None,
+        crypto_fallback_provider: PriceProvider | None = None,
         macro_provider: MacroProvider | None = None,
+        macro_fallback_provider: MacroProvider | None = None,
         metadata_provider: PriceProvider | None = None,
         provider_cache: ProviderCacheStore | None = None,
         request_budget: int = DEFAULT_REQUEST_BUDGET,
@@ -381,7 +571,16 @@ class MarketDataRuntimeService:
         self._crypto_price_provider = crypto_price_provider or CoinGeckoPriceProvider(
             config.coingecko_api_key
         )
+        self._crypto_fallback_provider = crypto_fallback_provider or RapidAPIYahooFinanceProvider(
+            api_key=config.rapidapi_key,
+            api_host=config.yahoo_finance_api_host,
+            base_url=config.yahoo_finance_base_url,
+            chart_path=config.yahoo_finance_chart_path,
+        )
         self._macro_provider = macro_provider or FREDMacroProvider(config.fred_api_key)
+        self._macro_fallback_provider = macro_fallback_provider or EIAMacroProvider(
+            config.eia_api_key
+        )
         self._metadata_provider = metadata_provider or FinnhubMarketProvider(config.finnhub_api_key)
 
     @property
@@ -436,6 +635,7 @@ class MarketDataRuntimeService:
                     partial(probe_many, symbols),
                     provider_name,
                     cache_key=f"probe:{provider_name}:quotes:{','.join(symbols)}",
+                    request_cost=len(symbols) if provider_name == "twelve_data" else 1,
                 )
                 quotes = batch.payload.get("quotes", {})
                 for symbol in symbols:
@@ -466,10 +666,23 @@ class MarketDataRuntimeService:
             symbol = instrument.symbol
             if instrument.series_id:
                 series_id = instrument.series_id
-                results[symbol] = self._safe_probe(
+                primary = self._safe_probe(
                     partial(self._macro_provider.probe, series_id),
                     "fred",
                     cache_key=f"probe:fred:series:{series_id}",
+                )
+                if primary.ok:
+                    results[symbol] = primary
+                    continue
+                fallback = self._safe_probe(
+                    partial(self._macro_fallback_provider.probe, series_id),
+                    "eia",
+                    cache_key="probe:eia:series:RWTC",
+                )
+                results[symbol] = _merge_failover_results(
+                    primary,
+                    fallback,
+                    failover_warning="FRED_TO_EIA_FAILOVER",
                 )
 
         for instrument in equities:
@@ -491,7 +704,60 @@ class MarketDataRuntimeService:
                         ),
                         payload=fallback.payload,
                     )
+                if not result.ok:
+                    yahoo = self._safe_probe(
+                        partial(self._crypto_fallback_provider.probe, symbol),
+                        "rapidapi_yahoo",
+                        cache_key=f"probe:rapidapi_yahoo:chart:{symbol}",
+                    )
+                    result = _merge_failover_results(
+                        result,
+                        yahoo,
+                        failover_warning="FINNHUB_TO_RAPIDAPI_YAHOO_FAILOVER",
+                    )
                 results[symbol] = result
+
+        failed_cryptos = tuple(item for item in cryptos if not results[item.symbol].ok)
+        if failed_cryptos:
+            symbols = tuple(item.symbol for item in failed_cryptos)
+            probe_many = getattr(self._crypto_fallback_provider, "probe_many", None)
+            if callable(probe_many):
+                batch = self._safe_probe(
+                    partial(probe_many, symbols),
+                    "rapidapi_yahoo",
+                    cache_key=f"probe:rapidapi_yahoo:charts:{','.join(symbols)}",
+                    request_cost=len(symbols),
+                )
+                quotes = batch.payload.get("quotes", {})
+                for symbol in symbols:
+                    quote = quotes.get(symbol) if isinstance(quotes, dict) else None
+                    fallback = (
+                        ProviderProbeResult(
+                            provider=batch.provider,
+                            data_mode=batch.data_mode,
+                            ok=True,
+                            warnings=batch.warnings,
+                            payload=quote,
+                        )
+                        if batch.ok and isinstance(quote, dict)
+                        else ProviderProbeResult(
+                            provider=batch.provider,
+                            data_mode=DataMode.FALLBACK.value,
+                            ok=False,
+                            warnings=batch.warnings
+                            or ("RAPIDAPI_YAHOO_QUOTE_UNAVAILABLE",),
+                            payload=batch.payload,
+                        )
+                    )
+                    results[symbol] = _merge_failover_results(
+                        results[symbol],
+                        fallback,
+                        failover_warning="COINGECKO_TO_RAPIDAPI_YAHOO_FAILOVER",
+                    )
+        for instrument in instruments:
+            symbol = instrument.symbol
+            if not results[symbol].ok:
+                results[symbol] = self._fixture_quote_fallback(symbol, results[symbol])
         return results
 
     def collect_universe_snapshot(self, instruments) -> MarketRuntimeSnapshot:
@@ -499,7 +765,9 @@ class MarketDataRuntimeService:
         warnings = tuple(
             dict.fromkeys(warning for result in checks.values() for warning in result.warnings)
         )
-        all_live = bool(checks) and all(result.ok for result in checks.values())
+        all_live = bool(checks) and all(
+            result.ok and result.data_mode == DataMode.LIVE.value for result in checks.values()
+        )
         if self._config.mode == DataMode.FIXTURE.value:
             effective_mode = DataMode.FIXTURE.value
             warnings = FIXTURE_WARNINGS
@@ -531,11 +799,7 @@ class MarketDataRuntimeService:
             ),
             (
                 "aapl",
-                lambda: self._safe_probe(
-                    lambda: self._equity_price_provider.probe("AAPL"),
-                    "twelve_data",
-                    cache_key="probe:twelve_data:quote:AAPL",
-                ),
+                lambda: self._probe_equity("AAPL"),
             ),
             (
                 "spy",
@@ -547,19 +811,11 @@ class MarketDataRuntimeService:
             ),
             (
                 "btc",
-                lambda: self._safe_probe(
-                    lambda: self._crypto_price_provider.probe("BTC-USD"),
-                    "coingecko",
-                    cache_key="probe:coingecko:price:BTC-USD",
-                ),
+                lambda: self._probe_crypto("BTC-USD"),
             ),
             (
                 "wti",
-                lambda: self._safe_probe(
-                    lambda: self._macro_provider.probe("DCOILWTICO"),
-                    "fred",
-                    cache_key="probe:fred:series:DCOILWTICO",
-                ),
+                lambda: self._probe_macro("DCOILWTICO"),
             ),
         ):
             result = provider_call()
@@ -567,7 +823,9 @@ class MarketDataRuntimeService:
             provider_names.append(result.provider)
             warnings.extend(result.warnings)
 
-        all_live = all(result.ok for result in checks.values())
+        all_live = all(
+            result.ok and result.data_mode == DataMode.LIVE.value for result in checks.values()
+        )
         if self._config.mode == DataMode.FIXTURE.value:
             effective_mode = DataMode.FIXTURE.value
             warnings = list(FIXTURE_WARNINGS)
@@ -587,6 +845,77 @@ class MarketDataRuntimeService:
             requests_used=self._requests_used,
         )
 
+    def _probe_equity(self, symbol: str) -> ProviderProbeResult:
+        primary = self._safe_probe(
+            partial(self._equity_price_provider.probe, symbol),
+            "twelve_data",
+            cache_key=f"probe:twelve_data:quote:{symbol}",
+        )
+        if primary.ok:
+            return primary
+        fallback = self._safe_probe(
+            partial(self._metadata_provider.probe, symbol),
+            "finnhub",
+            cache_key=f"probe:finnhub:quote:{symbol}",
+        )
+        result = _merge_failover_results(
+            primary,
+            fallback,
+            failover_warning="TWELVE_DATA_TO_FINNHUB_FAILOVER",
+        )
+        if not result.ok:
+            yahoo = self._safe_probe(
+                partial(self._crypto_fallback_provider.probe, symbol),
+                "rapidapi_yahoo",
+                cache_key=f"probe:rapidapi_yahoo:chart:{symbol}",
+            )
+            result = _merge_failover_results(
+                result,
+                yahoo,
+                failover_warning="FINNHUB_TO_RAPIDAPI_YAHOO_FAILOVER",
+            )
+        return self._fixture_quote_fallback(symbol, result)
+
+    def _probe_crypto(self, symbol: str) -> ProviderProbeResult:
+        primary = self._safe_probe(
+            partial(self._crypto_price_provider.probe, symbol),
+            "coingecko",
+            cache_key=f"probe:coingecko:price:{symbol}",
+        )
+        if primary.ok:
+            return primary
+        fallback = self._safe_probe(
+            partial(self._crypto_fallback_provider.probe, symbol),
+            "rapidapi_yahoo",
+            cache_key=f"probe:rapidapi_yahoo:chart:{symbol}",
+        )
+        result = _merge_failover_results(
+            primary,
+            fallback,
+            failover_warning="COINGECKO_TO_RAPIDAPI_YAHOO_FAILOVER",
+        )
+        return self._fixture_quote_fallback(symbol, result)
+
+    def _probe_macro(self, series_id: str) -> ProviderProbeResult:
+        primary = self._safe_probe(
+            partial(self._macro_provider.probe, series_id),
+            "fred",
+            cache_key=f"probe:fred:series:{series_id}",
+        )
+        if primary.ok:
+            return primary
+        fallback = self._safe_probe(
+            partial(self._macro_fallback_provider.probe, series_id),
+            "eia",
+            cache_key="probe:eia:series:RWTC",
+        )
+        result = _merge_failover_results(
+            primary,
+            fallback,
+            failover_warning="FRED_TO_EIA_FAILOVER",
+        )
+        return self._fixture_quote_fallback("WTI", result)
+
     def _probe_news(self) -> ProviderProbeResult:
         primary = self._safe_probe(
             self._news_provider.probe,
@@ -595,21 +924,77 @@ class MarketDataRuntimeService:
             resource_type="news_probe",
             cache_ttl_seconds=self._config.gdelt_cache_ttl_seconds,
         )
-        if primary.ok or self._news_fallback_provider is None:
+        if primary.ok:
             return primary
+        if self._news_fallback_provider is None:
+            return self._fixture_news_fallback(primary)
         fallback = self._safe_probe(
             self._news_fallback_provider.probe,
             "finnhub_news",
             cache_key="probe:finnhub:company_news:AAPL",
         )
-        if not fallback.ok:
-            return primary
+        result = _merge_failover_results(
+            primary,
+            fallback,
+            failover_warning="GDELT_TO_FINNHUB_FAILOVER",
+        )
+        return result if result.ok else self._fixture_news_fallback(result)
+
+    def _fixture_quote_fallback(
+        self,
+        symbol: str,
+        result: ProviderProbeResult,
+    ) -> ProviderProbeResult:
+        try:
+            bundle = self._fixture_provider.load_bundle()
+            asset = next(item for item in bundle.assets if item.symbol == symbol)
+            snapshots = tuple(
+                item for item in bundle.market_snapshots if item.asset_id == asset.id
+            )
+            snapshot = max(snapshots, key=lambda item: item.end_at)
+            latest = snapshot.observations[-1]
+            previous = snapshot.observations[-2]
+        except (AttributeError, LookupError, StopIteration, ValueError, TypeError):
+            return result
         return ProviderProbeResult(
-            provider=fallback.provider,
-            data_mode=fallback.data_mode,
-            ok=True,
-            warnings=tuple(dict.fromkeys((*primary.warnings, "GDELT_TO_FINNHUB_FAILOVER"))),
-            payload=fallback.payload,
+            provider="fixture_market",
+            data_mode=DataMode.FALLBACK.value,
+            ok=False,
+            warnings=tuple(
+                dict.fromkeys((*result.warnings, "FIXTURE_QUOTE_FALLBACK_ACTIVE"))
+            ),
+            payload={
+                "symbol": symbol,
+                "close": latest.close,
+                "previousClose": previous.close,
+                "dataAsOf": snapshot.data_as_of.isoformat(),
+                "sourceSnapshotId": snapshot.id,
+            },
+        )
+
+    def _fixture_news_fallback(
+        self,
+        result: ProviderProbeResult,
+    ) -> ProviderProbeResult:
+        try:
+            bundle = self._fixture_provider.load_bundle()
+            articles = tuple(bundle.articles[:50])
+        except (AttributeError, LookupError, TypeError):
+            return result
+        return ProviderProbeResult(
+            provider="fixture_news",
+            data_mode=DataMode.FALLBACK.value,
+            ok=False,
+            warnings=tuple(
+                dict.fromkeys((*result.warnings, "FIXTURE_NEWS_FALLBACK_ACTIVE"))
+            ),
+            payload={
+                "articleCount": len(articles),
+                "titles": [article.headline for article in articles[:3]],
+                "articles": [
+                    article.model_dump(mode="json", by_alias=True) for article in articles
+                ],
+            },
         )
 
     def _cache_probe_result(
@@ -667,6 +1052,7 @@ class MarketDataRuntimeService:
         cache_key: str | None = None,
         resource_type: str | None = None,
         cache_ttl_seconds: int | None = None,
+        request_cost: int = 1,
     ) -> ProviderProbeResult:
         if self._config.mode == DataMode.FIXTURE.value:
             return _fallback_result(
@@ -683,7 +1069,7 @@ class MarketDataRuntimeService:
                 if cached is not None:
                     return ProviderProbeResult(
                         provider=provider,
-                        data_mode=cached.data_mode,
+                        data_mode=DataMode.FALLBACK.value,
                         ok=cached.status_code < 400,
                         warnings=(f"{provider.upper()}_CACHE_HIT",),
                         payload={
@@ -698,13 +1084,13 @@ class MarketDataRuntimeService:
                         payload={"circuitOpen": True},
                         warning=f"{provider.upper()}_CIRCUIT_OPEN",
                     )
-                if not runtime.budget.try_consume(provider):
+                if not runtime.budget.try_consume(provider, cost=request_cost):
                     return _fallback_result(
                         provider,
                         payload={"requestBudget": self._request_budget},
                         warning=f"{provider.upper()}_BUDGET_EXHAUSTED",
                     )
-                self._requests_used += 1
+                self._requests_used += request_cost
             except Exception:
                 runtime = None
                 runtime_store_warning = RUNTIME_STORE_UNAVAILABLE_WARNING
@@ -733,7 +1119,10 @@ class MarketDataRuntimeService:
 
         last_exc: Exception | None = None
         for attempt in range(1, self._retry_limit + 2):
-            if runtime is None and self._requests_used >= self._request_budget:
+            if (
+                runtime is None
+                and self._requests_used + request_cost > self._request_budget
+            ):
                 return _add_warning(
                     _fallback_result(
                         provider,
@@ -747,7 +1136,7 @@ class MarketDataRuntimeService:
                     runtime_store_warning,
                 )
             if runtime is None:
-                self._requests_used += 1
+                self._requests_used += request_cost
             try:
                 result = probe()
             except Exception as exc:
@@ -782,6 +1171,7 @@ class MarketDataRuntimeService:
                             response_json=result.payload,
                             status_code=200,
                             data_mode=result.data_mode,
+                            request_cost=request_cost,
                         )
                     except Exception:
                         runtime_store_warning = RUNTIME_STORE_UNAVAILABLE_WARNING

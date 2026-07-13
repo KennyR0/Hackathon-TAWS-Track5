@@ -9,12 +9,20 @@ import pytest
 from app.config import (
     DEFAULT_MARKET_DATA_MODE,
     MarketProviderConfig,
+    ProviderBudgetPolicy,
     get_market_provider_config,
     get_runtime_config,
 )
 from app.contracts.entities import DataMode
+from app.market_universe import load_market_universe
 from app.providers.fixture_provider import FixtureProvider
-from app.providers.live_market import GDELTNewsProvider, MarketDataRuntimeService, _live_result
+from app.providers.live_market import (
+    EIAMacroProvider,
+    GDELTNewsProvider,
+    MarketDataRuntimeService,
+    RapidAPIYahooFinanceProvider,
+    _live_result,
+)
 from app.providers.provider_cache import InMemoryProviderCacheStore
 from app.repositories.fixture_repository import FixtureRepository
 from app.services.provider_runtime_service import build_in_memory_provider_runtime
@@ -24,7 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 class _StubFixtureProvider:
     def load_bundle(self):
-        raise AssertionError("fixture bundle should not be loaded for runtime probes")
+        raise LookupError("fixture bundle unavailable for this isolated provider test")
 
 
 class _NewsProvider:
@@ -40,6 +48,23 @@ class _FinnhubNewsProvider:
 class _PriceProvider:
     def probe(self, symbol: str):
         return _live_result("price", {"symbol": symbol, "value": 123.4})
+
+
+class _BatchPriceProvider(_PriceProvider):
+    def probe_many(self, symbols: tuple[str, ...]):
+        return _live_result(
+            "twelve_data",
+            {"quotes": {symbol: {"symbol": symbol, "close": "123.4"} for symbol in symbols}},
+        )
+
+
+class _CountingPriceProvider(_PriceProvider):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def probe(self, symbol: str):
+        self.calls += 1
+        return super().probe(symbol)
 
 
 class _MacroProvider:
@@ -94,6 +119,17 @@ def test_market_provider_config_reads_optional_keys(
     monkeypatch.setenv("GDELT_TIMEOUT_SECONDS", "4.5")
     monkeypatch.setenv("GDELT_MAX_ATTEMPTS", "3")
     monkeypatch.setenv("GDELT_CACHE_TTL_SECONDS", "600")
+    monkeypatch.setenv("EIA_API_KEY", "eia-key")
+    monkeypatch.setenv("RAPIDAPI_KEY", "rapid-key")
+    monkeypatch.setenv("YAHOO_FINANCE_API_HOST", "yahoo-finance1.p.rapidapi.com")
+    monkeypatch.setenv(
+        "YAHOO_FINANCE_BASE_URL",
+        "https://yahoo-finance1.p.rapidapi.com",
+    )
+    monkeypatch.setenv(
+        "MARKET_PROVIDER_BUDGETS",
+        '{"twelve_data":{"period":"day","maxRequests":800,"safetyReserve":40}}',
+    )
 
     config = get_market_provider_config()
 
@@ -106,6 +142,46 @@ def test_market_provider_config_reads_optional_keys(
     assert config.gdelt_max_attempts == 3
     assert config.gdelt_cache_ttl_seconds == 600
     assert config.fred_api_key is None
+    assert config.eia_api_key == "eia-key"
+    assert config.rapidapi_key == "rapid-key"
+    assert config.yahoo_finance_api_host == "yahoo-finance1.p.rapidapi.com"
+    assert config.yahoo_finance_chart_path == "/stock/v3/get-chart"
+    assert config.provider_budgets == {
+        "twelve_data": ProviderBudgetPolicy(
+            period="day",
+            max_requests=800,
+            safety_reserve=40,
+        )
+    }
+
+
+@pytest.mark.parametrize(
+    "payload, message",
+    [
+        ("not-json", "valid JSON"),
+        ('{"unknown":{"period":"day","maxRequests":2}}', "unknown provider"),
+        ('{"fred":{"period":"week","maxRequests":2}}', "must be one of"),
+        ('{"fred":{"period":"day","maxRequests":2,"safetyReserve":2}}', "lower than"),
+    ],
+)
+def test_market_provider_config_rejects_invalid_provider_budgets(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: str,
+    message: str,
+) -> None:
+    monkeypatch.setenv("MARKET_PROVIDER_BUDGETS", payload)
+
+    with pytest.raises(RuntimeError, match=message):
+        get_market_provider_config()
+
+
+def test_market_provider_config_requires_complete_rapidapi_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RAPIDAPI_KEY", "rapid-key")
+
+    with pytest.raises(RuntimeError, match="must be configured together"):
+        get_market_provider_config()
 
 
 def test_repository_provenance_uses_fixture_mode() -> None:
@@ -231,9 +307,10 @@ def test_collect_demo_snapshot_retries_and_opens_circuit_after_provider_error() 
     second_snapshot = service.collect_demo_snapshot()
 
     assert failing_provider.calls == 2
-    assert first_snapshot.data_mode == DataMode.FALLBACK
-    assert first_snapshot.checks["aapl"].warnings == ("TWELVE_DATA_FALLBACK_ACTIVE",)
-    assert second_snapshot.checks["aapl"].warnings == ("TWELVE_DATA_CIRCUIT_OPEN",)
+    assert first_snapshot.data_mode == DataMode.LIVE
+    assert first_snapshot.checks["aapl"].provider == "price"
+    assert "TWELVE_DATA_TO_FINNHUB_FAILOVER" in first_snapshot.checks["aapl"].warnings
+    assert "TWELVE_DATA_CIRCUIT_OPEN" in second_snapshot.checks["aapl"].warnings
 
 
 def test_collect_demo_snapshot_respects_request_budget() -> None:
@@ -253,7 +330,27 @@ def test_collect_demo_snapshot_respects_request_budget() -> None:
     assert snapshot.data_mode == DataMode.FALLBACK
     assert snapshot.requests_used == 2
     assert snapshot.checks["spy"].warnings == ("FINNHUB_BUDGET_EXHAUSTED",)
-    assert snapshot.checks["btc"].warnings == ("COINGECKO_BUDGET_EXHAUSTED",)
+    assert "COINGECKO_BUDGET_EXHAUSTED" in snapshot.checks["btc"].warnings
+    assert "RAPIDAPI_YAHOO_BUDGET_EXHAUSTED" in snapshot.checks["btc"].warnings
+    assert "COINGECKO_TO_RAPIDAPI_YAHOO_FAILOVER" in snapshot.checks["btc"].warnings
+
+
+def test_twelve_data_batch_consumes_one_budget_credit_per_symbol() -> None:
+    runtime = build_in_memory_provider_runtime(request_budget=2)
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="live"),
+        _StubFixtureProvider(),
+        equity_price_provider=_BatchPriceProvider(),
+        metadata_provider=_PriceProvider(),
+        provider_runtime=runtime,
+    )
+    equities = load_market_universe().instruments[:2]
+
+    results = service.collect_quotes(equities)
+
+    assert all(result.ok for result in results.values())
+    assert service._requests_used == 2
+    assert runtime.budget.requests_used("twelve_data") == 2
 
 
 class _RetryingGDELTClient:
@@ -340,6 +437,196 @@ def test_collect_demo_snapshot_fails_over_from_gdelt_to_finnhub_news() -> None:
 class _TimeoutNewsProvider:
     def probe(self):
         raise httpx.TimeoutException("timeout")
+
+
+class _TimeoutPriceProvider:
+    def probe(self, symbol: str):
+        raise httpx.TimeoutException(f"{symbol} timeout")
+
+
+class _RapidAPIYahooClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def get(self, *_args, **_kwargs):
+        self.calls.append(_kwargs)
+        symbol = _kwargs["params"]["symbol"]
+        current = 60123.45 if symbol == "BTC-USD" else 3210.50
+        request = httpx.Request(
+            "GET",
+            "https://yahoo-finance1.p.rapidapi.com/stock/v3/get-chart",
+        )
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "chart": {
+                    "result": [
+                        {
+                            "meta": {
+                                "regularMarketPrice": current,
+                                "chartPreviousClose": current - 100,
+                                "currency": "USD",
+                            },
+                            "timestamp": [1783728000, 1783814400],
+                            "indicators": {
+                                "quote": [
+                                    {
+                                        "close": [current - 50, current],
+                                        "open": [current - 75, current - 25],
+                                        "high": [current + 10, current + 25],
+                                        "low": [current - 100, current - 50],
+                                        "volume": [1000, 1200],
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                }
+            },
+        )
+
+
+class _EIAClient:
+    def get(self, *_args, **_kwargs):
+        request = httpx.Request("GET", "https://api.eia.gov/v2/petroleum/pri/spt/data/")
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "response": {
+                    "data": [{"series": "RWTC", "period": "2026-07-10", "value": "77.12"}]
+                }
+            },
+        )
+
+
+def test_rapidapi_yahoo_provider_normalizes_quotes_and_history() -> None:
+    client = _RapidAPIYahooClient()
+    result = RapidAPIYahooFinanceProvider(
+        api_key="rapid-key",
+        api_host="yahoo-finance1.p.rapidapi.com",
+        base_url="https://yahoo-finance1.p.rapidapi.com",
+        client=client,
+    ).probe_many(("BTC-USD", "ETH-USD"))
+
+    assert result.ok is True
+    assert result.provider == "rapidapi_yahoo"
+    assert result.payload["quotes"]["BTC-USD"]["close"] == 60123.45
+    assert result.payload["quotes"]["ETH-USD"]["close"] == 3210.50
+    assert len(result.payload["quotes"]["BTC-USD"]["history"]) == 2
+    assert client.calls[0]["headers"]["X-RapidAPI-Key"] == "rapid-key"
+
+
+def test_eia_provider_normalizes_wti_observation() -> None:
+    result = EIAMacroProvider("eia-key", client=_EIAClient()).probe("DCOILWTICO")
+
+    assert result.ok is True
+    assert result.provider == "eia"
+    assert result.payload == {"seriesId": "RWTC", "value": "77.12", "date": "2026-07-10"}
+
+
+def test_crypto_failover_uses_rapidapi_yahoo_and_preserves_primary_warning() -> None:
+    fallback = _CountingPriceProvider()
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        crypto_price_provider=_TimeoutPriceProvider(),
+        crypto_fallback_provider=fallback,
+        news_provider=_NewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        macro_fallback_provider=_MacroProvider(),
+        metadata_provider=_PriceProvider(),
+    )
+
+    snapshot = service.collect_demo_snapshot()
+
+    assert fallback.calls == 1
+    assert snapshot.checks["btc"].provider == "price"
+    assert "COINGECKO_TIMEOUT_FALLBACK_ACTIVE" in snapshot.checks["btc"].warnings
+    assert "COINGECKO_TO_RAPIDAPI_YAHOO_FAILOVER" in snapshot.checks["btc"].warnings
+
+
+def test_macro_failover_uses_eia_and_skips_it_when_fred_succeeds() -> None:
+    fallback = _CountingPriceProvider()
+    failed_service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        news_provider=_NewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        crypto_fallback_provider=_PriceProvider(),
+        macro_provider=_TimeoutPriceProvider(),
+        macro_fallback_provider=fallback,
+        metadata_provider=_PriceProvider(),
+    )
+    failed_snapshot = failed_service.collect_demo_snapshot()
+
+    assert fallback.calls == 1
+    assert "FRED_TO_EIA_FAILOVER" in failed_snapshot.checks["wti"].warnings
+
+    unused_fallback = _CountingPriceProvider()
+    successful_service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        news_provider=_NewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        crypto_fallback_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        macro_fallback_provider=unused_fallback,
+        metadata_provider=_PriceProvider(),
+    )
+    successful_service.collect_demo_snapshot()
+
+    assert unused_fallback.calls == 0
+
+
+def test_failed_provider_chains_return_traceable_fixture_quotes() -> None:
+    fixture_provider = FixtureProvider(REPO_ROOT / "data/fixtures/v1/phase0_bundle.json")
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        fixture_provider,
+        equity_price_provider=_TimeoutPriceProvider(),
+        metadata_provider=_TimeoutPriceProvider(),
+        crypto_price_provider=_TimeoutPriceProvider(),
+        crypto_fallback_provider=_TimeoutPriceProvider(),
+        macro_provider=_TimeoutPriceProvider(),
+        macro_fallback_provider=_TimeoutPriceProvider(),
+        retry_limit=0,
+    )
+    by_symbol = {item.symbol: item for item in load_market_universe().instruments}
+
+    results = service.collect_quotes(
+        (by_symbol["AAPL"], by_symbol["BTC-USD"], by_symbol["WTI"])
+    )
+
+    assert {result.provider for result in results.values()} == {"fixture_market"}
+    assert all(result.data_mode == DataMode.FALLBACK for result in results.values())
+    assert all(result.payload["close"] > 0 for result in results.values())
+    assert all("FIXTURE_QUOTE_FALLBACK_ACTIVE" in result.warnings for result in results.values())
+
+
+def test_failed_news_chain_returns_fixture_articles() -> None:
+    fixture_provider = FixtureProvider(REPO_ROOT / "data/fixtures/v1/phase0_bundle.json")
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        fixture_provider,
+        news_provider=_TimeoutNewsProvider(),
+        news_fallback_provider=None,
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        metadata_provider=_PriceProvider(),
+        retry_limit=0,
+    )
+
+    snapshot = service.collect_demo_snapshot()
+
+    assert snapshot.checks["news"].provider == "fixture_news"
+    assert snapshot.checks["news"].payload["articleCount"] > 0
+    assert "FIXTURE_NEWS_FALLBACK_ACTIVE" in snapshot.checks["news"].warnings
 
 
 def test_collect_demo_snapshot_uses_cached_gdelt_payload_on_timeout() -> None:

@@ -197,7 +197,17 @@ class SupabaseOperationStore:
             value = _quote_value(result.payload)
             if instrument is None or value is None:
                 continue
-            observed_at = _quote_timestamp(result.payload, now)
+            historical_points = _quote_history(result.payload)
+            observed_at = (
+                _history_point_datetime(historical_points[-1])
+                if historical_points
+                else _quote_timestamp(result.payload, now)
+            )
+            history_start = (
+                _history_point_datetime(historical_points[0])
+                if historical_points
+                else observed_at
+            )
             snapshot_id = f"mkt_live_{symbol.lower().replace('-', '_')}_1d"
             existing = (
                 self._client.table("market_snapshots")
@@ -208,7 +218,9 @@ class SupabaseOperationStore:
                 .data
                 or []
             )
-            start_at = existing[0]["start_at"] if existing else observed_at.isoformat()
+            start_at = history_start.isoformat()
+            if existing and isinstance(existing[0].get("start_at"), str):
+                start_at = min(existing[0]["start_at"], start_at)
             warnings = list(result.warnings)
             if result.data_mode != "live" and not warnings:
                 warnings = ["LIVE_QUOTE_FALLBACK"]
@@ -240,17 +252,26 @@ class SupabaseOperationStore:
                     "warnings": warnings,
                 }
             )
-            observation_rows.append(
-                {
-                    "market_snapshot_id": snapshot_id,
-                    "observed_at": observed_at.isoformat(),
-                    "close_value": value,
-                    "volume": None,
-                    "open_value": None,
-                    "high_value": None,
-                    "low_value": None,
-                }
-            )
+            if historical_points:
+                observation_rows.extend(
+                    {
+                        "market_snapshot_id": snapshot_id,
+                        **point,
+                    }
+                    for point in historical_points
+                )
+            else:
+                observation_rows.append(
+                    {
+                        "market_snapshot_id": snapshot_id,
+                        "observed_at": observed_at.isoformat(),
+                        "close_value": value,
+                        "volume": None,
+                        "open_value": None,
+                        "high_value": None,
+                        "low_value": None,
+                    }
+                )
         if snapshot_rows:
             self._client.table("market_snapshots").upsert(snapshot_rows).execute()
         if observation_rows:
@@ -425,12 +446,69 @@ def _quote_timestamp(payload: dict[str, object], fallback: datetime) -> datetime
     return fallback
 
 
+def _quote_history(payload: dict[str, object]) -> list[dict[str, object]]:
+    history = payload.get("history")
+    if not isinstance(history, list):
+        return []
+    points: list[dict[str, object]] = []
+    for item in history:
+        if not isinstance(item, dict):
+            continue
+        timestamp = item.get("timestamp")
+        if isinstance(timestamp, (int, float)):
+            observed_at = datetime.fromtimestamp(timestamp, tz=UTC)
+        elif isinstance(timestamp, str):
+            try:
+                observed_at = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if observed_at.tzinfo is None:
+                observed_at = observed_at.replace(tzinfo=UTC)
+        else:
+            continue
+        close = _positive_number(item.get("close"))
+        if close is None:
+            continue
+        points.append(
+            {
+                "observed_at": observed_at.isoformat(),
+                "close_value": close,
+                "volume": _non_negative_number(item.get("volume")),
+                "open_value": _positive_number(item.get("open")),
+                "high_value": _positive_number(item.get("high")),
+                "low_value": _positive_number(item.get("low")),
+            }
+        )
+    return sorted(points, key=lambda point: str(point["observed_at"]))
+
+
+def _history_point_datetime(point: dict[str, object]) -> datetime:
+    return datetime.fromisoformat(str(point["observed_at"]).replace("Z", "+00:00"))
+
+
+def _positive_number(value: object) -> float | None:
+    parsed = _non_negative_number(value)
+    return parsed if parsed is not None and parsed > 0 else None
+
+
+def _non_negative_number(value: object) -> float | None:
+    if not isinstance(value, (int, float, str)):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
+
+
 def _provider_source_url(provider: str) -> str:
     return {
         "twelve_data": "https://api.twelvedata.com/quote",
         "finnhub": "https://finnhub.io/api/v1/quote",
         "coingecko": "https://api.coingecko.com/api/v3/simple/price",
+        "rapidapi_yahoo": "https://rapidapi.com/apidojo/api/yahoo-finance1",
         "fred": "https://api.stlouisfed.org/fred/series/observations",
+        "eia": "https://api.eia.gov/v2/petroleum/pri/spt/data/",
     }.get(provider, "https://api.nexomercado.example/market")
 
 

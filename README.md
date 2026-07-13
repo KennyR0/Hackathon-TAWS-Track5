@@ -134,7 +134,9 @@ Variables esperadas:
 - `MARKET_DATA_MODE` con `fixture`, `hybrid` o `live`
 - `FIXTURE_BUNDLE_PATH` para seleccionar el bundle offline
 - `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` solo para persistencia real
-- `GDELT_API_KEY`, `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` para sourcing live opcional
+- `GDELT_API_KEY`, `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` y `EIA_API_KEY` para sourcing live opcional
+- `RAPIDAPI_KEY`, `YAHOO_FINANCE_API_HOST` y `YAHOO_FINANCE_BASE_URL` para Yahoo Finance como backup e historicos
+- `MARKET_PROVIDER_BUDGETS` para limites y reservas independientes por proveedor
 - `GDELT_BASE_URL`, `GDELT_TIMEOUT_SECONDS`, `GDELT_MAX_ATTEMPTS`, `GDELT_CACHE_TTL_SECONDS` y `SEC_USER_AGENT` para endurecer el probe de noticias
 
 Ejemplo rapido:
@@ -197,6 +199,25 @@ El backend mantiene el contrato actual, pero puede intentar providers reales par
 - `hybrid`: intenta live y cae a `fallback`
 - `live`: intenta live primero; si falla, responde con `fallback` y warnings
 
+Cadenas de respaldo:
+
+- noticias: `GDELT -> Finnhub News -> cache -> fixture`
+- acciones y ETF: `Twelve Data -> Finnhub -> Yahoo Finance/RapidAPI -> cache -> fixture`
+- cripto: `CoinGecko -> Yahoo Finance/RapidAPI -> cache -> fixture`
+- WTI: `FRED DCOILWTICO -> EIA RWTC -> cache -> fixture`
+
+Los backups se activan ante clave ausente, presupuesto agotado, circuito abierto,
+timeout, HTTP 429/5xx o payload invalido. Yahoo Finance/RapidAPI usa el endpoint
+de chart para recuperar precio actual y hasta un mes de observaciones diarias;
+el worker persiste esos puntos historicos de forma idempotente. No se usa `CL=F`
+como sustituto de WTI porque un futuro no es equivalente al precio spot.
+Twelve Data Basic ofrece actualmente 800 creditos diarios y cobra un credito por
+simbolo incluso en batch; el ejemplo reserva 40 creditos:
+
+```dotenv
+MARKET_PROVIDER_BUDGETS={"twelve_data":{"period":"day","maxRequests":800,"safetyReserve":40}}
+```
+
 Probe operativo del runtime de mercado:
 
 ```bash
@@ -216,6 +237,9 @@ Variables live esperadas:
 - `TWELVE_DATA_API_KEY`
 - `FRED_API_KEY`
 - `COINGECKO_API_KEY` opcional
+- `EIA_API_KEY` opcional para el fallback WTI
+- `RAPIDAPI_KEY`, `YAHOO_FINANCE_API_HOST` y `YAHOO_FINANCE_BASE_URL` opcionales pero requeridos en conjunto
+- `YAHOO_FINANCE_CHART_PATH` opcional; por defecto `/stock/v3/get-chart`
 - `GDELT_API_KEY` solo si el proveedor configurado lo requiere
 
 ## Fase 7: despliegue y presentación

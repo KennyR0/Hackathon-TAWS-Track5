@@ -7,13 +7,36 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from app.config import get_market_provider_config
-from app.operations.store import InMemoryOperationStore
+from app.operations.store import InMemoryOperationStore, _quote_history
 from app.operations.worker import run_operations_worker
 from app.providers.fixture_provider import FixtureProvider
 from app.providers.live_market import MarketDataRuntimeService
 from app.services.provider_runtime_service import build_in_memory_provider_runtime
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def test_rapidapi_history_normalizes_persistable_market_points() -> None:
+    points = _quote_history(
+        {
+            "history": [
+                {
+                    "timestamp": 1783728000,
+                    "close": 100.5,
+                    "open": 99.0,
+                    "high": 101.0,
+                    "low": 98.5,
+                    "volume": 1200,
+                },
+                {"timestamp": 1783814400, "close": 102.0},
+            ]
+        }
+    )
+
+    assert len(points) == 2
+    assert points[0]["close_value"] == 100.5
+    assert points[0]["volume"] == 1200.0
+    assert points[1]["observed_at"] > points[0]["observed_at"]
 
 
 def test_operations_worker_emits_fixture_metrics() -> None:
