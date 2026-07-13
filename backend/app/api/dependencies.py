@@ -167,7 +167,6 @@ def get_llm_adapter() -> LLMAdapter:
     return FixtureLLMAdapter()
 
 
-@lru_cache
 def get_event_service(
     user: CurrentUserDep,
 ) -> EventService:
@@ -197,36 +196,43 @@ def get_conversation_service(
     )
 
 
-@lru_cache
 def get_signal_service(
     user: CurrentUserDep,
 ) -> SignalService:
     return SignalService(get_scoped_repository(user))
 
 
-@lru_cache
 def get_market_service(
     user: CurrentUserDep,
 ) -> MarketService:
     return MarketService(get_scoped_repository(user))
 
 
-@lru_cache
 def get_review_service(
     user: CurrentUserDep,
 ) -> ReviewService:
     return ReviewService(get_scoped_repository(user))
 
 
-@lru_cache
 def get_briefing_service(
     user: CurrentUserDep,
 ) -> BriefingService:
     return BriefingService(get_scoped_repository(user), get_llm_adapter())
 
 
-@lru_cache
 def get_analysis_service(
     user: CurrentUserDep,
 ) -> AnalysisService:
     return AnalysisService(get_scoped_repository(user), get_llm_adapter())
+
+
+def _noop_cache_clear() -> None:
+    return None
+
+
+get_event_service.cache_clear = _noop_cache_clear  # type: ignore[attr-defined]
+get_signal_service.cache_clear = _noop_cache_clear  # type: ignore[attr-defined]
+get_market_service.cache_clear = _noop_cache_clear  # type: ignore[attr-defined]
+get_review_service.cache_clear = _noop_cache_clear  # type: ignore[attr-defined]
+get_briefing_service.cache_clear = _noop_cache_clear  # type: ignore[attr-defined]
+get_analysis_service.cache_clear = _noop_cache_clear  # type: ignore[attr-defined]

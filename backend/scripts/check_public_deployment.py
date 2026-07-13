@@ -125,13 +125,17 @@ def _run_write_flow(
         else "pending_review"
     )
     next_status = "reviewed" if current_status == "escalated" else "escalated"
+    review_justification = (
+        "Revision publica controlada: la evidencia trazable y las advertencias "
+        "del sistema permanecen visibles para la demostracion."
+    )
     review = _expect_json(
         client.post(
             f"/api/v1/signals/{signal_id}/reviews",
             headers={"Idempotency-Key": f"public-smoke-review-{session_id}"},
             json={
                 "status": next_status,
-                "justification": f"{session_id} Validacion publica controlada.",
+                "justification": review_justification,
             },
         ),
         201,
