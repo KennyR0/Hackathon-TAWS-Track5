@@ -74,6 +74,7 @@ Reglas:
 - Excepcion autorizada: Fase 7 ejecutada en `main` por autorizacion explicita del usuario.
 - Excepcion autorizada: Fase 8 ejecutada en `main` por autorizacion explicita del usuario.
 - Excepcion autorizada: Fase 9 ejecutada en `main` por autorizacion explicita del usuario.
+- Excepcion autorizada: ajuste live posterior al despliegue ejecutado en `main` por autorizacion explicita del usuario; no crear ramas.
 
 ## 4. Estado
 
@@ -615,6 +616,7 @@ Evidencia del rediseño integral:
 - No se creó un nuevo run OpenAI ni registros adicionales durante esta QA; se releyó la
   evidencia durable ya existente. No hubo cambios backend, esquema, commit, push o despliegue.
 - Resultado: rediseño aprobado localmente; Fase 10 queda `lista_para_revision` y espera decisión humana.
+- Ajuste posterior al despliegue autorizado en `main`: `render.yaml` queda preparado localmente con `LLM_PROVIDER=openai`, `REPOSITORY_BACKEND=supabase` y `MARKET_DATA_MODE=hybrid`; por instrucción del usuario no se hizo commit, push ni despliegue. El Panorama consulta el estado live con caché de cinco minutos y reemplaza precios visibles solo cuando el proveedor individual confirma `dataMode=live`; eventos, señales o fallbacks conservan su procedencia original y nunca se renombran como live.
 
 Evidencia del ajuste final de entrega pública:
 
@@ -625,6 +627,7 @@ Evidencia del ajuste final de entrega pública:
 - Frontend legacy anterior removido de `frontend/src/pages`, `frontend/src/components`, libs antiguas y assets no usados; la ruta activa queda en `src/app`, `src/features`, `src/shared` y `src/lib/auth.ts`.
 - Microcopy y docs sustituyen "demo" por "presentación" donde podía confundirse; los nombres contractuales `demo-global`, `watchlist_demo_global` y `Analista Demo` se documentan como identidad/watchlist fija del MVP.
 - Documento nuevo: `docs/ENTREGA_JURADO.md`.
+- Verificación pública posterior a `git pull` (solo lectura): frontend y health aprobados; AAPL, SPY, BTC y WTI respondieron `live` desde caché auditable, noticias quedaron `fallback` por circuito GDELT abierto y el preflight CORS desde `https://hackathon-taws-track5.vercel.app` devolvió HTTP 400. El despliegue remoto todavía no contiene el failover Finnhub News incorporado en el nuevo `main`.
 - Validaciones ejecutadas:
   - `python3 -m py_compile backend/scripts/check_public_deployment.py backend/app/services/provider_demo_service.py backend/app/providers/live_market.py backend/app/repositories/provider_cache_repository.py`: aprobado.
   - `.venv314/bin/python -m pytest backend/tests -q`: aprobado; queda warning externo de `StarletteDeprecationWarning`.
@@ -701,6 +704,7 @@ Producto:
 | 2026-07-12 | 9 | Trabajar en `main` sin rama nueva | Excepcion autorizada explicitamente por el usuario para workers y operacion |
 | 2026-07-12 | 10 | Crear rama `codex/fase-10-diferenciadores` | Gate original de fase exige rama `codex/fase-*`; no se autorizo excepcion para `main` |
 | 2026-07-12 | 10 | Cerrar diferenciadores sin migracion nueva | Conversaciones ya existian en DB; similares y snapshots EC se implementan fixture-first y trazables |
+| 2026-07-12 | 10 | Ajustar consumo real en `main` sin rama nueva | El usuario autorizo completar el alcance sin importar fase y prohibio crear ramas; el despliegue debe usar APIs reales con fallback auditable |
 
 ## 12. Registro de cambios
 

@@ -102,7 +102,7 @@ export function useMarketSnapshotsQuery(filters?: { asset?: string; interval?: '
   })
 }
 
-export function useProviderRuntimeQuery() {
+export function useProviderRuntimeQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.providerRuntime(),
     queryFn: async () => {
@@ -112,9 +112,10 @@ export function useProviderRuntimeQuery() {
         meta: payload.meta,
       }
     },
-    enabled: false,
+    enabled: options?.enabled ?? false,
     retry: false,
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

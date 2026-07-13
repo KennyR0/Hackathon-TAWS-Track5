@@ -44,7 +44,11 @@ def _check_frontend_html(client: httpx.Client, frontend_url: str) -> dict[str, o
 
 
 def _check_frontend_browser(frontend_url: str) -> dict[str, object]:
-    chrome = shutil.which("google-chrome") or shutil.which("chromium") or shutil.which("chromium-browser")
+    chrome = (
+        shutil.which("google-chrome")
+        or shutil.which("chromium")
+        or shutil.which("chromium-browser")
+    )
     if chrome is None:
         return {"ok": None, "skipped": "chrome_not_available"}
     completed = subprocess.run(
@@ -88,7 +92,12 @@ def _check_cors(client: httpx.Client, backend_url: str, origin: str) -> dict[str
     return {"ok": True, "allowOrigin": allowed_origin}
 
 
-def _wait_for_run(client: httpx.Client, run_id: str, *, timeout_seconds: float) -> dict[str, object]:
+def _wait_for_run(
+    client: httpx.Client,
+    run_id: str,
+    *,
+    timeout_seconds: float,
+) -> dict[str, object]:
     deadline = monotonic() + timeout_seconds
     while monotonic() < deadline:
         payload = _expect_json(client.get(f"/api/v1/analyses/{run_id}"), 200)
@@ -140,7 +149,9 @@ def _run_write_flow(
         201,
     )
     event_view = next(
-        item for item in events if isinstance(item.get("event"), dict) and item["event"].get("relatedAssets")
+        item
+        for item in events
+        if isinstance(item.get("event"), dict) and item["event"].get("relatedAssets")
     )
     event = event_view["event"]
     analysis = _expect_json(
@@ -193,7 +204,11 @@ def main() -> int:
         else:
             result["cors"] = _check_cors(public_client, backend_url, frontend_origin)
 
-    with httpx.Client(base_url=backend_url, timeout=45.0, headers={"Accept": "application/json"}) as api:
+    with httpx.Client(
+        base_url=backend_url,
+        timeout=45.0,
+        headers={"Accept": "application/json"},
+    ) as api:
         result["health"] = _expect_json(api.get("/health"), 200)
         events_payload = _expect_json(api.get("/api/v1/events"), 200)
         signals_payload = _expect_json(api.get("/api/v1/signals"), 200)

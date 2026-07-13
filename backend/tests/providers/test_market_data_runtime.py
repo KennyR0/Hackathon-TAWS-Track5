@@ -32,6 +32,11 @@ class _NewsProvider:
         return _live_result("gdelt", {"articleCount": 2})
 
 
+class _FinnhubNewsProvider:
+    def probe(self):
+        return _live_result("finnhub_news", {"articleCount": 3, "query": "AAPL"})
+
+
 class _PriceProvider:
     def probe(self, symbol: str):
         return _live_result("price", {"symbol": symbol, "value": 123.4})
@@ -310,6 +315,26 @@ def test_collect_demo_snapshot_classifies_gdelt_rate_limit_fallback() -> None:
     assert snapshot.checks["news"].ok is False
     assert "GDELT_RATE_LIMIT_FALLBACK_ACTIVE" in snapshot.checks["news"].warnings
     assert snapshot.checks["news"].payload["statusCode"] == 429
+
+
+def test_collect_demo_snapshot_fails_over_from_gdelt_to_finnhub_news() -> None:
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        news_provider=_TimeoutNewsProvider(),
+        news_fallback_provider=_FinnhubNewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        metadata_provider=_PriceProvider(),
+    )
+
+    snapshot = service.collect_demo_snapshot()
+
+    assert snapshot.data_mode == DataMode.LIVE
+    assert snapshot.checks["news"].provider == "finnhub_news"
+    assert snapshot.checks["news"].payload["articleCount"] == 3
+    assert "GDELT_TO_FINNHUB_FAILOVER" in snapshot.checks["news"].warnings
 
 
 class _TimeoutNewsProvider:

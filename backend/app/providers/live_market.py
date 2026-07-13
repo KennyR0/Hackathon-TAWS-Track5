@@ -134,6 +134,36 @@ class GDELTNewsProvider(NewsProvider):
         )
 
 
+class FinnhubNewsProvider(NewsProvider):
+    def __init__(self, api_key: str, client: httpx.Client | None = None) -> None:
+        self._api_key = api_key
+        self._client = client or httpx.Client(timeout=10.0)
+
+    def probe(self) -> ProviderProbeResult:
+        today = _utc_now().date()
+        response = self._client.get(
+            "https://finnhub.io/api/v1/company-news",
+            params={
+                "symbol": "AAPL",
+                "from": (today - timedelta(days=1)).isoformat(),
+                "to": today.isoformat(),
+                "token": self._api_key,
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, list):
+            raise ValueError("Finnhub response did not include a valid news list")
+        return _live_result(
+            "finnhub_news",
+            {
+                "articleCount": len(payload),
+                "titles": [item.get("headline") for item in payload[:3]],
+                "query": "AAPL",
+            },
+        )
+
+
 class TwelveDataPriceProvider(PriceProvider):
     def __init__(self, api_key: str | None, client: httpx.Client | None = None) -> None:
         self._api_key = api_key
@@ -261,6 +291,7 @@ class MarketDataRuntimeService:
         fixture_provider: FixtureDataProvider,
         *,
         news_provider: NewsProvider | None = None,
+        news_fallback_provider: NewsProvider | None = None,
         equity_price_provider: PriceProvider | None = None,
         crypto_price_provider: PriceProvider | None = None,
         macro_provider: MacroProvider | None = None,
@@ -285,6 +316,9 @@ class MarketDataRuntimeService:
             user_agent=config.gdelt_user_agent,
             timeout_seconds=config.gdelt_timeout_seconds,
             max_attempts=config.gdelt_max_attempts,
+        )
+        self._news_fallback_provider = news_fallback_provider or (
+            FinnhubNewsProvider(config.finnhub_api_key) if config.finnhub_api_key else None
         )
         self._equity_price_provider = equity_price_provider or TwelveDataPriceProvider(
             config.twelve_data_api_key
@@ -333,36 +367,38 @@ class MarketDataRuntimeService:
         for key, provider_call in (
             (
                 "news",
-                lambda: self._safe_probe(
-                    self._news_provider.probe,
-                    "gdelt",
-                    cache_key="news_probe:gdelt:apple",
-                    resource_type="news_probe",
-                    cache_ttl_seconds=self._config.gdelt_cache_ttl_seconds,
-                ),
+                self._probe_news,
             ),
             (
                 "aapl",
                 lambda: self._safe_probe(
-                    lambda: self._equity_price_provider.probe("AAPL"), "twelve_data"
+                    lambda: self._equity_price_provider.probe("AAPL"),
+                    "twelve_data",
+                    cache_key="probe:twelve_data:quote:AAPL",
                 ),
             ),
             (
                 "spy",
                 lambda: self._safe_probe(
-                    lambda: self._metadata_provider.probe("SPY"), "finnhub"
+                    lambda: self._metadata_provider.probe("SPY"),
+                    "finnhub",
+                    cache_key="probe:finnhub:quote:SPY",
                 ),
             ),
             (
                 "btc",
                 lambda: self._safe_probe(
-                    lambda: self._crypto_price_provider.probe("BTC-USD"), "coingecko"
+                    lambda: self._crypto_price_provider.probe("BTC-USD"),
+                    "coingecko",
+                    cache_key="probe:coingecko:price:BTC-USD",
                 ),
             ),
             (
                 "wti",
                 lambda: self._safe_probe(
-                    lambda: self._macro_provider.probe("DCOILWTICO"), "fred"
+                    lambda: self._macro_provider.probe("DCOILWTICO"),
+                    "fred",
+                    cache_key="probe:fred:series:DCOILWTICO",
                 ),
             ),
         ):
@@ -389,6 +425,31 @@ class MarketDataRuntimeService:
             checks=checks,
             request_budget=self._request_budget,
             requests_used=self._requests_used,
+        )
+
+    def _probe_news(self) -> ProviderProbeResult:
+        primary = self._safe_probe(
+            self._news_provider.probe,
+            "gdelt",
+            cache_key="probe:gdelt:news:apple",
+            resource_type="news_probe",
+            cache_ttl_seconds=self._config.gdelt_cache_ttl_seconds,
+        )
+        if primary.ok or self._news_fallback_provider is None:
+            return primary
+        fallback = self._safe_probe(
+            self._news_fallback_provider.probe,
+            "finnhub_news",
+            cache_key="probe:finnhub:company_news:AAPL",
+        )
+        if not fallback.ok:
+            return primary
+        return ProviderProbeResult(
+            provider=fallback.provider,
+            data_mode=fallback.data_mode,
+            ok=True,
+            warnings=tuple(dict.fromkeys((*primary.warnings, "GDELT_TO_FINNHUB_FAILOVER"))),
+            payload=fallback.payload,
         )
 
     def _cache_probe_result(
@@ -453,7 +514,7 @@ class MarketDataRuntimeService:
                 payload={"mode": DataMode.FIXTURE.value},
                 warning="FIXTURE_MODE_FORCES_OFFLINE_DATA",
             )
-        runtime_cache_key = f"probe:{provider}"
+        runtime_cache_key = cache_key or f"probe:{provider}"
         runtime = self._provider_runtime
         runtime_store_warning: str | None = None
         if runtime is not None:
@@ -539,7 +600,11 @@ class MarketDataRuntimeService:
                     try:
                         runtime.health.record_failure(
                             provider,
-                            error_code=result.warnings[0] if result.warnings else "ProviderFallback",
+                            error_code=(
+                                result.warnings[0]
+                                if result.warnings
+                                else "ProviderFallback"
+                            ),
                         )
                     except Exception:
                         runtime_store_warning = RUNTIME_STORE_UNAVAILABLE_WARNING

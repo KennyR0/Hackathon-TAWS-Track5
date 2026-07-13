@@ -11,11 +11,11 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.12
       - key: LLM_PROVIDER
-        value: fixture
+        value: openai
       - key: REPOSITORY_BACKEND
-        value: fixture
+        value: supabase
       - key: MARKET_DATA_MODE
-        value: fixture
+        value: hybrid
       - key: FIXTURE_BUNDLE_PATH
         value: data/fixtures/v1/phase0_bundle.json
       - key: BACKEND_CORS_ORIGINS
