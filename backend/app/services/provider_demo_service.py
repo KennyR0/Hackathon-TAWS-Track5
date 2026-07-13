@@ -169,10 +169,11 @@ def _build_check(
         for name, value in result.payload.items()
         if name in ALLOWED_METRICS[key]
     }
+    provider = PROVIDERS_BY_KEY[key]
     with allow_internal_field_names():
         return ProviderRuntimeCheck(
             key=key,
-            provider=result.provider,
+            provider=provider,
             resource=RESOURCE_LABELS[key],
             data_mode=DataMode(result.data_mode),
             ok=result.ok,
