@@ -1,12 +1,12 @@
 # Estado técnico y prioridades del proyecto
 
-Fecha de actualización: 2026-07-12
+Fecha de actualización: 2026-07-13
 
 ## Resumen ejecutivo
 
 NexoMercado AI ya no está en fase de arranque. Hoy tiene un backend sólido, contratos estables, persistencia con Supabase para el estado mutable, modos `fixture/hybrid/live` y un frontend funcional conectado al contrato real del backend.
 
-La prioridad actual no es replantear arquitectura. La prioridad es cerrar el producto para demo: limpiar bordes, consolidar pruebas, validar el flujo real con Supabase y dejar una narrativa convincente para jurado.
+La prioridad actual no es replantear arquitectura. La prioridad es cerrar el producto para presentación pública: limpiar bordes, consolidar pruebas, validar el flujo real con Supabase y dejar una narrativa convincente para jurado.
 
 ## Calificación actual estimada
 
@@ -14,7 +14,7 @@ La prioridad actual no es replantear arquitectura. La prioridad es cerrar el pro
 - **Madurez del backend:** `8/10`
 - **Madurez del frontend:** `7/10`
 - **Persistencia y operación real:** `6.5/10`
-- **Proyecto completo para demo de jurado:** `7.5/10`
+- **Proyecto completo para presentación de jurado:** `8.4/10`
 
 ## Qué ya está bien encaminado
 
@@ -54,11 +54,11 @@ La prioridad actual no es replantear arquitectura. La prioridad es cerrar el pro
 
 ### 2. Limpieza y consolidación del frontend
 
-- Retirar o aislar archivos legacy del frontend anterior para evitar confusión del equipo.
+- Mantener la ruta activa en `frontend/src/app`, `frontend/src/features` y `frontend/src/shared`.
 - Afinar responsive y microcopy final.
-- Revisar el detalle de activo y assistant con enfoque de demo.
+- Revisar el detalle de activo y assistant con enfoque de presentación.
 
-### 3. Demo end-to-end
+### 3. Presentación end-to-end
 
 - Probar el recorrido real:
   - radar
@@ -74,19 +74,19 @@ La prioridad actual no es replantear arquitectura. La prioridad es cerrar el pro
 
 - README y docs actualizados.
 - Deploy real en Render y Vercel.
-- Documento final de entrega y guion de demo bien alineados con lo que el sistema hace hoy.
+- Documento final de entrega y guion de presentación bien alineados con lo que el sistema hace hoy.
 
 ## Riesgos actuales
 
 ### Riesgo alto
 
-- Que el backend esté fuerte, pero la demo no haga evidente el valor del sistema.
-- Que el repo tenga piezas duplicadas del frontend viejo y el equipo se confunda.
+- Que el backend esté fuerte, pero la presentación no haga evidente el valor del sistema.
+- Que el estado público de proveedores falle sin devolver warnings controlados.
 
 ### Riesgo medio
 
 - Que Supabase esté configurado pero no validado a fondo en un recorrido real.
-- Que el modo `live` se use en demo sin suficiente control del fallback.
+- Que el modo `live` se use en presentación sin suficiente control del fallback.
 
 ### Riesgo bajo
 
@@ -97,10 +97,10 @@ La prioridad actual no es replantear arquitectura. La prioridad es cerrar el pro
 1. Validar backend + Supabase en flujo real.
 2. Limpiar frontend legacy y cerrar detalles visuales.
 3. Preparar deploy.
-4. Ensayar el recorrido de demo y congelar una historia principal.
+4. Ensayar el recorrido de presentación y congelar una historia principal.
 
 ## Conclusión
 
 El proyecto ya tiene forma de producto serio. No está para volver a diseñarse desde cero; está para cerrarse, probarse bien y presentarse con claridad.
 
-Si el equipo mantiene foco en demo, consistencia operativa y narrativa, el repo ya tiene suficiente base para verse competitivo ante el jurado.
+Si el equipo mantiene foco en presentación, consistencia operativa y narrativa, el repo ya tiene suficiente base para verse competitivo ante el jurado.

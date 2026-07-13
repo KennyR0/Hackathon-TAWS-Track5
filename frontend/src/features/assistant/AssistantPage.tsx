@@ -177,7 +177,7 @@ export function AssistantPage() {
           )}
         </SurfaceCard>
 
-        <SurfaceCard eyebrow="Prompting guiado" title="Sugerencias para el demo">
+        <SurfaceCard eyebrow="Prompting guiado" title="Sugerencias para la presentación">
           <ul className="text-list">
             <li>Explica la reacción de AAPL frente al evento principal y muestra las evidencias más fuertes.</li>
             <li>Resume por qué una señal fue escalada y qué investigación adicional necesita.</li>

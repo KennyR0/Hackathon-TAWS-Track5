@@ -35,7 +35,7 @@ CLI: `supabase` v2.98.2
 |------------|--------|
 | 2 migraciones faltantes en local | Resuelto vía `supabase migration fetch --linked` |
 | Backend `audit_events` usaba `event_type`/`payload` | Resuelto: ahora `action`/`metadata`/`actor_user_id` |
-| `supabase/schema.sql` obsoleto (11 tablas) | Documentado como legacy; no usar para bootstrap |
+| `supabase/schema.sql` incompleto para runtime de proveedores | Actualizado como baseline operativo mínimo; las migraciones remotas siguen siendo la fuente cloud |
 | `supabase/` gitignored | Baseline reproducible en este documento |
 
 ## Drift `supabase db diff --linked`
@@ -61,7 +61,7 @@ pytest tests/repositories/test_supabase_repository.py tests/contracts/test_supab
 ## Riesgos
 
 1. `supabase/` no versionado en git — riesgo de drift entre máquinas; ejecutar checklist B0 en cada entorno.
-2. `schema.sql` puede confundir onboarding — usar `migrations/` como fuente canónica.
+2. `schema.sql` es baseline operativo mínimo para onboarding; usar migraciones remotas/CLI como fuente canónica cloud.
 3. Cambios cloud requieren autorización explícita antes de `supabase db push`.
 
 ## Confirmación

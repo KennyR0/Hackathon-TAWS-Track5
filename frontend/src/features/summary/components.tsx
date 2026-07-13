@@ -283,7 +283,7 @@ export function WatchlistPanel({
     <aside className="market-side-panel" aria-label="Watchlist y actividad">
       <section className="market-side-card">
         <p className="section-eyebrow">Watchlist</p>
-        <h2>{watchlist?.name ?? 'Demo Global'}</h2>
+        <h2>{watchlist?.name ?? 'Global MVP'}</h2>
         <div className="watchlist-rows">
           {assets.slice(0, 5).map(asset => (
             <Link key={asset.assetId} className="watchlist-row" to={asset.latestSignal ? `/signals/${asset.latestSignal.id}` : `/assets/${asset.symbol}`}>

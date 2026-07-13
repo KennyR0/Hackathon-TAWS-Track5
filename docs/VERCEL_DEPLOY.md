@@ -39,7 +39,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
 Notas:
 
 - `VITE_API_BASE_URL` debe apuntar al backend publicado, normalmente Render.
-- `VITE_AUTH_ENABLED=false` mantiene la demo sin login productivo.
+- `VITE_AUTH_ENABLED=false` mantiene la presentación pública con identidad fija del MVP.
 - Si activas auth con `VITE_AUTH_ENABLED=true`, tambien debes configurar Supabase Auth y sus redirect URLs para el dominio de Vercel.
 - No cargues `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` ni claves de proveedores live en Vercel frontend; esas pertenecen al backend.
 

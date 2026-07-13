@@ -25,7 +25,8 @@ El foco del proyecto es explicar por qué una señal existe, de dónde salen sus
 - [Arquitectura general](docs/referencias/ARQUITECTURA_GENERAL_NexoMercado_AI.md)
 - [Guía del Track 5](docs/referencias/Hackathon_Guide_Financial_Agents_IA_-_Track_5.md)
 - [Conexiones frontend-backend](docs/CONEXIONES_FRONTEND_BACKEND.md)
-- [Guion de demo](docs/demo-script.md)
+- [Guion de presentación](docs/demo-script.md)
+- [Entrega para jurado](docs/ENTREGA_JURADO.md)
 
 El repositorio trabaja por fases gobernadas en `docs/PLAN_IMPLEMENTACION_POR_FASES.md`. Ninguna fase se acepta o avanza automaticamente.
 
@@ -107,6 +108,7 @@ Backend:
 pytest backend/tests -q
 python backend/scripts/check_demo_flow.py
 python backend/scripts/check_backend_runtime.py --env-file .env
+python backend/scripts/check_public_deployment.py --skip-browser
 ```
 
 Frontend:
@@ -216,9 +218,12 @@ Variables live esperadas:
 - `COINGECKO_API_KEY` opcional
 - `GDELT_API_KEY` solo si el proveedor configurado lo requiere
 
-## Fase 7: demo deploy-ready
+## Fase 7: despliegue y presentación
 
-La Fase 7 deja configuracion versionada para Vercel y Render, pero no ejecuta commit, push ni despliegue cloud real.
+La Fase 7 deja configuracion versionada para Vercel y Render. El proyecto ya cuenta con despliegues publicos verificados:
+
+- Frontend: `https://hackathon-taws-track5.vercel.app/summary`
+- Backend: `https://hackathon-taws-track5.onrender.com`
 
 - Backend Render: [`render.yaml`](render.yaml) define un servicio FastAPI con `uvicorn`, health check `/health` y secretos `sync: false`.
 - Frontend Vercel: [`vercel.json`](vercel.json) permite importar el repo completo y construir `frontend/`; [`frontend/vercel.json`](frontend/vercel.json) cubre la alternativa con Root Directory `frontend`.
@@ -227,10 +232,16 @@ La Fase 7 deja configuracion versionada para Vercel y Render, pero no ejecuta co
 - Frontend publico: `frontend/.env.example` usa `VITE_API_BASE_URL=https://<render-service>/api`. Por compatibilidad tambien se acepta `VITE_API_URL`.
 - Secretos: OpenAI, Supabase y proveedores live se configuran solo en el entorno backend.
 
-Smoke local del flujo de demo sin red ni secretos:
+Smoke local del flujo de presentación sin red ni secretos:
 
 ```powershell
 MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py
+```
+
+Smoke publico de solo lectura:
+
+```powershell
+.\.venv312\Scripts\python.exe backend\scripts\check_public_deployment.py
 ```
 
 ## Frontend actual

@@ -13,7 +13,7 @@ phase_7: aceptada
 phase_8: aceptada
 phase_9: aceptada
 phase_10: lista_para_revision
-last_updated: 2026-07-12
+last_updated: 2026-07-13
 ---
 
 # Plan de implementación por fases — NexoMercado AI
@@ -305,7 +305,7 @@ Evidencia de cierre local:
 
 - Rama de trabajo: `main`, por excepcion autorizada explicitamente por el usuario.
 - Frontend conectado al backend local con `VITE_API_BASE_URL=/api` y proxy Vite hacia `http://127.0.0.1:8000`.
-- Cliente frontend real en `frontend/src/lib/api.ts`, con adaptacion minima desde contratos FastAPI a modelos de pantalla.
+- Cliente frontend real en `frontend/src/shared/api`, con adaptacion minima desde contratos FastAPI a modelos de pantalla.
 - Vistas conectadas: Radar, Detalle de senal, Revision humana, Briefing y Auditoria.
 - Documento de conexiones y pendientes: `docs/CONEXIONES_FRONTEND_BACKEND.md`.
 - Validaciones ejecutadas:
@@ -615,6 +615,28 @@ Evidencia del rediseño integral:
 - No se creó un nuevo run OpenAI ni registros adicionales durante esta QA; se releyó la
   evidencia durable ya existente. No hubo cambios backend, esquema, commit, push o despliegue.
 - Resultado: rediseño aprobado localmente; Fase 10 queda `lista_para_revision` y espera decisión humana.
+
+Evidencia del ajuste final de entrega pública:
+
+- Ajuste ejecutado en `main` por instrucción explícita del usuario para cerrar estabilidad y presentación.
+- `/api/v1/runtime/providers` queda protegido contra fallos de provider runtime durable: cache, budget, circuit breaker y collector inesperado degradan a JSON `fallback` con warning sanitizado en vez de `500`.
+- `supabase/schema.sql` se alineó con el runtime real de proveedores: `provider_cache`, `provider_budgets` y `provider_health`.
+- `backend/scripts/check_public_deployment.py` valida Vercel, Render, CORS, eventos, señales, evidencia, runtime providers y carga de `/summary`; por defecto es solo lectura y `--include-write-flow` activa escrituras controladas.
+- Frontend legacy anterior removido de `frontend/src/pages`, `frontend/src/components`, libs antiguas y assets no usados; la ruta activa queda en `src/app`, `src/features`, `src/shared` y `src/lib/auth.ts`.
+- Microcopy y docs sustituyen "demo" por "presentación" donde podía confundirse; los nombres contractuales `demo-global`, `watchlist_demo_global` y `Analista Demo` se documentan como identidad/watchlist fija del MVP.
+- Documento nuevo: `docs/ENTREGA_JURADO.md`.
+- Validaciones ejecutadas:
+  - `python3 -m py_compile backend/scripts/check_public_deployment.py backend/app/services/provider_demo_service.py backend/app/providers/live_market.py backend/app/repositories/provider_cache_repository.py`: aprobado.
+  - `.venv314/bin/python -m pytest backend/tests -q`: aprobado; queda warning externo de `StarletteDeprecationWarning`.
+  - `npm run typecheck`: aprobado.
+  - `npm run lint`: aprobado.
+  - `npm run build`: aprobado; persiste warning no bloqueante de chunk principal mayor a 500 kB.
+  - `.venv314/bin/python backend/scripts/check_demo_flow.py`: aprobado en `fixture`.
+  - `.venv314/bin/python backend/scripts/check_backend_runtime.py --env-file .env`: aprobado con Supabase conectado y `hybrid` efectivo `fallback` por GDELT.
+  - Backend local con `.env` en `127.0.0.1:8010`: `GET /api/v1/runtime/providers` respondió `200`.
+  - `.venv314/bin/python backend/scripts/check_public_deployment.py --backend-url http://127.0.0.1:8010 --skip-browser --skip-cors`: aprobado.
+- Smoke público contra Render actual: bloqueado hasta redeploy; el servicio desplegado todavía responde `HTTP 500` en `/api/v1/runtime/providers` porque no contiene este ajuste.
+- Resultado: ajuste listo para revisión; requiere commit/push/redeploy para que la URL pública adopte la corrección.
 
 ## 8. Matriz mínima del Track 5
 

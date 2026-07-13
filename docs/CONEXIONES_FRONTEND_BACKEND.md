@@ -1,10 +1,15 @@
 # Conexiones frontend-backend
 
-Fecha: 2026-07-12
+Fecha: 2026-07-13
 
 ## Alcance Fase 7
 
-La Fase 7 deja el proyecto listo para demo desplegable con frontend en Vercel y backend en Render, pero no ejecuta commit, push ni despliegue cloud real. Las URL publicas reales y los secretos se cargan fuera del repositorio.
+La Fase 7 dejó el proyecto listo para presentación pública con frontend en Vercel y backend en Render. Las URL públicas actuales son:
+
+- Frontend: `https://hackathon-taws-track5.vercel.app/summary`
+- Backend: `https://hackathon-taws-track5.onrender.com`
+
+Los secretos siguen fuera del repositorio y se cargan únicamente en el entorno backend.
 
 Excepcion autorizada: Fase 7 ejecutada en `main` por autorizacion explicita del usuario.
 
@@ -49,7 +54,7 @@ Backend:
 - `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` y claves de proveedores live quedan como variables backend con `sync: false`.
 - El modo fixture sigue siendo el default offline.
 
-Ejemplo de CORS para demo:
+Ejemplo de CORS para presentación:
 
 ```text
 BACKEND_CORS_ORIGINS=https://<vercel-app>.vercel.app,http://localhost:5173,http://127.0.0.1:5173
@@ -65,7 +70,7 @@ BACKEND_CORS_ORIGINS=https://<vercel-app>.vercel.app,http://localhost:5173,http:
 | Briefing | `POST /api/v1/briefings` | Crea briefing `draft`, hidrata senales y expone warnings agregados. |
 | Auditoria | `POST /api/v1/analyses`, `GET /api/v1/analyses/{runId}`, `GET /api/v1/runs/{runId}/steps`, `GET /api/v1/analyses/{runId}/stream` | Crea una ejecucion, escucha SSE real, rehidrata pasos y renderiza modo de datos, warnings y timeline. |
 
-## Smoke local de demo
+## Smoke local de presentación
 
 ```powershell
 MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py
@@ -73,10 +78,16 @@ MARKET_DATA_MODE=fixture .\.venv312\Scripts\python.exe backend\scripts\check_dem
 
 Este smoke recorre `radar -> senal -> evidencia -> revision -> briefing` usando `TestClient`, sin red ni secretos.
 
+## Smoke público
+
+```powershell
+.\.venv312\Scripts\python.exe backend\scripts\check_public_deployment.py
+```
+
+Por defecto el smoke público es de solo lectura: valida Vercel, Render, CORS, eventos, señales, evidencia, estado de proveedores y carga visual de `/summary`. Para probar escrituras controladas de análisis, revisión y briefing se debe pasar `--include-write-flow`.
+
 ## Limitaciones pendientes
 
-- No se ejecuto despliegue real en Vercel ni Render.
-- No se validaron URLs publicas reales porque aun no existen en el repo.
-- Auth, roles y RLS productivo quedan para fases posteriores.
+- Auth productivo puede activarse con Supabase, pero la presentación pública actual usa identidad fija del MVP.
 - No existe endpoint profundo por activo; esa pantalla se deriva desde señales y eventos existentes.
 - No existe endpoint de chat libre; la pantalla `assistant` muestra contexto del run sin simular conversación.

@@ -107,7 +107,7 @@ SQL: `supabase/tests/database/000_setup.sql` … `060_internal_tables_test.sql`
 ## Riesgos pendientes
 
 1. `supabase/` gitignored — sincronizar con `migration fetch` en cada entorno.
-2. `schema.sql` legacy — no usar para bootstrap.
+2. `schema.sql` es baseline operativo mínimo; las migraciones remotas siguen siendo fuente cloud.
 3. `pg_cron` no habilitado — jobs maintenance manuales.
 4. Auth JWT requiere `AUTH_ENABLED=true` y usuario vinculado en `app_users.auth_user_id`.
 

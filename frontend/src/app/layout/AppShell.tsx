@@ -59,7 +59,7 @@ export function AppShell() {
           >
             <PanelRight size={17} />
           </button>
-          <button className="avatar-button" type="button" aria-label="Perfil de Analista Demo">AD</button>
+          <button className="avatar-button" type="button" aria-label="Perfil de Analista MVP">AD</button>
         </div>
       </header>
 

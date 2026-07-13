@@ -51,6 +51,14 @@ class _FailingPriceProvider:
         raise TimeoutError(f"{symbol} timed out")
 
 
+class _FailingRuntimeCache:
+    def get_valid(self, provider: str, cache_key: str):
+        raise RuntimeError(f"{provider}:{cache_key}: durable cache unavailable")
+
+    def put(self, entry) -> None:
+        raise RuntimeError("durable cache unavailable")
+
+
 def test_runtime_config_uses_fixture_market_mode_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -159,6 +167,33 @@ def test_collect_demo_snapshot_marks_durable_cache_hits_without_new_requests() -
     assert second.checks["aapl"].payload["servedFromCache"] is True
     assert second.checks["aapl"].payload["cacheFetchedAt"]
     assert second.checks["aapl"].warnings == ("TWELVE_DATA_CACHE_HIT",)
+
+
+def test_collect_demo_snapshot_continues_when_durable_runtime_store_fails() -> None:
+    runtime = build_in_memory_provider_runtime(request_budget=8)
+    runtime = type(runtime)(
+        cache=_FailingRuntimeCache(),
+        budget=runtime.budget,
+        health=runtime.health,
+    )
+    service = MarketDataRuntimeService(
+        MarketProviderConfig(mode="hybrid"),
+        _StubFixtureProvider(),
+        news_provider=_NewsProvider(),
+        equity_price_provider=_PriceProvider(),
+        crypto_price_provider=_PriceProvider(),
+        macro_provider=_MacroProvider(),
+        metadata_provider=_PriceProvider(),
+        provider_runtime=runtime,
+    )
+
+    snapshot = service.collect_demo_snapshot()
+
+    assert snapshot.data_mode == DataMode.LIVE
+    assert snapshot.requests_used == 5
+    assert snapshot.warnings == ("PROVIDER_RUNTIME_STORE_UNAVAILABLE",)
+    assert snapshot.checks["news"].ok is True
+    assert "PROVIDER_RUNTIME_STORE_UNAVAILABLE" in snapshot.checks["news"].warnings
 
 
 def test_collect_demo_snapshot_falls_back_in_hybrid_without_keys() -> None:

@@ -70,8 +70,8 @@ class SupabaseProviderCacheRepository:
             provider=row["provider"],
             request_params_hash=row["request_params_hash"],
             response_json=row["response_json"],
-            fetched_at=row["fetched_at"],
-            expires_at=row["expires_at"],
+            fetched_at=_parse_timestamp(row["fetched_at"]),
+            expires_at=_parse_timestamp(row["expires_at"]),
             request_cost=row["request_cost"],
             status_code=row["status_code"],
             data_mode=row["data_mode"],
@@ -99,6 +99,12 @@ class SupabaseProviderCacheRepository:
 def params_hash(payload: dict[str, Any]) -> str:
     canonical = str(sorted(payload.items())).encode()
     return f"sha256:{sha256(canonical).hexdigest()}"
+
+
+def _parse_timestamp(value: datetime | str) -> datetime:
+    if isinstance(value, datetime):
+        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 __all__ = [

@@ -1,6 +1,6 @@
-# Guion de demo Fase 7
+# Guion de presentación Fase 7
 
-Fecha: 2026-07-12
+Fecha: 2026-07-13
 
 ## Objetivo
 
@@ -21,15 +21,15 @@ cd frontend
 corepack pnpm dev
 ```
 
-Smoke previo:
+Smoke previo local:
 
 ```powershell
 $env:MARKET_DATA_MODE='fixture'; .\.venv312\Scripts\python.exe backend\scripts\check_demo_flow.py
 ```
 
-## Demostración real híbrida
+## Presentación real híbrida
 
-Este recorrido usa `backend/.env.local`, crea registros auditables `DEMO_E2E` en
+Este recorrido usa `backend/.env.local`, crea registros auditables con marcador técnico `DEMO_E2E` en
 Supabase y consume OpenAI. No modifica el esquema ni presenta los fixtures de
 señales como datos live.
 
@@ -54,14 +54,33 @@ Smoke HTTP real, con el backend activo:
 
 Recorrido visual:
 
-1. Abrir `http://127.0.0.1:5173/assistant` o elegir **Demo IA**.
+1. Abrir `http://127.0.0.1:5173/assistant` o elegir **Asistente IA**.
 2. Pulsar **Consultar APIs ahora** y mostrar cada proveedor `live` o `fallback`.
 3. Guardar un mensaje con marcador `DEMO_E2E:<id>` y confirmar que reaparece.
 4. Pulsar **Iniciar análisis contextual** y esperar el estado terminal en Auditoría.
 5. Mostrar los nodos `analyst_agent`, `advisor_agent` y `audit_writer`.
 
-La demo híbrida es válida si existe al menos un proveedor live y cada caída se
+La presentación híbrida es válida si existe al menos un proveedor live y cada caída se
 explica. Supabase u OpenAI fallidos invalidan el recorrido.
+
+## Presentación pública
+
+URLs actuales:
+
+- Frontend: `https://hackathon-taws-track5.vercel.app/summary`
+- Backend: `https://hackathon-taws-track5.onrender.com`
+
+Smoke público de solo lectura:
+
+```powershell
+.\.venv312\Scripts\python.exe backend\scripts\check_public_deployment.py
+```
+
+Smoke público con escrituras controladas:
+
+```powershell
+.\.venv312\Scripts\python.exe backend\scripts\check_public_deployment.py --include-write-flow --write-timeout 180
+```
 
 ## Recorrido recomendado
 
@@ -97,4 +116,5 @@ explica. Supabase u OpenAI fallidos invalidan el recorrido.
 - El backend puede degradar a fallback y baja confianza cuando corresponde.
 - La verificación live es una capa separada: radar, señales y evidencia histórica
   conservan su etiqueta fixture/fallback hasta implementar ingesta live completa.
-- La demo deploy-ready ya tiene Vercel/Render configurados, pero no se hizo despliegue cloud real.
+- El despliegue público actual usa Vercel para frontend y Render para backend.
+- `demo-global` y `Analista Demo` son nombres contractuales del MVP; no significan que el sistema invente datos.

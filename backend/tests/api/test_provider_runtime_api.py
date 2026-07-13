@@ -64,6 +64,13 @@ class StubMarketRuntime:
         )
 
 
+class ExplodingMarketRuntime:
+    mode = "hybrid"
+
+    def collect_demo_snapshot(self) -> MarketRuntimeSnapshot:
+        raise RuntimeError("provider_health table is missing")
+
+
 def test_runtime_provider_endpoint_exposes_hybrid_status_without_secrets() -> None:
     app = create_app()
     service = ProviderDemoService(StubMarketRuntime())  # type: ignore[arg-type]
@@ -95,3 +102,20 @@ def test_runtime_provider_endpoint_exposes_hybrid_status_without_secrets() -> No
     assert "apiKey" not in news["metrics"]
     assert "never-serialize-this" not in response.text
     assert btc["dataAsOf"] is None
+
+
+def test_runtime_provider_endpoint_falls_back_when_runtime_store_fails() -> None:
+    app = create_app()
+    service = ProviderDemoService(ExplodingMarketRuntime())  # type: ignore[arg-type]
+    app.dependency_overrides[get_provider_demo_service] = lambda: service
+
+    with TestClient(app) as client:
+        response = client.get("/api/v1/runtime/providers")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["data"]["effectiveDataMode"] == "fallback"
+    assert "PROVIDER_RUNTIME_STORE_UNAVAILABLE" in payload["data"]["warnings"]
+    assert len(payload["data"]["checks"]) == 5
+    assert all(check["dataMode"] == "fallback" for check in payload["data"]["checks"])
+    assert "provider_health table is missing" not in response.text

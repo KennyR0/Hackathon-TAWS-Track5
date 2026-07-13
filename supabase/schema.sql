@@ -96,26 +96,42 @@ create table if not exists audit_events (
 );
 
 create table if not exists provider_cache (
-    cache_key text primary key,
+    id uuid primary key default gen_random_uuid(),
     provider text not null,
-    resource_type text not null,
-    payload jsonb not null,
-    content_hash text not null,
-    data_mode text not null,
-    retrieved_at timestamptz not null,
-    data_as_of timestamptz not null,
+    cache_key text not null,
+    request_params_hash text not null,
+    response_json jsonb not null,
+    fetched_at timestamptz not null default timezone('utc', now()),
     expires_at timestamptz not null,
-    created_at timestamptz not null default timezone('utc', now())
+    request_cost integer not null default 1,
+    status_code integer not null,
+    data_mode text not null,
+    content_hash text null,
+    created_at timestamptz not null default timezone('utc', now()),
+    unique (provider, cache_key)
 );
 
 create table if not exists provider_budgets (
+    provider text not null,
+    period_type text not null,
+    max_requests integer not null,
+    used_requests integer not null default 0,
+    safety_reserve integer not null default 0,
+    reset_at timestamptz not null,
+    updated_at timestamptz not null default timezone('utc', now()),
+    primary key (provider, period_type)
+);
+
+create table if not exists provider_health (
     provider text primary key,
-    daily_limit integer null,
-    daily_used integer not null default 0,
-    monthly_limit integer null,
-    monthly_used integer not null default 0,
     circuit_state text not null default 'closed',
-    last_error_at timestamptz null,
+    consecutive_failures integer not null default 0,
+    opened_at timestamptz null,
+    retry_after timestamptz null,
+    last_success_at timestamptz null,
+    last_failure_at timestamptz null,
+    last_error_code text null,
+    last_error_message text null,
     updated_at timestamptz not null default timezone('utc', now())
 );
 
@@ -133,6 +149,12 @@ create index if not exists idx_agent_run_steps_run_id
 
 create index if not exists idx_audit_events_entity
     on audit_events (entity_type, entity_id, created_at);
+
+create index if not exists idx_provider_cache_expires_at
+    on provider_cache (expires_at);
+
+create index if not exists idx_provider_health_retry_after
+    on provider_health (retry_after);
 
 create or replace function prevent_append_only_mutation()
 returns trigger

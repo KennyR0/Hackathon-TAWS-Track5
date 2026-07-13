@@ -17,7 +17,7 @@ from app.contracts.entities import (
     allow_internal_field_names,
 )
 from app.providers.base import ProviderProbeResult
-from app.providers.live_market import MarketDataRuntimeService
+from app.providers.live_market import MarketDataRuntimeService, MarketRuntimeSnapshot
 
 RESOURCE_LABELS: Final[dict[str, str]] = {
     "news": "Noticias Apple",
@@ -25,6 +25,14 @@ RESOURCE_LABELS: Final[dict[str, str]] = {
     "spy": "SPY",
     "btc": "BTC-USD",
     "wti": "DCOILWTICO",
+}
+
+PROVIDERS_BY_KEY: Final[dict[str, str]] = {
+    "news": "gdelt",
+    "aapl": "twelve_data",
+    "spy": "finnhub",
+    "btc": "coingecko",
+    "wti": "fred",
 }
 
 ALLOWED_METRICS: Final[dict[str, frozenset[str]]] = {
@@ -37,6 +45,7 @@ ALLOWED_METRICS: Final[dict[str, frozenset[str]]] = {
             "attempts",
             "retryable",
             "statusCode",
+            "circuitOpen",
             "servedFromCache",
             "cacheFetchedAt",
         }
@@ -50,6 +59,7 @@ ALLOWED_METRICS: Final[dict[str, frozenset[str]]] = {
             "attempts",
             "retryable",
             "statusCode",
+            "circuitOpen",
             "servedFromCache",
             "cacheFetchedAt",
         }
@@ -63,6 +73,7 @@ ALLOWED_METRICS: Final[dict[str, frozenset[str]]] = {
             "attempts",
             "retryable",
             "statusCode",
+            "circuitOpen",
             "servedFromCache",
             "cacheFetchedAt",
         }
@@ -76,6 +87,7 @@ ALLOWED_METRICS: Final[dict[str, frozenset[str]]] = {
             "attempts",
             "retryable",
             "statusCode",
+            "circuitOpen",
             "servedFromCache",
             "cacheFetchedAt",
         }
@@ -91,6 +103,7 @@ ALLOWED_METRICS: Final[dict[str, frozenset[str]]] = {
             "statusCode",
             "requestBudget",
             "requestsUsed",
+            "circuitOpen",
             "servedFromCache",
             "cacheFetchedAt",
         }
@@ -103,7 +116,13 @@ class ProviderDemoService:
         self._runtime = runtime
 
     def get_status(self) -> ProviderRuntimeResponse:
-        snapshot = self._runtime.collect_demo_snapshot()
+        try:
+            snapshot = self._runtime.collect_demo_snapshot()
+        except Exception as exc:
+            snapshot = _build_runtime_unavailable_snapshot(
+                configured_mode=self._runtime.mode,
+                exc=exc,
+            )
         checked_at = datetime.now(UTC)
         checks = tuple(
             _build_check(key, result, checked_at=checked_at)
@@ -188,6 +207,38 @@ def _resolve_data_as_of(
                 return None
         return None
     return checked_at if metrics and "error" not in metrics else None
+
+
+def _build_runtime_unavailable_snapshot(
+    *,
+    configured_mode: str,
+    exc: Exception,
+) -> MarketRuntimeSnapshot:
+    warnings = (
+        "PROVIDER_RUNTIME_STATUS_UNAVAILABLE",
+        "PROVIDER_RUNTIME_STORE_UNAVAILABLE",
+    )
+    checks = {
+        key: ProviderProbeResult(
+            provider=provider,
+            data_mode=DataMode.FALLBACK.value,
+            ok=False,
+            warnings=warnings,
+            payload={
+                "error": type(exc).__name__,
+                "retryable": True,
+            },
+        )
+        for key, provider in PROVIDERS_BY_KEY.items()
+    }
+    return MarketRuntimeSnapshot(
+        data_mode=DataMode.FALLBACK.value,
+        provider="+".join(PROVIDERS_BY_KEY.values()),
+        warnings=warnings,
+        checks=checks,
+        request_budget=0 if configured_mode == DataMode.FIXTURE.value else 8,
+        requests_used=0,
+    )
 
 
 __all__ = ["ProviderDemoService"]

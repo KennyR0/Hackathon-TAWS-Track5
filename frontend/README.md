@@ -78,9 +78,10 @@ src/
   app/        shell, router y providers
   features/   vistas por dominio
   shared/     api, mappers, ui y utilidades
+  lib/        auth publica de Supabase cuando `VITE_AUTH_ENABLED=true`
 ```
 
-Hay archivos legacy en `src/components`, `src/pages` y `src/lib` que pertenecen a la etapa anterior del frontend. La ruta activa del proyecto vive en `src/app`, `src/features` y `src/shared`.
+La ruta activa del proyecto vive en `src/app`, `src/features` y `src/shared`. La carpeta `src/lib` se conserva solo para la integración pública de Auth/Supabase usada por el cliente API.
 
 ## Límites actuales del contrato backend
 
