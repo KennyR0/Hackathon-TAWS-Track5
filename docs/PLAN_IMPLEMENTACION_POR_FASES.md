@@ -77,6 +77,7 @@ Reglas:
 - Excepcion autorizada: Fase 9 ejecutada en `main` por autorizacion explicita del usuario.
 - Excepcion autorizada: ajuste live posterior al despliegue ejecutado en `main` por autorizacion explicita del usuario; no crear ramas.
 - Excepcion autorizada: ajuste de fallbacks de proveedores de Fase 11 ejecutado en `main` por autorizacion explicita del usuario; no crear ramas.
+- Excepcion autorizada: ampliacion conversacional de Fase 11 ejecutada en `main` por instruccion explicita del usuario; no crear ni cambiar de rama.
 
 ## 4. Estado
 
@@ -682,6 +683,7 @@ Entregables:
   reinsertar el bundle fixture durante los workers.
 - `GET /api/v1/instruments`, `GET /api/v1/market-quotes` y contratos OpenAPI/TypeScript.
 - Panorama sin límite rígido de cuatro activos, explorador buscable y procedencia visible.
+- Asistente conversacional sustentado en señales, evidencia y contexto Ecuador, con continuidad OpenAI Conversations, persistencia Supabase y fallback determinístico etiquetado.
 - Despliegue autorizado a Render y Vercel, con bootstrap idempotente y smoke público.
 
 Gates:
@@ -711,9 +713,24 @@ Evidencia parcial de implementación:
   aprobados. Ruff global conserva incidencias preexistentes fuera del alcance de Fase 11.
 - Frontend: lint, typecheck y build aprobados; `/summary`, `/markets`, búsqueda `micro` y
   `/assets/MSFT` verificados en escritorio y `390x844`, con cero errores y warnings de consola.
-- Bloqueo de cierre: el entorno rechazó nuevas ejecuciones externas por límite de uso después
-  de las correcciones finales. Falta repetir ingest/reconcile, commit/push, deploy Render/Vercel
-  y smoke público. La fase permanece `en_curso` y no se presenta como lista para revisión.
+- Asistente conversacional real implementado sobre el Analista existente: endpoint
+  `POST /api/v1/conversations/{conversationId}/responses`, continuidad OpenAI Conversations,
+  contexto de señal/evidencia/Ecuador, persistencia `user -> assistant` y fallback etiquetado.
+- Migración Supabase `add_openai_conversation_id` aplicada y verificada; el identificador queda
+  server-side. Advisors de seguridad y rendimiento: cero issues `warn/error`.
+- Resolución conversacional ampliada al universo versionado de 25 instrumentos: símbolo, nombre
+  y alias explícitos reemplazan el contexto activo; AAPL, BTC-USD y WTI conservan señal/evidencia,
+  mientras los demás instrumentos se limitan a ficha y cotización auditable. El contexto activo
+  queda separado de la señal y los símbolos no soportados no degradan silenciosamente a AAPL.
+- UI local con instrumento/cobertura visibles, sugerencias editables y `Nueva conversación` sin
+  borrar la auditoría. Migración `add_active_instrument_symbol` creada localmente y no aplicada a
+  Supabase por instrucción del usuario.
+- Gates conversacionales locales: 232 pruebas backend aprobadas; Ruff focal, OpenAPI, lint,
+  typecheck, build y `git diff --check` aprobados. Smoke OpenAI: AAPL -> BTC-USD -> seguimiento
+  mantuvo continuidad `live`; MSFT respondió `quote_only/live`, SOL `unsupported`, y un nuevo hilo
+  recibió otro ID. El frontend y backend actualizados quedaron activos en `127.0.0.1:5173/8000`.
+- Pendiente de revisión local: aplicar la migración, commit/push, despliegue Render/Vercel y smoke
+  público requieren nueva autorización. La fase permanece `en_curso`.
 
 Evidencia del ajuste de fallbacks y cuotas:
 

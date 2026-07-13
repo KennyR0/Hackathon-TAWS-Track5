@@ -35,6 +35,7 @@ EXPECTED_OPERATIONS = {
     ("/api/v1/conversations", "post"),
     ("/api/v1/conversations/{conversationId}", "get"),
     ("/api/v1/conversations/{conversationId}/messages", "post"),
+    ("/api/v1/conversations/{conversationId}/responses", "post"),
     ("/api/v1/runs/{runId}/steps", "get"),
 }
 

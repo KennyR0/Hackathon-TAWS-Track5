@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-from app.contracts.entities import Signal
-from app.llm.base import BriefingSummaryOutput, LLMAdapter, SignalAnalysisOutput
+from app.contracts.entities import DataMode, Signal
+from app.llm.base import (
+    BriefingSummaryOutput,
+    ConversationAssistantOutput,
+    LLMAdapter,
+    SignalAnalysisOutput,
+)
 
 
 class FixtureLLMAdapter(LLMAdapter):
@@ -16,7 +21,9 @@ class FixtureLLMAdapter(LLMAdapter):
         )
         return SignalAnalysisOutput(
             thesis=thesis,
-            assumptions=list(signal.assumptions or ("Confirmar la noticia con sus fuentes originales.",)),
+            assumptions=list(
+                signal.assumptions or ("Confirmar la noticia con sus fuentes originales.",)
+            ),
             invalidation_conditions=list(
                 signal.invalidation_conditions or ("La evidencia de mercado no confirma la tesis.",)
             ),
@@ -45,3 +52,22 @@ class FixtureLLMAdapter(LLMAdapter):
         if warnings:
             summary = f"{summary} Advertencias: {' | '.join(warnings)}."
         return BriefingSummaryOutput(executive_summary=summary)
+
+    def create_conversation(self) -> str | None:
+        return None
+
+    def answer_conversation(
+        self,
+        *,
+        prompt: str,
+        instructions: str,
+        fallback_content: str,
+        provider_conversation_id: str | None,
+    ) -> ConversationAssistantOutput:
+        _ = (prompt, instructions, provider_conversation_id)
+        return ConversationAssistantOutput(
+            content=fallback_content,
+            provider="nexomercado_fixture",
+            model_name="fixture",
+            data_mode=DataMode.FIXTURE,
+        )

@@ -835,6 +835,18 @@
             "default": null,
             "title": "Activeeventid"
           },
+          "activeInstrumentSymbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Activeinstrumentsymbol"
+          },
           "activeSignalId": {
             "anyOf": [
               {
@@ -940,6 +952,53 @@
           "updatedAt"
         ],
         "title": "Conversation",
+        "type": "object"
+      },
+      "ConversationAssetContext": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage": {
+            "enum": [
+              "signal",
+              "quote_only",
+              "unsupported"
+            ],
+            "title": "Coverage",
+            "type": "string"
+          },
+          "dataMode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "live",
+                  "fallback"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Datamode"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "symbol": {
+            "minLength": 1,
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "coverage"
+        ],
+        "title": "ConversationAssetContext",
         "type": "object"
       },
       "ConversationCreateRequest": {
@@ -1063,6 +1122,62 @@
           "meta"
         ],
         "title": "ConversationResponse",
+        "type": "object"
+      },
+      "ConversationTurn": {
+        "additionalProperties": false,
+        "properties": {
+          "assistantMessage": {
+            "$ref": "#/components/schemas/ConversationMessage"
+          },
+          "context": {
+            "$ref": "#/components/schemas/ConversationAssetContext"
+          },
+          "usedFallback": {
+            "title": "Usedfallback",
+            "type": "boolean"
+          },
+          "userMessage": {
+            "$ref": "#/components/schemas/ConversationMessage"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Warning"
+          }
+        },
+        "required": [
+          "userMessage",
+          "assistantMessage",
+          "usedFallback",
+          "context"
+        ],
+        "title": "ConversationTurn",
+        "type": "object"
+      },
+      "ConversationTurnResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConversationTurn"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataProvenance"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ConversationTurnResponse",
         "type": "object"
       },
       "DataMode": {
@@ -3584,6 +3699,65 @@
           }
         },
         "summary": "Append a user message to a conversation"
+      }
+    },
+    "/api/v1/conversations/{conversationId}/responses": {
+      "post": {
+        "operationId": "createConversationResponse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "minLength": 3,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationTurnResponse"
+                }
+              }
+            },
+            "description": "Assistant turn recorded"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request could not be completed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request could not be completed"
+          }
+        },
+        "summary": "Generate an evidence-grounded assistant response"
       }
     },
     "/api/v1/ecuador-snapshots": {

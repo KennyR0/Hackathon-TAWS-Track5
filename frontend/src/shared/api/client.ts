@@ -7,6 +7,7 @@ import type {
   ApiConversationCreateRequest,
   ApiConversationMessage,
   ApiConversationMessageRequest,
+  ApiConversationTurn,
   ApiEcuadorSnapshot,
   ApiError,
   ApiEventView,
@@ -190,6 +191,12 @@ export const apiClient = {
   },
   createConversationMessage(conversationId: string, payload: ApiConversationMessageRequest) {
     return request<Envelope<ApiConversationMessage>>(`/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  createConversationResponse(conversationId: string, payload: ApiConversationMessageRequest) {
+    return request<Envelope<ApiConversationTurn>>(`/conversations/${conversationId}/responses`, {
       method: 'POST',
       body: JSON.stringify(payload),
     })

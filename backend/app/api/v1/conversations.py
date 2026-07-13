@@ -12,6 +12,7 @@ from app.contracts.api import (
     ConversationMessageRequest,
     ConversationMessageResponse,
     ConversationResponse,
+    ConversationTurnResponse,
 )
 from app.contracts.entities import allow_internal_field_names
 from app.services.conversation_service import ConversationService
@@ -81,3 +82,19 @@ def create_conversation_message(
     )
     with allow_internal_field_names():
         return ConversationMessageResponse(data=message, meta=service.meta)
+
+
+@router.post(
+    "/conversations/{conversation_id}/responses",
+    response_model=ConversationTurnResponse,
+    status_code=201,
+    operation_id="createConversationResponse",
+)
+def create_conversation_response(
+    conversation_id: str,
+    request: ConversationMessageRequest,
+    service: ConversationServiceDep,
+) -> ConversationTurnResponse:
+    turn = service.respond(conversation_id, request.content)
+    with allow_internal_field_names():
+        return ConversationTurnResponse(data=turn, meta=service.meta)

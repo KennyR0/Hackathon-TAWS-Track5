@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/conversations/{conversationId}/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate an evidence-grounded assistant response */
+        post: operations["createConversationResponse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ecuador-snapshots": {
         parameters: {
             query?: never;
@@ -700,6 +717,11 @@ export interface components {
              */
             activeEventId: string | null;
             /**
+             * Activeinstrumentsymbol
+             * @default null
+             */
+            activeInstrumentSymbol: string | null;
+            /**
              * Activesignalid
              * @default null
              */
@@ -740,6 +762,23 @@ export interface components {
              * @default null
              */
             watchlistId: string | null;
+        };
+        /** ConversationAssetContext */
+        ConversationAssetContext: {
+            /**
+             * Coverage
+             * @enum {string}
+             */
+            coverage: "signal" | "quote_only" | "unsupported";
+            /**
+             * Datamode
+             * @default null
+             */
+            dataMode: ("live" | "fallback") | null;
+            /** Name */
+            name: string;
+            /** Symbol */
+            symbol: string;
         };
         /** ConversationCreateRequest */
         ConversationCreateRequest: {
@@ -785,6 +824,24 @@ export interface components {
         /** ConversationResponse */
         ConversationResponse: {
             data: components["schemas"]["Conversation"];
+            meta: components["schemas"]["DataProvenance"];
+        };
+        /** ConversationTurn */
+        ConversationTurn: {
+            assistantMessage: components["schemas"]["ConversationMessage"];
+            context: components["schemas"]["ConversationAssetContext"];
+            /** Usedfallback */
+            usedFallback: boolean;
+            userMessage: components["schemas"]["ConversationMessage"];
+            /**
+             * Warning
+             * @default null
+             */
+            warning: string | null;
+        };
+        /** ConversationTurnResponse */
+        ConversationTurnResponse: {
+            data: components["schemas"]["ConversationTurn"];
             meta: components["schemas"]["DataProvenance"];
         };
         /**
@@ -1878,6 +1935,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConversationMessageResponse"];
+                };
+            };
+            /** @description Request could not be completed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request could not be completed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createConversationResponse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Assistant turn recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationTurnResponse"];
                 };
             };
             /** @description Request could not be completed */

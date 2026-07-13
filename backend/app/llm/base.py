@@ -6,7 +6,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.contracts.entities import Signal
+from app.contracts.entities import DataMode, Signal
 
 
 class SignalAnalysisOutput(BaseModel):
@@ -25,6 +25,17 @@ class BriefingSummaryOutput(BaseModel):
     executive_summary: str
 
 
+class ConversationAssistantOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    content: str
+    provider: str
+    model_name: str
+    data_mode: DataMode
+    provider_conversation_id: str | None = None
+    response_id: str | None = None
+
+
 class LLMAdapter(Protocol):
     """Minimal interface for backend-facing LLM adapters."""
 
@@ -36,3 +47,14 @@ class LLMAdapter(Protocol):
         *,
         warnings: tuple[str, ...] = (),
     ) -> BriefingSummaryOutput: ...
+
+    def create_conversation(self) -> str | None: ...
+
+    def answer_conversation(
+        self,
+        *,
+        prompt: str,
+        instructions: str,
+        fallback_content: str,
+        provider_conversation_id: str | None,
+    ) -> ConversationAssistantOutput: ...

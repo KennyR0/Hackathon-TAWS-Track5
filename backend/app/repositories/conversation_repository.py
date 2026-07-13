@@ -32,6 +32,14 @@ class ConversationRepository(Protocol):
         metadata: dict[str, object] | None = None,
     ) -> ConversationMessage: ...
 
+    def get_provider_conversation_id(self, conversation_id: str) -> str | None: ...
+
+    def set_provider_conversation_id(
+        self,
+        conversation_id: str,
+        provider_conversation_id: str,
+    ) -> None: ...
+
     def update_context(
         self,
         conversation_id: str,
@@ -39,6 +47,8 @@ class ConversationRepository(Protocol):
         summary: str | None = None,
         active_event_id: str | None = None,
         active_signal_id: str | None = None,
+        active_instrument_symbol: str | None = None,
+        clear_active_signal: bool = False,
         last_run_id: str | None = None,
     ) -> Conversation | None: ...
 
@@ -47,6 +57,7 @@ class InMemoryConversationRepository:
     def __init__(self) -> None:
         self._conversations: dict[str, Conversation] = {}
         self._messages: dict[str, list[ConversationMessage]] = {}
+        self._provider_conversation_ids: dict[str, str] = {}
 
     def create(
         self,
@@ -104,6 +115,20 @@ class InMemoryConversationRepository:
         )
         return message
 
+    def get_provider_conversation_id(self, conversation_id: str) -> str | None:
+        if conversation_id not in self._conversations:
+            raise KeyError(conversation_id)
+        return self._provider_conversation_ids.get(conversation_id)
+
+    def set_provider_conversation_id(
+        self,
+        conversation_id: str,
+        provider_conversation_id: str,
+    ) -> None:
+        if conversation_id not in self._conversations:
+            raise KeyError(conversation_id)
+        self._provider_conversation_ids[conversation_id] = provider_conversation_id
+
     def update_context(
         self,
         conversation_id: str,
@@ -111,6 +136,8 @@ class InMemoryConversationRepository:
         summary: str | None = None,
         active_event_id: str | None = None,
         active_signal_id: str | None = None,
+        active_instrument_symbol: str | None = None,
+        clear_active_signal: bool = False,
         last_run_id: str | None = None,
     ) -> Conversation | None:
         existing = self._conversations.get(conversation_id)
@@ -121,8 +148,12 @@ class InMemoryConversationRepository:
             updates["summary"] = summary
         if active_event_id is not None:
             updates["active_event_id"] = active_event_id
-        if active_signal_id is not None:
+        if clear_active_signal:
+            updates["active_signal_id"] = None
+        elif active_signal_id is not None:
             updates["active_signal_id"] = active_signal_id
+        if active_instrument_symbol is not None:
+            updates["active_instrument_symbol"] = active_instrument_symbol
         if last_run_id is not None:
             updates["last_run_id"] = last_run_id
         updated = existing.model_copy(update=updates)
@@ -203,6 +234,7 @@ class SupabaseConversationRepository:
                 watchlist_id=row.get("watchlist_id"),
                 active_event_id=row.get("active_event_id"),
                 active_signal_id=row.get("active_signal_id"),
+                active_instrument_symbol=row.get("active_instrument_symbol"),
                 summary=row.get("summary"),
                 last_run_id=row.get("last_run_id"),
                 created_at=row["created_at"],
@@ -243,6 +275,34 @@ class SupabaseConversationRepository:
                 created_at=datetime.fromisoformat(now),
             )
 
+    def get_provider_conversation_id(self, conversation_id: str) -> str | None:
+        rows = (
+            self._client.table("conversations")
+            .select("openai_conversation_id")
+            .eq("id", conversation_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            raise KeyError(conversation_id)
+        value = rows[0].get("openai_conversation_id")
+        return str(value) if value else None
+
+    def set_provider_conversation_id(
+        self,
+        conversation_id: str,
+        provider_conversation_id: str,
+    ) -> None:
+        self.get_provider_conversation_id(conversation_id)
+        (
+            self._client.table("conversations")
+            .update({"openai_conversation_id": provider_conversation_id})
+            .eq("id", conversation_id)
+            .execute()
+        )
+
     def update_context(
         self,
         conversation_id: str,
@@ -250,6 +310,8 @@ class SupabaseConversationRepository:
         summary: str | None = None,
         active_event_id: str | None = None,
         active_signal_id: str | None = None,
+        active_instrument_symbol: str | None = None,
+        clear_active_signal: bool = False,
         last_run_id: str | None = None,
     ) -> Conversation | None:
         updates: dict[str, object] = {"updated_at": datetime.now(UTC).isoformat()}
@@ -257,8 +319,12 @@ class SupabaseConversationRepository:
             updates["summary"] = summary
         if active_event_id is not None:
             updates["active_event_id"] = active_event_id
-        if active_signal_id is not None:
+        if clear_active_signal:
+            updates["active_signal_id"] = None
+        elif active_signal_id is not None:
             updates["active_signal_id"] = active_signal_id
+        if active_instrument_symbol is not None:
+            updates["active_instrument_symbol"] = active_instrument_symbol
         if last_run_id is not None:
             updates["last_run_id"] = last_run_id
         self._client.table("conversations").update(updates).eq("id", conversation_id).execute()

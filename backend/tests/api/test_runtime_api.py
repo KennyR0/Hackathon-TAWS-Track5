@@ -225,6 +225,36 @@ def test_conversation_endpoints_preserve_context_and_messages(api_client) -> Non
     assert loaded_response.json()["data"]["messages"][0]["content"].startswith("Explica")
 
 
+def test_conversation_response_persists_grounded_fixture_turn(api_client) -> None:
+    conversation = api_client.post(
+        "/api/v1/conversations",
+        json={"watchlistId": "watchlist_demo_global"},
+    ).json()["data"]
+
+    response = api_client.post(
+        f"/api/v1/conversations/{conversation['id']}/responses",
+        json={"content": "Explica AAPL con evidencia verificable."},
+    )
+    loaded = api_client.get(f"/api/v1/conversations/{conversation['id']}").json()["data"]
+
+    assert response.status_code == 201
+    turn = response.json()["data"]
+    assert turn["userMessage"]["role"] == "user"
+    assert turn["assistantMessage"]["role"] == "assistant"
+    assert turn["usedFallback"] is True
+    assert turn["assistantMessage"]["metadata"]["dataMode"] == "fixture"
+    assert turn["assistantMessage"]["metadata"]["signalId"] == "sig_aapl_negative"
+    assert turn["assistantMessage"]["metadata"]["evidenceIds"]
+    assert turn["context"] == {
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "coverage": "signal",
+        "dataMode": None,
+    }
+    assert loaded["activeInstrumentSymbol"] == "AAPL"
+    assert [item["role"] for item in loaded["messages"]] == ["user", "assistant"]
+
+
 def test_create_review_updates_signal_state(api_client) -> None:
     response = api_client.post(
         "/api/v1/signals/sig_btc_uncertain/reviews",

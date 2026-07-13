@@ -8,6 +8,7 @@ from typing import Any
 from app.contracts.api import AgentRunStep, AnalysisRequest, BriefingRequest, ReviewRequest
 from app.contracts.entities import Reviewer
 from app.providers.fixture_provider import FixtureProvider
+from app.repositories.conversation_repository import SupabaseConversationRepository
 from app.repositories.supabase_repository import SupabaseRepository
 
 
@@ -47,6 +48,9 @@ class FakeQuery:
 
     def limit(self, count: int) -> FakeQuery:
         self.limit_count = count
+        return self
+
+    def order(self, _column: str) -> FakeQuery:
         return self
 
     def insert(self, payload: dict[str, Any]) -> FakeQuery:
@@ -135,6 +139,30 @@ def test_unscoped_demo_repository_keeps_fixture_reads_without_organization_colum
 
     assert repository.list_events()
     assert repository.list_signals()
+
+
+def test_conversation_repository_persists_instrument_and_clears_stale_signal() -> None:
+    client = FakeClient()
+    repository = SupabaseConversationRepository(client)  # type: ignore[arg-type]
+    conversation = repository.create(
+        organization_id="org_demo",
+        user_id="usr_demo",
+    )
+
+    repository.update_context(
+        conversation.id,
+        active_instrument_symbol="AAPL",
+        active_signal_id="sig_aapl_negative",
+    )
+    updated = repository.update_context(
+        conversation.id,
+        active_instrument_symbol="MSFT",
+        clear_active_signal=True,
+    )
+
+    assert updated is not None
+    assert updated.active_instrument_symbol == "MSFT"
+    assert updated.active_signal_id is None
 
 
 def test_authenticated_repository_hides_other_organization_resources() -> None:

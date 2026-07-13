@@ -684,10 +684,12 @@ export type Database = {
       conversations: {
         Row: {
           active_event_id: string | null
+          active_instrument_symbol: string | null
           active_signal_id: string | null
           created_at: string
           id: string
           last_run_id: string | null
+          openai_conversation_id: string | null
           organization_id: string
           summary: string | null
           updated_at: string
@@ -696,10 +698,12 @@ export type Database = {
         }
         Insert: {
           active_event_id?: string | null
+          active_instrument_symbol?: string | null
           active_signal_id?: string | null
           created_at?: string
           id: string
           last_run_id?: string | null
+          openai_conversation_id?: string | null
           organization_id: string
           summary?: string | null
           updated_at?: string
@@ -708,10 +712,12 @@ export type Database = {
         }
         Update: {
           active_event_id?: string | null
+          active_instrument_symbol?: string | null
           active_signal_id?: string | null
           created_at?: string
           id?: string
           last_run_id?: string | null
+          openai_conversation_id?: string | null
           organization_id?: string
           summary?: string | null
           updated_at?: string

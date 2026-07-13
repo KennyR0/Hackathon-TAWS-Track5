@@ -348,3 +348,15 @@ export function useCreateConversationMessageMutation() {
     },
   })
 }
+
+export function useCreateConversationResponseMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: { conversationId: string; content: string }) =>
+      apiClient.createConversationResponse(payload.conversationId, { content: payload.content }),
+    onSuccess: async (_payload, variables) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.conversation(variables.conversationId) })
+    },
+  })
+}

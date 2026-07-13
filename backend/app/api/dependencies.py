@@ -184,7 +184,12 @@ def get_conversation_service(
         if runtime_config.repository_backend == "supabase"
         else get_in_memory_conversation_repository()
     )
-    return ConversationService(repository, get_scoped_repository(user))
+    return ConversationService(
+        repository,
+        get_scoped_repository(user),
+        get_llm_adapter(),
+        get_instrument_service(),
+    )
 
 
 @lru_cache

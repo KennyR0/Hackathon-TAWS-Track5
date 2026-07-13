@@ -26,6 +26,7 @@ class Conversation(ContractModel):
     watchlist_id: Identifier | None = None
     active_event_id: Identifier | None = None
     active_signal_id: Identifier | None = None
+    active_instrument_symbol: str | None = None
     summary: str | None = None
     last_run_id: Identifier | None = None
     created_at: datetime

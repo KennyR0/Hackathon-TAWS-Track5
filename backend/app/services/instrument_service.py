@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import UTC, datetime
 
 from app.contracts.api import (
@@ -13,6 +15,80 @@ from app.contracts.api import (
 from app.contracts.entities import DataMode, DataProvenance, Freshness, allow_internal_field_names
 from app.market_universe import MarketUniverse, UniverseInstrument
 from app.providers.live_market import MarketDataRuntimeService
+
+INSTRUMENT_ALIASES: dict[str, tuple[str, ...]] = {
+    "AAPL": ("apple",),
+    "MSFT": ("microsoft",),
+    "NVDA": ("nvidia",),
+    "AMZN": ("amazon",),
+    "GOOGL": ("alphabet", "google"),
+    "META": ("meta platforms", "facebook"),
+    "TSLA": ("tesla",),
+    "JPM": ("jpmorgan", "jp morgan"),
+    "BAC": ("bank of america",),
+    "V": ("visa",),
+    "WMT": ("walmart",),
+    "COST": ("costco",),
+    "XOM": ("exxon", "exxon mobil"),
+    "CVX": ("chevron",),
+    "UNH": ("unitedhealth", "united health"),
+    "JNJ": ("johnson & johnson", "johnson and johnson"),
+    "PFE": ("pfizer",),
+    "KO": ("coca-cola", "coca cola"),
+    "DIS": ("disney", "walt disney"),
+    "NFLX": ("netflix",),
+    "SPY": ("spdr s&p 500", "s&p 500 etf"),
+    "QQQ": ("invesco qqq",),
+    "BTC-USD": ("bitcoin", "btc", "btcusd"),
+    "ETH-USD": ("ethereum", "eth", "ethusd"),
+    "WTI": (
+        "west texas intermediate",
+        "petroleo",
+        "petróleo",
+        "crudo",
+    ),
+}
+
+_UNSUPPORTED_SYMBOL_STOPWORDS = frozenset(
+    {
+        "ANALIZA",
+        "COMO",
+        "CON",
+        "CUAL",
+        "CUALES",
+        "DAME",
+        "DEL",
+        "DESDE",
+        "EL",
+        "EN",
+        "ES",
+        "ESTA",
+        "ESTE",
+        "EXPLICA",
+        "HOY",
+        "LA",
+        "LAS",
+        "LOS",
+        "PARA",
+        "POR",
+        "QUE",
+        "RESUME",
+        "SENAL",
+        "SEÑAL",
+        "UNA",
+    }
+)
+
+
+def _normalize_mention(value: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", value.casefold())
+    without_accents = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]+", " ", without_accents).strip()
+
+
+def _contains_alias(normalized_content: str, normalized_alias: str) -> bool:
+    pattern = rf"(?<![a-z0-9]){re.escape(normalized_alias)}(?![a-z0-9])"
+    return re.search(pattern, normalized_content) is not None
 
 
 def _freshness(now: datetime, *, stale: bool = False) -> Freshness:
@@ -57,6 +133,53 @@ class InstrumentService:
         self._universe = universe
         self._market_runtime = market_runtime
         self._by_symbol = {item.symbol: item for item in universe.instruments}
+        aliases: list[tuple[str, UniverseInstrument]] = []
+        for instrument in universe.instruments:
+            candidates = {
+                instrument.symbol,
+                instrument.symbol.replace("-", ""),
+                instrument.name,
+                *INSTRUMENT_ALIASES.get(instrument.symbol, ()),
+            }
+            aliases.extend(
+                (_normalize_mention(alias), instrument)
+                for alias in candidates
+                if _normalize_mention(alias)
+            )
+        self._mention_aliases = tuple(
+            sorted(set(aliases), key=lambda item: len(item[0]), reverse=True)
+        )
+
+    @property
+    def instruments(self) -> tuple[UniverseInstrument, ...]:
+        return self._universe.instruments
+
+    def get_instrument(self, symbol: str | None) -> UniverseInstrument | None:
+        if not symbol:
+            return None
+        return self._by_symbol.get(symbol.upper())
+
+    def resolve_mention(self, content: str) -> UniverseInstrument | None:
+        normalized_content = _normalize_mention(content)
+        return next(
+            (
+                instrument
+                for alias, instrument in self._mention_aliases
+                if _contains_alias(normalized_content, alias)
+            ),
+            None,
+        )
+
+    def detect_unsupported_symbol(self, content: str) -> str | None:
+        for match in re.finditer(
+            r"(?<![A-Za-z0-9])\$?([A-Z][A-Z0-9]{1,5}(?:-[A-Z]{3})?)(?![A-Za-z0-9])",
+            content,
+        ):
+            symbol = match.group(1)
+            if symbol in self._by_symbol or symbol in _UNSUPPORTED_SYMBOL_STOPWORDS:
+                continue
+            return symbol
+        return None
 
     def list_instruments(self, *, query: str | None, limit: int) -> InstrumentSearchResponse:
         normalized = (query or "").strip().casefold()
@@ -155,4 +278,4 @@ class InstrumentService:
         return symbols
 
 
-__all__ = ["InstrumentService"]
+__all__ = ["INSTRUMENT_ALIASES", "InstrumentService"]

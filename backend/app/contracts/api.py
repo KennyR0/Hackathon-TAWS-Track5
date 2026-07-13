@@ -259,6 +259,26 @@ class ConversationMessageResponse(ContractModel):
     meta: DataProvenance
 
 
+class ConversationAssetContext(ContractModel):
+    symbol: NonEmptyString
+    name: NonEmptyString
+    coverage: Literal["signal", "quote_only", "unsupported"]
+    data_mode: Literal["live", "fallback"] | None = None
+
+
+class ConversationTurn(ContractModel):
+    user_message: ConversationMessage
+    assistant_message: ConversationMessage
+    used_fallback: bool
+    warning: NonEmptyString | None = None
+    context: ConversationAssetContext
+
+
+class ConversationTurnResponse(ContractModel):
+    data: ConversationTurn
+    meta: DataProvenance
+
+
 PUBLIC_API_MODELS: tuple[type[ContractModel], ...] = (
     Source,
     Article,
@@ -310,6 +330,9 @@ PUBLIC_API_MODELS: tuple[type[ContractModel], ...] = (
     ConversationMessageRequest,
     ConversationResponse,
     ConversationMessageResponse,
+    ConversationAssetContext,
+    ConversationTurn,
+    ConversationTurnResponse,
 )
 
 
@@ -695,6 +718,18 @@ def build_openapi_document() -> dict[str, object]:
                 },
             }
         },
+        "/api/v1/conversations/{conversationId}/responses": {
+            "post": {
+                "operationId": "createConversationResponse",
+                "summary": "Generate an evidence-grounded assistant response",
+                "parameters": [_path_parameter("conversationId")],
+                "requestBody": _request_body(ConversationMessageRequest),
+                "responses": {
+                    "201": _json_response(ConversationTurnResponse, "Assistant turn recorded"),
+                    **_error_responses("404", "422"),
+                },
+            }
+        },
         "/api/v1/runs/{runId}/steps": {
             "get": {
                 "operationId": "listAgentRunSteps",
@@ -727,10 +762,13 @@ __all__ = [
     "ApiError",
     "BriefingRequest",
     "BriefingResponse",
+    "ConversationAssetContext",
     "ConversationCreateRequest",
     "ConversationMessageRequest",
     "ConversationMessageResponse",
     "ConversationResponse",
+    "ConversationTurn",
+    "ConversationTurnResponse",
     "EcuadorSnapshot",
     "EcuadorSnapshotListResponse",
     "EventListResponse",

@@ -6,16 +6,27 @@ import json
 
 from openai import OpenAI
 
-from app.contracts.entities import Signal
-from app.llm.base import BriefingSummaryOutput, LLMAdapter, SignalAnalysisOutput
+from app.config import OpenAIConfig, get_openai_config
+from app.contracts.entities import DataMode, Signal
+from app.llm.base import (
+    BriefingSummaryOutput,
+    ConversationAssistantOutput,
+    LLMAdapter,
+    SignalAnalysisOutput,
+)
 from app.openai_client import build_openai_client, build_responses_request
 
 
 class OpenAIResponsesAdapter(LLMAdapter):
     """Use OpenAI Responses API for text generation."""
 
-    def __init__(self, client: OpenAI | None = None) -> None:
-        self._client = client or build_openai_client()
+    def __init__(
+        self,
+        client: OpenAI | None = None,
+        config: OpenAIConfig | None = None,
+    ) -> None:
+        self._config = config or get_openai_config()
+        self._client = client or build_openai_client(self._config)
 
     def analyze_signal(self, signal: Signal) -> SignalAnalysisOutput:
         prompt = (
@@ -27,8 +38,13 @@ class OpenAIResponsesAdapter(LLMAdapter):
         )
         fallback = SignalAnalysisOutput(
             thesis=signal.thesis
-            or f"Senal {signal.impact.value} para {signal.asset.symbol} con confianza {signal.confidence:.2f}.",
-            assumptions=list(signal.assumptions or ("Confirmar la noticia con sus fuentes originales.",)),
+            or (
+                f"Senal {signal.impact.value} para {signal.asset.symbol} "
+                f"con confianza {signal.confidence:.2f}."
+            ),
+            assumptions=list(
+                signal.assumptions or ("Confirmar la noticia con sus fuentes originales.",)
+            ),
             invalidation_conditions=list(
                 signal.invalidation_conditions or ("La evidencia de mercado no confirma la tesis.",)
             ),
@@ -36,7 +52,10 @@ class OpenAIResponsesAdapter(LLMAdapter):
                 signal.suggested_research_actions or ("Revisar la evidencia de respaldo.",)
             ),
             analyst_summary=signal.thesis
-            or f"Senal {signal.impact.value} para {signal.asset.symbol} con confianza {signal.confidence:.2f}.",
+            or (
+                f"Senal {signal.impact.value} para {signal.asset.symbol} "
+                f"con confianza {signal.confidence:.2f}."
+            ),
         )
         return self._parse_structured_output(
             prompt,
@@ -67,7 +86,8 @@ class OpenAIResponsesAdapter(LLMAdapter):
             executive_summary=(
                 "Resumen ejecutivo con revision humana obligatoria. "
                 + (
-                    f"La senal mas relevante es {max(signals, key=lambda signal: signal.confidence).asset.symbol}."
+                    "La senal mas relevante es "
+                    f"{max(signals, key=lambda signal: signal.confidence).asset.symbol}."
                     if signals
                     else "No se encontraron senales elegibles."
                 )
@@ -82,6 +102,39 @@ class OpenAIResponsesAdapter(LLMAdapter):
                 "Redacta un resumen ejecutivo financiero con revision humana obligatoria. "
                 "No uses lenguaje de compra, venta ni promesas de rendimiento."
             ),
+        )
+
+    def create_conversation(self) -> str | None:
+        return self._client.conversations.create().id
+
+    def answer_conversation(
+        self,
+        *,
+        prompt: str,
+        instructions: str,
+        fallback_content: str,
+        provider_conversation_id: str | None,
+    ) -> ConversationAssistantOutput:
+        _ = fallback_content
+        if not provider_conversation_id:
+            raise ValueError("OpenAI conversation ID is required")
+        response = self._client.responses.create(
+            model=self._config.model,
+            conversation=provider_conversation_id,
+            instructions=instructions,
+            input=[{"role": "user", "content": prompt}],
+            reasoning={"effort": self._config.reasoning_effort},
+        )
+        content = response.output_text.strip()
+        if not content:
+            raise ValueError("OpenAI returned an empty conversation response")
+        return ConversationAssistantOutput(
+            content=content,
+            provider="openai",
+            model_name=self._config.model,
+            data_mode=DataMode.LIVE,
+            provider_conversation_id=provider_conversation_id,
+            response_id=response.id,
         )
 
     def _parse_structured_output(
