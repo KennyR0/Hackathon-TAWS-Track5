@@ -18,7 +18,7 @@ export function BriefingDetailPage() {
   return (
     <div className="page-stack">
       <BackToHomeButton />
-      <SurfaceCard eyebrow={`${briefing.watchlist.name} · ${briefing.status}`} title="Lectura ejecutiva" className="briefing-paper">
+      <SurfaceCard eyebrow={`${briefing.watchlist.name} · ${briefing.status}`} title="Lectura ejecutiva" className="briefing-paper" tourTarget="briefing-report">
         <p className="hero-copy">{briefing.executiveSummary}</p>
         <div className="data-points">
           <span>{formatDateTime(briefing.createdAt)}</span>

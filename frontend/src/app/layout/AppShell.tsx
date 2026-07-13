@@ -2,11 +2,22 @@ import { Bot, Menu, PanelRight, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { AssistantPanel } from '../../features/assistant/AssistantPanel'
+import { GuidedDemoLauncher } from '../../features/guided-demo/GuidedDemoLauncher'
+import { GuidedDemoPanel } from '../../features/guided-demo/GuidedDemoPanel'
+import { GuidedDemoProvider } from '../../features/guided-demo/GuidedDemoContext'
 import { GlobalSearch } from './GlobalSearch'
 import { mobileNavigationItems, navigationSections } from './navigation'
 import { ThemeToggle } from './ThemeToggle'
 
 export function AppShell() {
+  return (
+    <GuidedDemoProvider>
+      <AppShellContent />
+    </GuidedDemoProvider>
+  )
+}
+
+function AppShellContent() {
   const [navOpen, setNavOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(true)
   const [assistantDialogOpen, setAssistantDialogOpen] = useState(false)
@@ -49,6 +60,7 @@ export function AppShell() {
         </NavLink>
         <GlobalSearch />
         <div className="topbar-actions">
+          <GuidedDemoLauncher />
           <ThemeToggle />
           <button
             className={`icon-button topbar-action desktop-assistant-toggle ${assistantOpen ? 'is-active' : ''}`}
@@ -129,6 +141,8 @@ export function AppShell() {
           </section>
         </div>
       ) : null}
+
+      <GuidedDemoPanel />
 
       <nav className="mobile-navigation" aria-label="Navegación móvil">
         {mobileNavigationItems.map(item => {

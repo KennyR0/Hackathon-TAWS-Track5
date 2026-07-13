@@ -8,9 +8,10 @@ export function SurfaceCard({
   action,
   children,
   className = '',
-}: PropsWithChildren<{ title?: string; eyebrow?: string; action?: ReactNode; className?: string }>) {
+  tourTarget,
+}: PropsWithChildren<{ title?: string; eyebrow?: string; action?: ReactNode; className?: string; tourTarget?: string }>) {
   return (
-    <section className={`surface-card ${className}`}>
+    <section className={`surface-card ${className}`} data-tour-target={tourTarget}>
       {(title || eyebrow || action) && (
         <header className="surface-card__header">
           <div>

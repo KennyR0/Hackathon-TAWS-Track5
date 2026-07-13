@@ -40,6 +40,7 @@ export function RadarPage() {
         eyebrow="02 · Radar"
         title="Eventos, fuentes y contexto verificable"
         className="page-intro-panel"
+        tourTarget="radar-overview"
         action={
           <div className="surface-card__actions">
             <RefreshButton onClick={() => eventsQuery.refetch()} busy={eventsQuery.isFetching} />
@@ -132,13 +133,13 @@ export function RadarPage() {
       {!events.length ? (
         <EmptyState title="Sin eventos para esos filtros" description="Ajusta instrumento, activo o fecha para recuperar el radar." />
       ) : viewMode === 'cards' ? (
-        <div className="stack-list">
+        <div className="stack-list" data-tour-target="radar-events">
           {events.map(event => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>
       ) : (
-        <SurfaceCard title="Vista tabular">
+        <SurfaceCard title="Vista tabular" tourTarget="radar-events">
           <div className="table-wrap">
             <table className="data-table">
               <thead>

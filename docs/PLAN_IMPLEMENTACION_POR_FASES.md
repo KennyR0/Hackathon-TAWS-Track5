@@ -618,6 +618,23 @@ Evidencia del rediseño integral:
 - Resultado: rediseño aprobado localmente; Fase 10 queda `lista_para_revision` y espera decisión humana.
 - Ajuste posterior al despliegue autorizado en `main`: `render.yaml` queda preparado localmente con `LLM_PROVIDER=openai`, `REPOSITORY_BACKEND=supabase` y `MARKET_DATA_MODE=hybrid`; por instrucción del usuario no se hizo commit, push ni despliegue. El Panorama consulta el estado live con caché de cinco minutos y reemplaza precios visibles solo cuando el proveedor individual confirma `dataMode=live`; eventos, señales o fallbacks conservan su procedencia original y nunca se renombran como live.
 
+Evidencia del recorrido guiado para jurado:
+
+- Rama: `codex/fase-10-recorrido-guiado`.
+- Se agregó un botón global **Iniciar recorrido** y una capa asistida persistida en `localStorage`
+  para guiar radar, señal, evidencia, revisión, briefing y auditoría sin crear endpoints nuevos.
+- El recorrido usa acciones reales controladas: revisión humana con justificación, briefing `draft`
+  y análisis auditable con navegación al run resultante.
+- Se agregaron targets semánticos `data-tour-target` en radar, señal, revisión, briefing y auditoría
+  para resaltar la sección relevante durante la presentación.
+- Validaciones ejecutadas:
+  - `python3 scripts/validate_phase.py implement 10 --repo /home/chinopc/Desktop/Hackathon-TAWS-Track5`: aprobado.
+  - `npm run typecheck`: aprobado.
+  - `npm run lint`: aprobado sin warnings.
+  - `npm run build`: aprobado; persiste warning no bloqueante de chunk principal mayor a 500 kB.
+  - Backend local fixture + Vite: `/summary`, `/radar` y `/signals/sig_aapl_negative` cargaron con datos y targets del recorrido.
+- No hubo cambios backend, contratos HTTP, esquema, proveedores, commit, push ni despliegue.
+
 Evidencia del ajuste final de entrega pública:
 
 - Ajuste ejecutado en `main` por instrucción explícita del usuario para cerrar estabilidad y presentación.

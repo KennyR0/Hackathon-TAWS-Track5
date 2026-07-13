@@ -82,6 +82,8 @@ h3 { font-size: 1rem; }
 .icon-button:hover, .icon-button.is-active, .topbar-action:hover { border-color: var(--border); background: var(--surface-subtle); }
 .avatar-button { background: var(--accent-soft); color: var(--accent-strong); font: 700 11px "Cascadia Code", Consolas, monospace; }
 .brand-mark { display: inline-grid; place-items: center; width: 30px; height: 30px; flex: 0 0 auto; background: var(--ink); color: var(--surface); font-weight: 800; font-size: 16px; }
+.guided-demo-launcher { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; border: 1px solid var(--accent); background: var(--accent); color: #fff; padding: 0 12px; font-weight: 800; cursor: pointer; }
+.guided-demo-launcher:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
 
 .global-search { position: relative; width: min(660px, 58vw); height: 40px; display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: var(--bg); padding: 0 12px; color: var(--muted); }
 .global-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); }
@@ -275,6 +277,22 @@ button:disabled, a[aria-disabled="true"] { opacity: .48; cursor: not-allowed; }
 .assistant-panel-footer small { display: block; margin-top: 12px; color: var(--muted); }
 .assistant-drawer-trigger, .mobile-navigation, .dialog-backdrop { display: none; }
 
+.guided-demo-panel { position: fixed; z-index: 70; right: 24px; bottom: 24px; width: min(380px, calc(100vw - 32px)); border: 1px solid var(--border-strong); background: var(--surface); box-shadow: var(--shadow); padding: 16px; }
+.prototype-shell.has-assistant .guided-demo-panel { right: calc(var(--assistant-w) + 24px); }
+.guided-demo-panel header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.guided-demo-panel h2 { margin: 0; font-size: 1.2rem; }
+.guided-demo-panel p { color: var(--ink-soft); }
+.guided-demo-progress { height: 4px; margin: 14px 0; background: var(--surface-strong); }
+.guided-demo-progress span { display: block; height: 100%; background: var(--accent); transition: width .2s ease; }
+.guided-demo-lookout { display: grid; gap: 4px; border-left: 2px solid var(--accent); background: var(--accent-soft); padding: 10px 12px; }
+.guided-demo-lookout strong { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.guided-demo-lookout span { color: var(--ink-soft); }
+.guided-demo-error { border-left: 2px solid var(--red); background: var(--red-soft); color: var(--red) !important; padding: 9px 11px; }
+.guided-demo-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.guided-demo-actions .primary-button { flex: 1 1 auto; }
+.guided-demo-reset { border: 0; background: transparent; }
+.tour-target-active { position: relative; outline: 2px solid var(--accent); outline-offset: 4px; box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 16%, transparent); transition: outline-color .2s ease, box-shadow .2s ease; }
+
 .state-block { min-height: 190px; display: grid; place-items: center; align-content: center; text-align: center; }
 .state-block__icon { color: var(--accent); }
 .state-block h3 { margin: 10px 0 5px; }
@@ -312,6 +330,7 @@ button:disabled, a[aria-disabled="true"] { opacity: .48; cursor: not-allowed; }
   .prototype-shell, .prototype-shell.has-assistant { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); grid-template-areas: "sidebar topbar" "sidebar main"; }
   .assistant-rail, .desktop-assistant-toggle { display: none; }
   .assistant-drawer-trigger { position: fixed; z-index: 25; right: 18px; bottom: 18px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border-strong); background: var(--ink); color: var(--surface); padding: 10px 13px; box-shadow: var(--shadow); }
+  .prototype-shell.has-assistant .guided-demo-panel { right: 24px; }
   .dialog-backdrop { position: fixed; z-index: 80; inset: 0; display: flex; justify-content: end; background: rgba(0,0,0,.42); }
   .assistant-dialog { width: min(420px, 100%); height: 100%; background: var(--surface); box-shadow: var(--shadow); }
   .panorama-grid { grid-template-columns: minmax(0, 1.4fr) minmax(230px, .6fr); }
@@ -334,9 +353,12 @@ button:disabled, a[aria-disabled="true"] { opacity: .48; cursor: not-allowed; }
   :root { --topbar-h: 58px; }
   body { padding-bottom: 64px; }
   .prototype-shell, .prototype-shell.has-assistant { display: block; min-height: 100vh; }
-  .topbar { position: sticky; left: 0; display: grid; grid-template-columns: 34px 34px minmax(0, 1fr) 38px; gap: 8px; padding: 0 14px; }
+  .topbar { position: sticky; left: 0; display: grid; grid-template-columns: 34px 34px minmax(0, 1fr) 82px; gap: 8px; padding: 0 14px; }
   .mobile-menu-button, .topbar-brand { display: inline-grid; }
   .topbar-actions .avatar-button, .topbar-actions .desktop-assistant-toggle { display: none; }
+  .topbar-actions { gap: 4px; }
+  .guided-demo-launcher { min-width: 36px; min-height: 36px; padding: 0; justify-content: center; }
+  .guided-demo-launcher span { display: none; }
   .global-search { width: 100%; height: 36px; }
   .global-search kbd { display: none; }
   .sidebar { transform: translateX(-105%); width: min(292px, 86vw); box-shadow: var(--shadow); transition: transform .2s ease; }
@@ -366,11 +388,12 @@ button:disabled, a[aria-disabled="true"] { opacity: .48; cursor: not-allowed; }
   .mobile-navigation a > span { font: 8px "Cascadia Code", Consolas, monospace; }
   .mobile-navigation a.is-active { border-top: 2px solid var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
   .assistant-drawer-trigger { display: none; }
+  .guided-demo-panel { left: 12px; right: 12px; bottom: 76px; width: auto; }
   .search-results { position: fixed; top: var(--topbar-h); left: 10px; right: 10px; }
 }
 
 @media (max-width: 430px) {
-  .topbar { grid-template-columns: 32px 32px minmax(0, 1fr) 36px; padding: 0 10px; }
+  .topbar { grid-template-columns: 32px 32px minmax(0, 1fr) 78px; padding: 0 10px; }
   .global-search { padding: 0 9px; }
   .global-search input::placeholder { color: transparent; }
   .main-content { padding-inline: 14px; }

@@ -29,7 +29,7 @@ export function BriefingsPage() {
 
   return (
     <div className="page-stack">
-      <SurfaceCard eyebrow="05 · Operaciones" title="Briefings" className="page-intro-panel">
+      <SurfaceCard eyebrow="05 · Operaciones" title="Briefings" className="page-intro-panel" tourTarget="briefing-actions">
         <div className="card-actions">
           <button
             className="primary-button"

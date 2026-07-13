@@ -55,7 +55,7 @@ export function AuditDetailPage() {
         <WarningList warnings={run.warnings} />
       </SurfaceCard>
 
-      <SurfaceCard eyebrow="Timeline" title="Pasos del workflow" className="audit-timeline">
+      <SurfaceCard eyebrow="Timeline" title="Pasos del workflow" className="audit-timeline" tourTarget="audit-timeline">
         <div className="stack-list">
           {mergedSteps.map(step => (
             <article className="timeline-item" key={step.id}>
